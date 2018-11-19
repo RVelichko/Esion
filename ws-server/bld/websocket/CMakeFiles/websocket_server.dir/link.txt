@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../Release/lib/libwebsocket_server.a  CMakeFiles/websocket_server.dir/WebSocketServer.cpp.o
-/usr/bin/ranlib ../Release/lib/libwebsocket_server.a
