@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -DNDEBUG  -rdynamic CMakeFiles/ws-server.dir/ws_server.cpp.o CMakeFiles/ws-server.dir/main.cpp.o  -o Release/bin/ws-server  -L/usr/local/lib -Wl,-rpath,/usr/local/lib Release/lib/liblog.a Release/lib/libsdispathcer.a Release/lib/libwebsocket_server.a -lssl -lcrypto -lboost_system -lboost_regex -lpthread 

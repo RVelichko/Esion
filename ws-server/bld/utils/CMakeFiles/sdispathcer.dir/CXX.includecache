@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/rostislav/Develop/esion/ws-server/utils/SignalDispatcher.cpp
+SignalDispatcher.hpp
+/home/rostislav/Develop/esion/ws-server/utils/SignalDispatcher.hpp
+
+/home/rostislav/Develop/esion/ws-server/utils/SignalDispatcher.hpp
+string
+-
+cstddef
+-
+memory
+-
+functional
+-
+condition_variable
+-
+csignal
+-
+vector
+-
+

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ESION</title>
+        <meta charset='utf-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+        <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css'>
+        <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
+        <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js'></script>
+    </head>
+    <style>
+        body{min-width:1000px;font-family:'Times New Roman',Times,serif;overflow-x: hidden;}
+        input{margin-bottom:3px;margin-top:0px;}
+        label{margin-left:3px;margin-right:3px;font-size:12pt;}
+        .clear{clear:both;}
+        .row{margin-right:-5px;margin-left:-5px;}
+        .row:before,.row:after{display:table;content:' ';}
+        .row:after {clear: both;}
+        .col-xs-1,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9,.col-xs-10,.col-xs-11,.col-xs-12{position:relative;min-height:1px;padding-bottom:5px;padding-top:5px;padding-right:10px;padding-left:10px;float:left;}
+        .border{border:1px solid rgb(0,200,0);border-radius:3px;}
+        .chart,.msg{width:95%;margin:3px 0;padding:10px;font-size:14px;line-height:16px;text-align:left;color:#333333;border-radius:3px;}
+        .msg,.time{display:block;float:right;font-size:10px;line-height:17px;}
+        .msg-left{float:left;background:#e8e8e8;}
+        .msg-right{float:right;background:#c5eee1;}
+        hr{ display:block; margin-top:0.5em; margin-bottom:0.5em; margin-left:auto; margin-right:auto; border-style:inset; border-width:1px;}
+    </style>
+    <body>
+        <div class='col-xs-12'>
+            <div id='esion_container' class='border col-xs-12'>
+                <div class='row col-xs-12'>
+                    <div id='esion_label' class='col-xs-10'>
+                        <h2>ESION</h2>
+                    </div>
+                    <div id='esion_version' class='col-xs-2' style='text-align: right;'>
+                        <h3>V 1.0</h3>
+                    </div>
+                </div>
+                <div id='settings_container' class='col-xs-7'>
+                    <div class='border col-xs-12'>
+                        <div class='col-xs-12'>
+                            <div id='edit_service'>
+                                <div class='row col-xs-12'>
+                                    <input id='service_url' class='col-xs-12' type='text' placeholder='Set the service URL.'>
+                                </div>
+                                <div class='row col-xs-12'>
+                                	<input id='room_id' class='col-xs-12' type='text' placeholder='Set the connected room ID.'>
+                                </div>
+                            </div>
+                            <div class='clear'></div>
+                        </div>
+                        <div class='col-xs-12'>
+                            <div id='sensor_0' class='row col-xs-12'>
+                                <label>cencor 1: </label>
+                                <label id='sensor_0_label'>0</label>
+                            </div>
+                            <div id='sensor_1' class='row col-xs-12'>
+                                <label>cencor 2: </label>
+                                <label id='sensor_1_label'>0</label>
+                            </div>
+                            <div id='sensor_2' class='row col-xs-12'>
+                                <label>cencor 3: </label>
+                                <label id='sensor_2_label'>0</label>
+                            </div>
+                            <div id='sensor_3' class='row col-xs-12'>
+                                <label>cencor 4: </label>
+                                <label id='sensor_3_label'>0</label>
+                            </div>
+                            <div id='sensor_4' class='row col-xs-12'>
+                                <label>cencor 5: </label>
+                                <label id='sensor_4_label'>0</label>
+                            </div>
+                            <div id='sensor_5' class='row col-xs-12'>
+                                <label>cencor 6: </label>
+                                <label id='sensor_5_label'>0</label>
+                            </div>
+                            <div class='clear'></div>
+                            <div id='dew_line' class='row col-xs-12'>
+                                <hr>
+                            </div>
+                        </div>
+                        <div id='under_line' class='row col-xs-12'>
+                            <div id='battery' class='col-xs-6' style='text-align: left;'>
+                                <label>battary: </label>
+                                <label id='battery_label'>3.3 V</label>
+                            </div>
+                            <div id='time' class='col-xs-6' style='text-align: right;'>
+                                <label>time: </label>
+                                <label id='time_label'>00:00:00</label>
+                            </div>
+                        </div>
+                        <div class='clear'></div>
+                        <div class='row col-xs-12'>
+                            <div class='row col-xs-4'></div>
+                            <div class='row col-xs-4'>
+                                <button id='connect' class='btn btn-primary col-xs-12'>CONNECT</button>
+                            </div>
+                            <div class='row col-xs-4'></div>
+                        </div>
+                    </div>
+                </div>
+                <div class='col-xs-5'>
+                    <div id='log_container' class='border col-xs-12'>
+                        <div id='log_label' style='text-align: center;'>
+                            <h3>Logging</h3>
+                        </div>
+                        <div id='esion_log' style='overflow-y: auto;'>
+                            <div id='log' class='chart'></div>
+                            <div class='clear'></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="text/javascript" src="js/jquery-1.12.3.min.js"></script>
+    <script type="text/javascript" src="js/socket.io.js"></script>
+    <script type="text/javascript" src="js/main.js"></script>
+</html>
