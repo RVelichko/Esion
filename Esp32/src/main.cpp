@@ -29,9 +29,11 @@
 
 static const int THRESHOLD = 100; /* Greater the value, more the sensitivity */
 
-static const uint8_t LED_PIN = 2; 
+static const int LED_PIN = 2; 
 static const uint32_t COUNT_SLEEP_TIME = 500;
 static const int ANALOG_PIN = 27; ///< Пин измерения напряжения на пине ADC.
+
+static const double BATTARY_FULL_VALUE = 6.4;
 
 static const uint16_t STR_LEN = 64;
 static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
@@ -73,10 +75,10 @@ typedef std::unique_ptr<WebSocketCountsSender> PWebSocketCountsSender;
 
 struct Blink {
     Blink() {
-        digitalWrite(LED_PIN, LOW); ///< Зажечь светодиод.
+        digitalWrite(LED_PIN, HIGH); ///< Зажечь светодиод.
     }
     ~Blink() {
-        digitalWrite(LED_PIN, HIGH); ///< Погасить светодиод.
+        digitalWrite(LED_PIN, LOW); ///< Погасить светодиод.
     }
 };
 
@@ -99,37 +101,6 @@ union BatteryValue {
     } _bits;
     uint8_t _val:2;
 };
-
-
-bool CheckMaxCounts() {
-    uint32_t max = __count1;
-    if (max < __count2) {
-        max = __count2;
-    }
-    if (max < __count3) {
-        max = __count3;
-    }
-    if (max < __count4) {
-        max = __count4;
-    }
-    if (max < __count5) {
-        max = __count5;
-    }
-    if (max < __count6) {
-        max = __count6;
-    }
-    if (MAX_COUNT_FOR_SEND <= max - __last_max_count) {
-        #ifdef DEBUG
-        Serial.println("---> max = " + String(max, DEC) + " : last = " + String(__last_max_count, DEC)); 
-        #endif
-        __last_max_count = max;
-        return true;
-    }
-    #ifdef DEBUG
-    Serial.println("---> max = " + String(max, DEC)); 
-    #endif
-    return false;
-}
 
 
 class SdController {
@@ -237,13 +208,14 @@ public:
      *                      "rest":"/rest/device",
      *                      "room_id":"esion_1",
      *                      "timeout":1 
-     *                  }
-     *              },
-     *              "max_count":1000
+     *                  },
+     *                  "send_timeout":10,
+     *                  "max_count":1000
+     *              }
      *          }
      */  
     bool parseSettings(const String &sjson) {
-        Blink blk;
+        //Blink blk;
         if (sjson.length() not_eq 0) {
             JsonBufferType json_buf;
             JsonVariant var = json_buf.parse(const_cast<char*>(sjson.c_str()));
@@ -300,14 +272,14 @@ public:
                         Serial.println("ERROR: can`t find config service");
                         #endif
                     }
-                    SEND_SLEEP_TIME = settings["send_timeout"].as<uint32_t>();
+                    SEND_SLEEP_TIME = settings["send_timeout"].as<int>();
                     if (not SEND_SLEEP_TIME) {
                         SEND_SLEEP_TIME = 10;
                     }
                     #ifdef DEBUG
                     Serial.println("Read send_timeout: " + String(SEND_SLEEP_TIME, DEC));
                     #endif
-                    MAX_COUNT_FOR_SEND = settings["max_count"].as<uint8_t>();
+                    MAX_COUNT_FOR_SEND = settings["max_count"].as<int>();
                     if (not MAX_COUNT_FOR_SEND) {
                         MAX_COUNT_FOR_SEND = 10;
                     }
@@ -337,7 +309,7 @@ public:
      *          }
      */  
     bool parseCounters(const String &sjson) {
-        Blink blk;
+        //Blink blk;
         if (sjson.length() not_eq 0) {
             JsonBufferType json_buf;
             JsonVariant var = json_buf.parse(const_cast<char*>(sjson.c_str()));
@@ -536,14 +508,14 @@ private:
     time_t getInternetTime() {
         configTime(1 * 3600, 60 * 60, "pool.ntp.org", "time.nist.gov");
         #ifdef DEBUG
-        Serial.println("\nWaiting for time");
+        Serial.println("Waiting for time");
         #endif
-        while(not time(nullptr)) {
+        do  {
             #ifdef DEBUG
             Serial.print(".");
             #endif
-            delay(1000);
-        }
+            delay(100);
+        } while(not time(nullptr));
         #ifdef DEBUG
         Serial.println("");
         #endif
@@ -554,15 +526,16 @@ private:
      * \brief Метод выполняет считывание значений напряжения питания.
      */ 
     double updateAdcLEvel() {
-        int iadc_level = analogRead(ANALOG_PIN);
-        if (not iadc_level) {
-            iadc_level = 1;
+        int analog_value = 0;
+        analog_value = analogRead(ANALOG_PIN);
+        if (analog_value == 0) {
+            analog_value = 1;
         }
-        double adc_level = (static_cast<double>(iadc_level) / 4095.0) * 3.3;
+        double level = BATTARY_FULL_VALUE * ((double)(analog_value) / 4096.0);
         #ifdef DEBUG
-        Serial.println("Bat > " + String(adc_level, DEC) + " V");
+        Serial.println("Bat > [" + String(analog_value, DEC) + "]: " + String(level, DEC) + " V");
         #endif
-        return adc_level;
+        return level;
     }
 
 public:
@@ -586,6 +559,7 @@ public:
                 Serial.print(".");
                 #endif
             } 
+            delay(50);
             if (WiFi.status() == WL_CONNECTED) {
                 #ifdef DEBUG
                 Serial.println("WIFI is connected");
@@ -613,8 +587,9 @@ public:
         counts += String(__count4, DEC) + ",";
         counts += String(__count5, DEC) + ",";
         counts += String(__count6, DEC);
+        String time = ctime(&_now);
         String data_sjson = String("{\"room_id\":\"" + _sdc->_service_room_id + "\"" +
-                    ", \"msg\":{\"time\":" + String(static_cast<uint32_t>(_now)) +
+                    ", \"msg\":{\"time\":\"" + time.substring(0, time.length() - 1) + "\"" +
                     ", \"bat\":" + String(_adc_level, DEC) + 
                     ", \"counts\":[" + counts + "]}}");
         #ifdef DEBUG
@@ -623,6 +598,7 @@ public:
         /// Отправить данные на сервер.
         _ws_sender = WebSocketCountsSender::get(_sdc->_service_addr, _sdc->_service_port, _sdc->_service_url, _sdc->_service_room_id, data_sjson);
         if (_ws_sender) {
+            Blink blk;
             for (uint16_t i = 0; i < MAX_ATTEMPS_CONNECTIONS and not _ws_sender->_is_recv; ++i) {
                 delay(10);
                 _ws_sender->update();
@@ -649,11 +625,49 @@ void SendTimeout() {
     #endif
     __sd_ctrl.reset(new SdController());
     if (__sd_ctrl) {
-        __sd_ctrl->getConfig();
-        __sd_ctrl->saveCounters();
+        {
+            Blink blk;
+            __sd_ctrl->getConfig();
+            __sd_ctrl->saveCounters();
+        }
         Esion e(__sd_ctrl.get());
         e.sendCounters();
     }
+}
+
+
+uint32_t GetMaxCounter() {
+    uint32_t max = __count1;
+    if (max < __count2) {
+        max = __count2;
+    }
+    if (max < __count3) {
+        max = __count3;
+    }
+    if (max < __count4) {
+        max = __count4;
+    }
+    if (max < __count5) {
+        max = __count5;
+    }
+    if (max < __count6) {
+        max = __count6;
+    }
+    return max;
+}
+
+
+bool CheckMaxCounts(uint32_t max) {
+    if (MAX_COUNT_FOR_SEND <= max - __last_max_count) {
+        #ifdef DEBUG
+        Serial.println("Check for send is TRUE."); 
+        #endif
+        return true;
+    }
+    #ifdef DEBUG
+    Serial.println("---> max = " + String(max, DEC) + " : last = " + String(__last_max_count, DEC)); 
+    #endif
+    return false;
 }
 
 
@@ -699,6 +713,7 @@ void WakeupReason() {
         } break;
         case ESP_SLEEP_WAKEUP_TIMER: 
             SendTimeout();
+            __last_max_count = GetMaxCounter();
             break;
         case ESP_SLEEP_WAKEUP_EXT0:
         case ESP_SLEEP_WAKEUP_TOUCHPAD:
@@ -719,19 +734,26 @@ void setup() {
     if (__is_run) {
         WakeupReason();
     } else {
-        delay(3000);
-        #ifdef DEBUG
-        Serial.println("Start. ==============================");
-        #endif
-        __is_run = true;
-        __sd_ctrl.reset(new SdController());
-        /// Прочитать файл настроек.
-        __sd_ctrl->getConfig();
-        __sd_ctrl->getCounts();
+        {
+            Blink blk;
+            delay(3000);
+            #ifdef DEBUG
+            Serial.println("Start. ==============================");
+            #endif
+            __is_run = true;
+            __sd_ctrl.reset(new SdController());
+            /// Прочитать файл настроек.
+            __sd_ctrl->getConfig();
+            __sd_ctrl->getCounts();
+        }
+        /// Отправить данные на сервер.
+        Esion e(__sd_ctrl.get());
+        e.sendCounters();
     }
 
-    esp_sleep_enable_ext1_wakeup(GPIO_SEL_39 | GPIO_SEL_36, ESP_EXT1_WAKEUP_ANY_HIGH);
-    bool check = CheckMaxCounts();
+    esp_sleep_enable_ext1_wakeup(GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34 | GPIO_SEL_33 | GPIO_SEL_32, ESP_EXT1_WAKEUP_ANY_HIGH);
+    uint32_t max = GetMaxCounter();
+    bool check = CheckMaxCounts(max);
     if (check) {
         esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000);
     }
@@ -746,5 +768,3 @@ void setup() {
 
 void loop() {
 }
-
-

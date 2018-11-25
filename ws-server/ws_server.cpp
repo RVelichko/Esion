@@ -83,9 +83,9 @@ BaseWorker::~BaseWorker() {}
 
 
 DevicePeerWorker::DeviceConnectionRoom::~DeviceConnectionRoom() {
-    if (_room_controller) {
-        _room_controller->deleteFromRoom(_room_id, std::make_tuple(_connection_id, static_cast<size_t>(0)));
-    }
+    //if (_room_controller) {
+    //    _room_controller->deleteFromRoom(_room_id, std::make_tuple(_connection_id, static_cast<size_t>(0)));
+    //}
 }
 
 
@@ -98,12 +98,14 @@ PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std:
         con_room->_room_id = room_id;
         con_room->_room_controller = _room_controller;
         /// Создать ссылку на комнату и связать с ней идентификатор подключения
+        size_t operator_id = 0;
         SingleRoomMembers room_ch;
         { ///< LOCK
             LockQuard l(_mutex);
-            room_ch = _room_controller->addToRoom(room_id, std::make_tuple(connection_id, static_cast<size_t>(0)));
+            room_ch = _room_controller->getRoom(room_id);
+            operator_id = std::get<1>(room_ch);    
+            room_ch = _room_controller->addToRoom(room_id, std::make_tuple(connection_id, operator_id));
         }
-        size_t operator_id = std::get<1>(room_ch);
         LOG(DEBUG) << "room_id: " << room_id << "; {" << connection_id << "," <<  operator_id << "}";
         //Json jmsg = json["msg"].get<Json>();
         /// Если оператор уже подключён - оправить ему настройки источника

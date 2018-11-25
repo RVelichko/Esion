@@ -141,12 +141,7 @@ function HandleSettings() {
                 /// Обновить информацию об подключённом устройстве.
                 AddLeftLog("Recv device: " + JSON.stringify(msg));
                 if ("time" in msg) {
-                    var tops = {
-                        year: 'numeric', month: 'numeric', day: 'numeric',
-                        hour: 'numeric', minute: 'numeric', second: 'numeric'
-                    };
-                    var dt = new Date(msg.time);
-                    $("#time_label").text(dt.toLocaleString('ru-RU', tops));
+                    $("#time_label").text(msg.time);
                 }
                 if ("bat" in msg) {
                     $("#battery_label").text(msg.bat);
