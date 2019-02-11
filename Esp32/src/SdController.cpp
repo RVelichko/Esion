@@ -1,0 +1,274 @@
+#include <ArduinoJson.h>
+#include <SD.h>
+
+#include "SdController.hpp"
+
+
+typedef StaticJsonBuffer<300> JsonBufferType;
+typedef std::unique_ptr<SdController> PSdController;
+
+
+static const char DEFAULT_CONFIG_FILE[] = "config.js";
+static const char DEFAULT_COUNTERS_FILE[] = "counters.js";
+
+
+SdController* SdController::get() {
+    static PSdController sdc;
+    if (not sdc) {
+        sdc.reset(new SdController());
+    }
+    return sdc.get();
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+SdController::SdController() {
+    /// Инициализация SD карты.
+    #ifdef DEBUG
+    Serial.print("SD initialization is ");
+    #endif
+    if (not SD.begin()) {
+        #ifdef DEBUG
+        Serial.println(String("ERROR: Fat type is: " + SD.cardType()).c_str());
+        #endif
+    } else {
+        #ifdef DEBUG
+        Serial.println("TRUE");
+        #endif
+        _is_inited_sd = true;
+    }
+}
+
+SdController::~SdController() {
+    if (_is_inited_sd) {
+        SD.end();
+    }
+}
+
+
+void SdController::getConfig(uint32_t &send_sleep_time, uint8_t &max_send_count) {
+    if (_is_inited_sd) {
+        #ifdef DEBUG
+        Serial.println("Read config file...");
+        #endif
+        File f = SD.open(String("/") + DEFAULT_CONFIG_FILE, FILE_READ);
+        if (f) {
+            size_t fsize = f.size();
+            #ifdef DEBUG
+            Serial.println("file size: " + String(fsize, DEC));
+            #endif
+            String json_str;
+            while (f.available()) {
+                char ch = f.read(); ///< Для строкового представления обязательно читать в чар переменную.
+                json_str += ch;
+            }
+            f.close();
+            parseSettings(json_str, send_sleep_time, max_send_count);
+        } else {
+            #ifdef DEBUG
+            Serial.println("ERROR: can`t open file `" + String(DEFAULT_CONFIG_FILE) + "`");
+            #endif
+        }
+    }
+}
+
+
+void SdController::getCounts(uint32_t &count1,
+                             uint32_t &count2,
+                             uint32_t &count3,
+                             uint32_t &count4,
+                             uint32_t &count5,
+                             uint32_t &count6) {
+    if (_is_inited_sd) {
+        #ifdef DEBUG
+        Serial.println("Read counters file...");
+        #endif
+        File f = SD.open(String("/") + DEFAULT_COUNTERS_FILE, FILE_READ);
+        if (f) {
+            size_t fsize = f.size();
+            #ifdef DEBUG
+            Serial.println("file size: " + String(fsize, DEC));
+            #endif
+            String json_str;
+            while (f.available()) {
+                char ch = f.read();
+                json_str += ch;
+            }
+            f.close();
+            parseCounters(json_str, count1, count2, count3, count4, count5, count6);
+        } else {
+            #ifdef DEBUG
+            Serial.println("WARNING: can`t open file `" + String(DEFAULT_COUNTERS_FILE) + "`");
+            #endif
+        }
+    }
+}
+
+
+bool SdController::parseSettings(const String &sjson, uint32_t &send_sleep_time, uint8_t &max_send_count) {
+    //Blink blk;
+    if (sjson.length() not_eq 0) {
+        JsonBufferType json_buf;
+        JsonVariant var = json_buf.parse(const_cast<char*>(sjson.c_str()));
+        if (var.is<JsonObject>()) {
+            #ifdef DEBUG
+            Serial.println(String("Config is parsed...").c_str());
+            #endif
+            JsonObject& root = var;
+            JsonObject& settings = root["settings"].as<JsonObject>();
+            if (settings.success()) {
+                JsonObject &wifi = settings["wifi"].as<JsonObject>();
+                if (wifi.success()) {
+                    String ssid =  wifi["ssid"].as<char*>();
+                    if (ssid.length() not_eq 0) {
+                        _wc.ssid = ssid;
+                        #ifdef DEBUG
+                        Serial.println(String("Read wifi ssid: " + _wc.ssid).c_str());
+                        #endif
+                    } else {
+                        #ifdef DEBUG
+                        Serial.println(String("ERROR: can`t find WIFI SSID").c_str());
+                        #endif
+                    }
+                    String pswd =  wifi["pswd"].as<char*>();
+                    if (pswd.length() not_eq 0) {
+                        _wc.pswd = pswd;
+                        #ifdef DEBUG
+                        Serial.println("Read wifi pswd: " + _wc.pswd);
+                        #endif
+                    } else {
+                        #ifdef DEBUG
+                        Serial.println("ERROR: can`t find WIFI PSWD");
+                        #endif
+                    }
+                } else {
+                    #ifdef DEBUG
+                    Serial.println("ERROR: can`t find config wifi");
+                    #endif
+                }
+                JsonObject& service = settings["service"].as<JsonObject>();
+                if (service.success()) {
+                    _service_addr = service["address"].as<char*>();
+                    _service_port = service["port"].as<int>();
+                    _service_url = service["rest"].as<char*>();
+                    _service_room_id = service["room_id"].as<char*>();
+                    _service_timeout = service["timeout"].as<int>();
+                    #ifdef DEBUG
+                    Serial.println(String("Rrad service: " + _service_addr + ":" +
+                                    String(_service_port, DEC) + _service_url + "?" + _service_room_id + "@" +
+                                    String(_service_timeout, DEC)).c_str());
+                    #endif
+                } else {
+                    #ifdef DEBUG
+                    Serial.println("ERROR: can`t find config service");
+                    #endif
+                }
+                send_sleep_time = settings["send_timeout"].as<int>();
+                if (not send_sleep_time) {
+                    send_sleep_time = 10;
+                }
+                #ifdef DEBUG
+                Serial.println("Read send_timeout: " + String(send_sleep_time, DEC));
+                #endif
+                max_send_count = settings["max_count"].as<int>();
+                if (not max_send_count) {
+                    max_send_count = 10;
+                }
+                #ifdef DEBUG
+                Serial.println("Read max_count: " + String(max_send_count, DEC));
+                #endif
+            } else {
+                #ifdef DEBUG
+                Serial.println("ERROR: can`t find config settings");
+                #endif
+            }
+        } else {
+            #ifdef DEBUG
+            Serial.println("ERROR: can`t parse config json");
+            #endif
+        }
+        return true;
+    }
+    return false;
+}
+
+
+bool SdController::parseCounters(const String &sjson,     
+                                 uint32_t &count1,
+                                 uint32_t &count2,
+                                 uint32_t &count3,
+                                 uint32_t &count4,
+                                 uint32_t &count5,
+                                 uint32_t &count6) {
+    if (sjson.length() not_eq 0) {
+        JsonBufferType json_buf;
+        JsonVariant var = json_buf.parse(const_cast<char*>(sjson.c_str()));
+        if (var.is<JsonObject>()) {
+            #ifdef DEBUG
+            Serial.println(String("Config is parsed...").c_str());
+            #endif
+            JsonObject& root = var;
+            JsonArray& counters = root["counters"].as<JsonArray>();
+            if (counters.success()) {
+                count1 = counters[0].as<uint32_t>();
+                count2 = counters[1].as<uint32_t>();
+                count3 = counters[2].as<uint32_t>();
+                count4 = counters[3].as<uint32_t>();
+                count5 = counters[4].as<uint32_t>();
+                count6 = counters[5].as<uint32_t>();
+                #ifdef DEBUG
+                Serial.println("Count 1: " + String(count1, DEC)); 
+                Serial.println("Count 2: " + String(count2, DEC)); 
+                Serial.println("Count 3: " + String(count3, DEC)); 
+                Serial.println("Count 4: " + String(count4, DEC)); 
+                Serial.println("Count 5: " + String(count5, DEC)); 
+                Serial.println("Count 6: " + String(count6, DEC)); 
+                #endif
+            } else {
+                #ifdef DEBUG
+                Serial.println(String("ERROR: can`t find config counters").c_str());
+                #endif
+            }
+        } else {
+            #ifdef DEBUG
+            Serial.println(String("ERROR: can`t parse counters json").c_str());
+            #endif
+        }
+        return true;
+    }
+    return false;
+}
+
+
+void SdController::saveCounters(uint32_t count1,
+                                uint32_t count2,
+                                uint32_t count3,
+                                uint32_t count4,
+                                uint32_t count5,
+                                uint32_t count6) {
+    if (_is_inited_sd) {
+        String counts;
+        counts += "{\"counters\":[";
+        counts += String(count1, DEC) + ",";
+        counts += String(count2, DEC) + ",";
+        counts += String(count3, DEC) + ",";
+        counts += String(count4, DEC) + ",";
+        counts += String(count5, DEC) + ",";
+        counts += String(count6, DEC);
+        counts += "]}";
+        File f = SD.open(String("/") + DEFAULT_COUNTERS_FILE, FILE_WRITE);
+        if (f) {
+            const uint8_t* p = reinterpret_cast<const uint8_t*>(counts.c_str());
+            size_t len = counts.length();
+            #ifdef DEBUG
+            Serial.println("Write to file \"" + String(DEFAULT_COUNTERS_FILE) + "\": " + String(len, DEC)  + ": "+ counts);
+            #endif
+            f.write(p, len);
+            f.close();
+        } else {
+            #ifdef DEBUG
+            Serial.println("ERROR: Can`t open counters file for writing.");
+            #endif
+        }
+    }
+}

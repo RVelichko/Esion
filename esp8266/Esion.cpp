@@ -30,18 +30,18 @@ static const int DEFAULT_SERIAL_SPEED = 115200;
 
 static const int DEFAULT_LOCAL_PORT = 80;
 static const char DEFAULT_SERVICE_URL[] = "undefined";
- 
+
 /// GPIO пины
-static const int LED_PIN = 2; 
+static const int LED_PIN = 2;
 static const int COUNTER_INPULS_PIN = 5;
 
 static const int RTC_RST_PIN = 16;
-static const int RTC_DAT_PIN = 3; 
-static const int RTC_CLK_PIN = 0; 
+static const int RTC_DAT_PIN = 3;
+static const int RTC_CLK_PIN = 0;
 
 static const int SD_CS_PIN = SS;
 
-static const char PAGE[] = 
+static const char PAGE[] =
     "<!DOCTYPE html><html>\n"\
     "<head><title>ESION</title><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css'><script src='https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script><script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js'></script></head>\n"\
     "<style>\n"\
@@ -205,25 +205,25 @@ static const char PAGE[] =
 class Esion {
     struct Blink {
         Blink() {
-            /// Зажечь светодиод.  
+            /// Зажечь светодиод.
             digitalWrite(LED_PIN, LOW);
         }
         ~Blink() {
-            /// Погасить светодиод.  
+            /// Погасить светодиод.
             digitalWrite(LED_PIN, HIGH);
         }
     };
-    
+
     struct WifiConfig {
         String _ssid;
         String _pswd;
-        
-        WifiConfig() 
+
+        WifiConfig()
             : _ssid({"Infotec-Service"})
             , _pswd({"Infotec-Service Best of the best"})
         {}
     };
-    
+
     static std::shared_ptr<Esion> _esion;
 
     static int _counter;
@@ -307,26 +307,26 @@ private:
                 Serial.print(c);
                 Serial.print("]: ");
                 Serial.println(esion->getTimeStr());
-                /// Зажечь светодиод.  
+                /// Зажечь светодиод.
                 digitalWrite(LED_PIN, LOW);
             } else {
-                /// Погасить светодиод.  
+                /// Погасить светодиод.
                 digitalWrite(LED_PIN, HIGH);
             }
         }
     }
-   
+
     bool _is_inited_sd;
-    std::shared_ptr<iarduino_RTC> _rtc; 
+    std::shared_ptr<iarduino_RTC> _rtc;
     std::shared_ptr<ESP8266WebServer> _server;
     double _adc_level;
     WifiConfig _wc;
     String _service_url;
-    
+
     ESP8266WebServer* getServer() {
         return _server.get();
     }
-    
+
     bool parseSettings(const String &json_str_) {
         Blink blk;
         if (json_str_.length() not_eq 0) {
@@ -358,14 +358,14 @@ private:
                             Serial.print("Read service url: ");
                             Serial.println(_service_url.c_str());
                         }
-                    }                            
+                    }
                 }
             }
             return true;
         }
         return false;
     }
-    
+
     void getConfig() {
         Serial.println("Read config file...");
         if (_is_inited_sd) {
@@ -411,7 +411,7 @@ private:
     char* getTimeStr() {
         return _time_str;
     }
-    
+
     void sendInitStatusJson() {
         Blink blk;
         StaticJsonBuffer<200> json_buf;
@@ -453,7 +453,7 @@ private:
         Serial.print("Update status JSON: ");
         Serial.println(json_str);
     }
-    
+
     void recvJson(const String &json_str_) {
         /// Выделить принятые параметры.
         if (parseSettings(json_str_)) {
@@ -472,7 +472,7 @@ private:
 public:
     explicit Esion(int serial_speed_)
         : _is_inited_sd(false)
-        , _adc_level(0) 
+        , _adc_level(0)
         , _service_url(DEFAULT_SERVICE_URL) {
         /// Инициализация порта.
         Serial.begin(serial_speed_);
@@ -489,22 +489,22 @@ public:
             Serial.println("TRUE");
             _is_inited_sd = true;
         }
-       
+
         /// Прочитать файл настроек.
         getConfig();
         delay(100);
-        
+
         /// Подключение к сети wifi.
         Serial.println();
         Serial.print("Connecting to ");
         Serial.println(_wc._ssid.c_str());
 
         WiFi.begin(_wc._ssid.c_str(), _wc._pswd.c_str());
-        
+
         while (WiFi.status() not_eq WL_CONNECTED) {
             delay(1000);
             Serial.print(".");
-        } 
+        }
         Serial.println("WiFi connected");
 
         /// Получить текущее интернет время.
@@ -516,7 +516,7 @@ public:
         Blink blk;
         Serial.print("Init led pin: ");
         Serial.println(LED_PIN);
-        
+
         /// Запустить сервер.
         _server = std::make_shared<ESP8266WebServer>(DEFAULT_LOCAL_PORT);
         Serial.print("Server started by port: ");
@@ -526,7 +526,7 @@ public:
         _server->on("/args", handleArgs);
         _server->onNotFound(handleNotFound);
         _server->begin();
-        
+
         /// Показать IP адрес.
         Serial.print("Use this URL to connect: ");
         Serial.print("http://");
@@ -541,7 +541,7 @@ public:
         Serial.println(COUNTER_INPULS_PIN);
         delay(100);
     }
-    
+
     void update() {
         /// Проверить уровень заряда аккумулятора.
         //int adc_level = analogRead(A0);
@@ -552,7 +552,7 @@ public:
             Serial.println(" V");
             _adc_level = adc_level;
         }
-        
+
         /// Проверить подключение клиента.
         String aname;
         if (_server) {
@@ -560,7 +560,7 @@ public:
         }
         delay(100);
     }
-}; 
+};
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -574,11 +574,98 @@ Esion::BatteryValue Esion::_bat_val = {0};
 void setup() {
     Esion::getEsion();
 }
- 
- 
+
+
 void loop() {
     Esion *e = Esion::getEsion();
     if (e) {
         e->update();
     }
 }
+
+
+    "<!DOCTYPE html>"\
+    "<html>"\
+        "<head>"\
+            "<title>Configure page</title>"\
+            "<meta charset='utf-8'>"\
+            "<meta name='viewport'content='width=device-width,initial-scale=1'>"\
+        "</head>"\
+        "<style>"\
+            "body{min-width:1000px;font-family:'Roboto',Times,serif;overflow-x:hidden;}"\
+            "input{margin-bottom:3px;margin-top:0px;}"\
+            "label{margin-left:3px;margin-right:3px;font-size:14pt;}"\
+            "*{box-sizing:border-box;}"\
+            ".clear{clear:both;}"\
+            ".right{text-align:right;}"\
+            ".left{text-align:left;}"\
+            ".row{margin-right:-5px;margin-left:-5px;}"\
+            ".row:before,.row:after{display:table;content:' ';}"\
+            ".row:after{clear: both;}"\
+            ".col-xs-2{width:16.666666%;}"\
+            ".col-xs-4{width:33.333333%;}"\
+            ".col-xs-6{width:50%;}"\
+            ".col-xs-10{width:83.333333%;}"\
+            ".col-xs-12{width:100%;}"\
+            ".col-xs-2,.col-xs-4,.col-xs-6,.col-xs-10,.col-xs-12{position:relative;min-height:1px;padding-bottom:5px;padding-top:5px;padding-right:10px;padding-left:10px;float:left;}"\
+            ".border{border:1px solid #1b9c1a;border-radius:3px;}"\
+            ".btn-primary:hover{background-color:#0d690c;border-color:#0d690c;}"\
+            ".btn-primary:checked{background-color:#0d690c;border-color:#0d690c;}"\
+            ".btn-primary{color:#fff;background-color:#1b9c1a;border-color:#0026ea;}"\
+            ".btn{display:inline-block;padding:6px 12px;margin-bottom:0;font-size:16px;font-weight:400;line-height:1.42857143;text-align:center;white-space:nowrap;vertical-align:middle;touch-action:manipulation;cursor:pointer;user-select:none;background-image:none;border:1px solid transparent;border-radius:4px;}"\
+        "</style>"\
+        "<body>"\
+            "<div class='col-xs-12'>"\
+                "<div id='esion_container' class='border col-xs-12'>"\
+                    "<div class='row col-xs-12'>"\
+                        "<div id='esion_label' class='col-xs-10'>"\
+                            "<h2>ESION</h2>"\
+                        "</div>"\
+                        "<div id='esion_version' class='col-xs-2 right'>"\
+                            "<h3>V 1.0</h3>"\
+                        "</div>"\
+                    "</div>"\
+                    "<div id='settings_container' class='col-xs-12'>"\
+                        "<div class='border col-xs-12'>"\
+                            "<div class='col-xs-12'>"\
+                                "<div id='edit_service'>"\
+                                    "<div class='row col-xs-12'>"\
+                                        "<input id='server_ssid' class='col-xs-12' type='text' placeholder='Укажите wifi SSID.'>"\
+                                    "</div>"\
+                                    "<div class='row col-xs-12'>"\
+                                        "<input id='server_pswd' class='col-xs-12' type='text' placeholder='Укажите wifi PASSWORD.'>"\
+                                    "</div>"\
+                                "</div>"\
+                            "</div>"\
+                            "<div id='under_line' class='row col-xs-12'>"\
+                                "<div id='esion_label' class='col-xs-6'>"\
+                                    "<label>Идентификатор: </label>"\
+                                    "<label id='id_label'>1234567890</label>"\
+                                "</div>"\
+                                "<div id='battery' class='col-xs-6 right'>"\
+                                    "<label>Напряжение батареи: </label>"\
+                                    "<label id='battery_label'>4.8 V</label>"\
+                                "</div>"\
+                            "</div>"\
+                            "<div class='clear'></div>"\
+                            "<div class='row col-xs-12'>"\
+                                "<div class='row col-xs-4'></div>"\
+                                "<div class='row col-xs-4'>"\
+                                    "<button id='bt_save' class='btn btn-primary col-xs-12' onclick='saveSettings()'>Запомнить настройки</button>"\
+                                "</div>"\
+                                "<div class='row col-xs-4'></div>"\
+                            "</div>"\
+                        "</div>"\
+                    "</div>"\
+                    "<div id='author' class='col-xs-12 right'>"\
+                    "<label style='font-size:10px'>ООО \"ИнфоТехСервис\":</label>"\
+                    "<label style='font-size:10px'>(812)34-77-99-8</label>"\
+                    "</dev>"\
+                "</div>"\
+            "</div>"\
+        "</body>"\
+        "<script>"\
+            "function changeSetting(id_){e=document.getElementById(id_);if(e && e.value){e.placeholder = e.value;e.value = '';}}"\
+            "function saveSettings(){var xhr=new XMLHttpRequest();xhr.open('POST',window.location+'/save',true);xhr.setRequestHeader('Content-type','application/x-www-form-urlencoded');xhr.send('json='+JSON.stringify({wifi:{ssid:document.getElementById('server_ssid').value,pswd:document.getElementById('server_pswd').value}}));changeSetting('server_ssid');changeSetting('server_pswd');}"\
+        "</script>"\
+    "</html>";
