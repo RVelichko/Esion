@@ -10,24 +10,36 @@
 #include <avr/power.h>
 
 #include <Arduino.h>
-//#include <SoftwareSerial.h>
-
-//SoftwareSerial Serial(4, 5);  //rx, tx
 
 
-#define PI_1 0
-#define PI_2 1
-#define PI_3 11
-#define PI_4 2
-#define PI_5 3
-#define PI_6 4
+#define PIN_IN_1 0
+#define PIN_IN_2 1
+#define PIN_IN_3 11
+#define PIN_IN_4 2
+#define PIN_IN_5 3
+#define PIN_IN_6 4
 
-#define PO_1 10
-#define PO_2 9
-#define PO_3 8
-#define PO_4 7
-#define PO_5 6
-#define PO_6 5
+#define PIN_OUT_1 10
+#define PIN_OUT_2 9
+#define PIN_OUT_3 8
+#define PIN_OUT_4 7
+#define PIN_OUT_5 6
+#define PIN_OUT_6 5
+
+
+//#define PIN_IN_1 PA0
+//#define PIN_IN_2 PA1
+//#define PIN_IN_3 PA2
+//#define PIN_IN_4 PA3
+//#define PIN_IN_5 PA4
+//#define PIN_IN_6 PA5
+//
+//#define PIN_OUT_1 PB0
+//#define PIN_OUT_2 PB1
+//#define PIN_OUT_3 PB3
+//#define PIN_OUT_4 PB2
+//#define PIN_OUT_5 PA7
+//#define PIN_OUT_6 PA6
 
 
 // Routines to set and claer bits (used in the sleep code)
@@ -41,11 +53,21 @@
 
 #define INTERNAL2V56NC (6)  // We use the internal voltage reference
 
+#define COUNT_MASK_1 0x01
+#define COUNT_MASK_2 0x02
+#define COUNT_MASK_3 0x04
+#define COUNT_MASK_4 0x08
+#define COUNT_MASK_5 0x10
+#define COUNT_MASK_6 0x20
+#define WDT_MASK 0x40
+
 
 // Variables for the Sleep/power down modes:
 volatile boolean f_wdt = 1;
-volatile byte f_flags = 0x00;
-//volatile uint8_t f_test = 0;
+//volatile boolean f_flag_1 = 0;
+volatile static unsigned char f_flags = WDT_MASK;
+//volatile boolean f_flags = WDT_MASK;
+//volatile uint8_t tmp = 0;
 
 
 // 0 = 16ms, 1 = 32ms, 2 = 64ms, 3 = 128ms, 4 = 250ms, 5 = 500ms
@@ -81,53 +103,49 @@ void SystemSleep() {
 }
 
 
-void test(int pin) {
-    digitalWrite(pin, HIGH);
-    _delay_ms(100);
-    digitalWrite(pin, LOW);
-    //_delay_ms(100);
+void test() {
+    digitalWrite(PIN_OUT_1, HIGH);
+    _delay_ms(500);
+    digitalWrite(PIN_OUT_1, LOW);
 }
 
 
 void CheckPin(int in_pin, int out_pin, uint8_t mask) {
-    //test(PO_1);
-    //test(PO_2);
-    //test(PO_3);
-    //test(PO_4);
-    //test(PO_5);
-    //test(PO_6);
-    //f_test = f_test + 1;
-    //if (255 < f_test) {
-    //    test();
-    //    f_test = 0;
-    //}
-    bool is_pin = (digitalRead(in_pin) == 1);
+  //tmp = tmp + 1;
+  //if (10 < tmp) {
+  //  test();
+  //  tmp = 0;
+  //}
+    bool is_pin = digitalRead(in_pin);
     bool is_flag = f_flags & mask;
     if (is_pin and not is_flag) {
+    //if (is_pin and f_flag_1 == 0) {
+        //digitalWrite(out_pin, HIGH);
         f_flags |= mask;
-        digitalWrite(out_pin, HIGH);
     }
     if (not is_pin and is_flag) {
+    //if (not is_pin and f_flag_1 == 1) {
+        digitalWrite(out_pin, HIGH);
         f_flags ^= mask;
+        //f_flag_1 = 0;
     }
 }
 
 
 void WorkInputs() {
-    //Serial.print(".");
-    CheckPin(PI_1, PO_1, 0b00000001);
-    CheckPin(PI_2, PO_2, 0b00000010);
-    CheckPin(PI_3, PO_3, 0b00000100);
-    CheckPin(PI_4, PO_4, 0b00001000);
-    CheckPin(PI_5, PO_5, 0b00010000);
-    CheckPin(PI_6, PO_6, 0b00100000);
+    CheckPin(PIN_IN_1, PIN_OUT_1, COUNT_MASK_1);
+    CheckPin(PIN_IN_2, PIN_OUT_2, COUNT_MASK_2);
+    CheckPin(PIN_IN_3, PIN_OUT_3, COUNT_MASK_3);
+    CheckPin(PIN_IN_4, PIN_OUT_4, COUNT_MASK_4);
+    CheckPin(PIN_IN_5, PIN_OUT_5, COUNT_MASK_5);
+    CheckPin(PIN_IN_6, PIN_OUT_6, COUNT_MASK_6);
     _delay_ms(10);
-    digitalWrite(PO_1, LOW);
-    digitalWrite(PO_2, LOW);
-    digitalWrite(PO_3, LOW);
-    digitalWrite(PO_4, LOW);
-    digitalWrite(PO_5, LOW);
-    digitalWrite(PO_6, LOW);
+    digitalWrite(PIN_OUT_1, LOW);
+    digitalWrite(PIN_OUT_2, LOW);
+    digitalWrite(PIN_OUT_3, LOW);
+    digitalWrite(PIN_OUT_4, LOW);
+    digitalWrite(PIN_OUT_5, LOW);
+    digitalWrite(PIN_OUT_6, LOW);
 }
 
 
@@ -139,27 +157,23 @@ void InitOutPin(int pin) {
 
 // the setup routine runs once when you press reset:
 void setup()  {
-    //Serial.begin(9600);
-    //delay(50);
-    //Serial.print("Init.");
-
     // Set up FAST PWM
     TCCR0A = 2 << COM0A0 | 2 << COM0B0 | 3 << WGM00; // Set control register A for Timer 0
     TCCR0B = 0 << WGM02 | 1 << CS00;                 // Set control register B for Timer 0
 
-    InitOutPin(PO_1);
-    InitOutPin(PO_2);
-    InitOutPin(PO_3);
-    InitOutPin(PO_4);
-    InitOutPin(PO_5);
-    InitOutPin(PO_6);
+    InitOutPin(PIN_OUT_1);
+    InitOutPin(PIN_OUT_2);
+    InitOutPin(PIN_OUT_3);
+    InitOutPin(PIN_OUT_4);
+    InitOutPin(PIN_OUT_5);
+    InitOutPin(PIN_OUT_6);
 
-    pinMode(PI_1, INPUT);
-    pinMode(PI_2, INPUT);
-    pinMode(PI_3, INPUT);
-    pinMode(PI_4, INPUT);
-    pinMode(PI_5, INPUT);
-    pinMode(PI_6, INPUT);
+    pinMode(PIN_IN_1, INPUT);
+    pinMode(PIN_IN_2, INPUT);
+    pinMode(PIN_IN_3, INPUT);
+    pinMode(PIN_IN_4, INPUT);
+    pinMode(PIN_IN_5, INPUT);
+    pinMode(PIN_IN_6, INPUT);
 
     SetupWatchdog(5); // approximately 0.5 seconds sleep
 }
@@ -168,7 +182,10 @@ void setup()  {
 // the loop routine runs over and over again forever:
 void loop()  {
     if (f_wdt == 1) {  // wait for timed out watchdog / flag is set when a watchdog timeout occurs
-        f_wdt = 0;       // reset flag
+        //test();
+    //if ((f_flags & WDT_MASK) != 0) {  // wait for timed out watchdog / flag is set when a watchdog timeout occurs
+        //f_flags ^= WDT_MASK;       // reset flag
+        f_wdt = 0;
         WorkInputs();
         SystemSleep();  // Send the unit to sleep
     }
@@ -177,5 +194,6 @@ void loop()  {
 
 // Watchdog Interrupt Service / is executed when watchdog timed out
 ISR(WDT_vect) {
-    f_wdt = 1;  // set global flag
+    f_wdt = 1;
+    //f_flags |= WDT_MASK;  // set global flag
 }

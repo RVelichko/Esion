@@ -3,10 +3,10 @@
 #include "ConfigureServer.hpp"
 
 
-typedef StaticJsonBuffer<300> JsonBufferType;
+typedef StaticJsonDocument<300> JsonBufferType;
 
 
-static const time_t CONFIGURE_TIMEOUT = 1200; ///< Количество секунд работы режима конфигурирования.
+static const time_t CONFIGURE_TIMEOUT = 600; ///< Количество секунд работы режима конфигурирования.
 
 static const char PAGE[] = 
     "<!DOCTYPE html>"\
@@ -53,14 +53,27 @@ static const char PAGE[] =
                     "<div id='settings_container' class='col-xs-12'>"\
                         "<div class='border col-xs-12'>"\
                             "<div class='col-xs-12'>"\
-                                "<div id='edit_service'>"\
-                                    "<div class='row col-xs-12'>"\
+                                "<div class='row col-xs-12'>"\
+                                    "<div class='row col-xs-2'>"\
+                                        "<label>SSID</label>"\
+                                    "</div>"\
+                                    "<div class='row col-xs-10'>"\
                                         "<input id='server_ssid' class='col-xs-12' type='text' placeholder='Укажите wifi SSID.'>"\
                                     "</div>"\
-                                    "<div class='row col-xs-12'>"\
-                                        "<input id='server_pswd' class='col-xs-12' type='text' placeholder='Укажите wifi PASSWORD.'>"\
+                                "</div>"\
+                                "<div class='row col-xs-12'>"\
+                                    "<div class='row col-xs-2'>"\
+                                        "<label>PSWD</label>"\
                                     "</div>"\
-                                    "<div class='row col-xs-12'>"\
+                                    "<div class='row col-xs-10'>"\
+                                  	    "<input id='server_pswd' class='col-xs-12' type='text' placeholder='Укажите wifi PASSWORD.'>"\
+                                    "</div>"\
+                                "</div>"\
+                                "<div class='row col-xs-12'>"\
+                                    "<div class='row col-xs-2'>"\
+                                        "<label>URL</label>"\
+                                    "</div>"\
+                                    "<div class='row col-xs-10'>"\
                                         "<input id='service_url' class='col-xs-12' type='text' placeholder='Укажите URL сервиса обслуживания.'>"\
                                     "</div>"\
                                 "</div>"\
@@ -68,7 +81,7 @@ static const char PAGE[] =
                             "<div id='under_line' class='row col-xs-12'>"\
                                 "<div id='esion_label' class='col-xs-6'>"\
                                     "<label>Идентификатор: </label>"\
-                                    "<label id='id_label'>1234567890</label>"\
+                                    "<label id='id_label'>0000-000-0000-000-0000</label>"\
                                 "</div>"\
                                 "<div id='battery' class='col-xs-6 right'>"\
                                     "<label>Напряжение батареи: </label>"\
@@ -86,7 +99,7 @@ static const char PAGE[] =
                         "</div>"\
                     "</div>"\
                     "<div id='author' class='col-xs-12 right'>"\
-                    "<label style='font-size:10px'>ООО \"ИнфоТехСервис\":</label>"\
+                    "<label style='font-size:10px'>ООО \"ИнфоТех-Сервис\":</label>"\
                     "<label style='font-size:10px'>(812)34-77-99-8</label>"\
                     "</dev>"\
                 "</div>"\
@@ -101,7 +114,7 @@ static const char PAGE[] =
                 "}}"\
             "function saveSettings(){"\
                 "var xhr=new XMLHttpRequest();"\
-                "xhr.open('POST',window.location+'/save',true);"\
+                "xhr.open('POST','/save',true);"\
                 "xhr.setRequestHeader('Content-type','application/x-www-form-urlencoded');"\
                 "xhr.send('json='+JSON.stringify({"\
                     "wifi:{"\
@@ -137,6 +150,9 @@ bool ConfigureServer::resetServer() {
 
 
 void ConfigureServer::handleRoot() {
+    #ifdef DEBUG
+    Serial.println("REST root.");
+    #endif
     ConfigureServer *conf = get();
     if (conf) {
         Blink blk;
@@ -149,6 +165,9 @@ void ConfigureServer::handleRoot() {
 
 
 void ConfigureServer::handleSave() {
+    #ifdef DEBUG
+    Serial.println("REST save.");
+    #endif
     ConfigureServer *conf = get();
     if (conf) {
         Blink blk;
@@ -163,11 +182,11 @@ void ConfigureServer::handleSave() {
 
 
 void ConfigureServer::handleNotFound(){
+    #ifdef DEBUG
+    Serial.println("REST is not found.");
+    #endif
     ConfigureServer *conf = get();
     if (conf) {
-        #ifdef DEBUG
-        Serial.println("REST is not found.");
-        #endif
         String msg = "Page Not Found\n\n";
         msg += "URI: ";
         msg += conf->_server.uri();
@@ -190,18 +209,21 @@ ConfigureServer::ConfigureServer(const String& srv_ssid, const String& srv_pswd)
     , _srv_pswd(srv_pswd)
     , _server(ESP32WebServer(80)) 
     , _is_complete(false) {
-    //WiFi.mode(WIFI_AUTH_WPA2_PSK); // режим клиента
-    //WiFi.config(IPAddress(192, 168, 1, 73), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0), IPAddress(192, 168, 1, 1));
+    Blink::get()->on();
+    WiFi.mode(WIFI_AP);
+    IPAddress local_IP(192,168,4,22);
+    IPAddress gateway(192,168,4,1);
+    IPAddress subnet(255,255,255,0);
+    WiFi.softAPConfig(local_IP, gateway, subnet);
     WiFi.softAP(_srv_ssid.c_str(), _srv_pswd.c_str(), 1, 0, 1);
-    IPAddress ip = WiFi.softAPIP();
-    #ifdef DEBUG
-    Serial.println(String("Config server[ " + srv_ssid + "@" + srv_pswd + " ] IP: \"") + ip + String("\""));
-    #endif
-    _server.on("/", handleRoot);
+    _server.on("/esion", handleRoot);
     _server.on("/save", HTTP_POST, handleSave);
     _server.onNotFound(handleNotFound);
     _server.begin();
     _start_time = time(nullptr);
+    #ifdef DEBUG
+    Serial.println(String("Config server[ " + srv_ssid + "@" + srv_pswd + " ] IP: \"") + WiFi.softAPIP().toString() + String("\""));
+    #endif
 }
 
 
@@ -210,6 +232,7 @@ ConfigureServer::~ConfigureServer() {
     WiFi.softAPdisconnect(); // отключаем отчку доступа(если она была
     WiFi.mode(WIFI_OFF); // отключаем WIFI
     delay(500);
+    Blink::get()->off();
 }
 
 
@@ -219,9 +242,6 @@ void ConfigureServer::execute(void) {
         _server.handleClient();
         auto cur_time = time(nullptr); 
         is_timeout = (CONFIGURE_TIMEOUT <= (cur_time - _start_time));
-        //#ifdef DEBUG
-        //Serial.println(String(static_cast<uint32_t>(_start_time), DEC) + "; " + String(static_cast<uint32_t>(cur_time), DEC));
-        //#endif
     }
     #ifdef DEBUG
     if (is_timeout and not _is_complete) {
@@ -234,13 +254,13 @@ void ConfigureServer::execute(void) {
 
 
 bool ConfigureServer::parseSettings(const String &j) {
-    Blink blk;
+    bool ret = false;
     if (j.length()) {
         JsonBufferType jbuf;
-        JsonObject& root = jbuf.parseObject(j.c_str());
-        if (root.success()) {
-            JsonObject &wifi = root["wifi"].as<JsonObject>();
-            if (wifi.success()) {
+        auto err = deserializeJson(jbuf, j.c_str());
+        if (err) {
+            JsonObject wifi = jbuf["wifi"];
+            if (not wifi.isNull()) {
                 String ssid =  wifi["ssid"].as<char*>();
                 if (ssid.length()) {
                     _wc.ssid = ssid;
@@ -256,13 +276,13 @@ bool ConfigureServer::parseSettings(const String &j) {
                     #endif
                 }
             }
-            String url = root["url"].as<char*>();
+            String url = jbuf["url"].as<char*>();
             if (url.length()) {
                 _service_url = url;
             }
             _is_complete = true;
         }
-        return true;
+        ret = true;
     }
-    return false;
+    return ret;
 }

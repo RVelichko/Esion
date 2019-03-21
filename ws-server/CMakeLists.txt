@@ -16,7 +16,7 @@ endif()
 
 # Опции
 OPTION(ENABLE_BOOST "Enable boost libraries [default: ON]" ON)
-OPTION(ENABLE_TESTS "Enable TESTS support [default: OFF]" OFF)
+OPTION(ENABLE_TESTS "Enable TESTS support [default: OFF]" ON)
 
 
 # Общие флаги для всех сборок.
@@ -30,6 +30,7 @@ add_definitions(
     -D__STDC_LIMIT_MACROS=1 -I.
     -D_GLIBCXX_USE_NANOSLEEP
     -DDLL_PUBLIC=__attribute__\(\(visibility\(\"default\"\)\)\)
+    -DOLD_UBUNTU
     )
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -48,9 +49,10 @@ message("Build type: \"${CMAKE_BUILD_TYPE}\"")
 # Установка вспомогательных констант
 set(BINARY_DIR     ${CMAKE_CURRENT_BINARY_DIR})
 set(ROOT_DIR       ${CMAKE_CURRENT_SOURCE_DIR})
-set(UTILS_DIR      ${ROOT_DIR}/utils)
 set(CMAKE_DIR      ${ROOT_DIR}/cmake)
-set(WEBSOCKET_DIR  ${ROOT_DIR}/websocket)
+set(SRC_DIR        ${ROOT_DIR}/src)
+set(UTILS_DIR      ${SRC_DIR}/utils)
+set(WEBSOCKET_DIR  ${SRC_DIR}/websocket)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib)
@@ -148,22 +150,4 @@ include_directories(${WEBSOCKET_DIR})
 # Включение в сборку компонент
 add_subdirectory(${WEBSOCKET_DIR})
 add_subdirectory(${UTILS_DIR})
-
-
-# Сборка приложения.
-set(APP_WS_SERVER ws-server)
-add_executable(${APP_WS_SERVER}
-    ws_server.cpp
-    main.cpp
-    )
-target_link_libraries(${APP_WS_SERVER}
-    log
-    sdispathcer
-    websocket_server
-    ssl
-    crypto
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_REGEX_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    )
-
+add_subdirectory(${SRC_DIR})

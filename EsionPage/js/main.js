@@ -3,9 +3,9 @@
  */
 
 window.config = {
-    "name": "debug page",
+    "name": "Debug page",
 	"service": {
-		"address": "127.0.0.1",
+		"address": "172.17.0.2",
 		"port": 20000,
 		"rest": "/rest/page",
 		"room_id": "esion_1"
@@ -113,7 +113,7 @@ function HandleSettings() {
     $("#connect").click(function() {
         var url = "ws://" + СhangeSetting("#service_url");
         var room_id = СhangeSetting("#room_id");
-        AddRightLog("Connecting to url: '" + url + "'; room: '" + window.config.service.room_id + "'");
+        AddRightLog("Connecting to url: '" + url + "'; room: '" + room_id + "'");
         console.log("URL: " + url);
         /// Выполнить подключение к сервису.
         window.websock = new WebSocket(url);
@@ -121,7 +121,7 @@ function HandleSettings() {
         window.websock.onopen = function() {
             var now = new Date();
             var connect = {
-                room_id: window.config.service.room_id,
+                room_id: room_id,
                 msg: "Подключился оператор: " + window.config.name
             };
             var jstr = JSON.stringify(connect);
@@ -136,7 +136,9 @@ function HandleSettings() {
         window.websock.onmessage = function(e) {
             console.log("recv: " + e.data);
             var json = JSON.parse(e.data);
-            if ("msg" in json) {
+            if (json === null) {
+                AddLeftLog("Device is not connected yet.");
+            } else if ("msg" in json) {
                 var msg = json.msg;
                 /// Обновить информацию об подключённом устройстве.
                 AddLeftLog("Recv device: " + JSON.stringify(msg));

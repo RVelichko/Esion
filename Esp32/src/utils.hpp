@@ -31,15 +31,96 @@ union BatteryValue {
 };
 
 
-struct Blink {
-    Blink() {
-        /// Зажечь светодиод.  
-        digitalWrite(LED_PIN, LOW);
+class Blink {
+
+    bool _is_on;
+
+    void init() {
+        static bool is_init = false;
+        if (not is_init) {
+            pinMode(LED_PIN, OUTPUT);
+            delay(10);
+            is_init = true;
+        }
     }
+public:
+    static Blink* get() {
+        static Blink blk;
+        return &blk;
+    }
+
+    Blink() 
+        : _is_on(false) {
+        init();
+    }
+
     ~Blink() {
-        /// Погасить светодиод.  
-        digitalWrite(LED_PIN, HIGH);
+        off();
     }
+
+    void on() {
+        /// Зажечь светодиод.
+        if (not _is_on) {
+            _is_on = true;
+            digitalWrite(LED_PIN, HIGH);
+        }  
+    }
+
+    void off() {
+        /// Погасить светодиод.  
+        if (_is_on) {
+            delay(10);
+            digitalWrite(LED_PIN, LOW);
+            _is_on = false;
+        }
+    }
+};
+
+
+class Sos {
+    static constexpr int POINT_DT = 60;     
+    static constexpr int LINE_DT = 500;     
+
+    void blinkTime(int dt) {
+        Blink::get()->on();
+        delay(dt);
+        Blink::get()->off();
+    }
+
+public:
+    static Sos* get() {
+        static Sos sos;
+        return &sos;
+    }
+
+    Sos() 
+    {}
+
+    void enable() {
+        blinkTime(POINT_DT);
+        delay(POINT_DT);
+        blinkTime(POINT_DT);
+        delay(POINT_DT);
+        blinkTime(POINT_DT);
+        delay(POINT_DT);
+
+        blinkTime(LINE_DT);
+        delay(POINT_DT);
+        blinkTime(LINE_DT);
+        delay(POINT_DT);
+        blinkTime(LINE_DT);
+        delay(POINT_DT);
+
+        blinkTime(POINT_DT);
+        delay(POINT_DT);
+        blinkTime(POINT_DT);
+        delay(POINT_DT);
+        blinkTime(POINT_DT);
+        delay(LINE_DT);
+    }
+
+    ~Sos() 
+    {}
 };
 
 
@@ -49,40 +130,40 @@ struct Blink {
 struct Url {
     Url(const String& url) {
         String s(url);
-        int pr = s.indexOf("://");
-        if (pr not_eq -1) {
-            protocol = s.substring(0, pr);
-            s = s.substring(pr + 3);
+        int iprotocol = s.indexOf("://");
+        if (iprotocol not_eq -1) {
+            protocol = s.substring(0, iprotocol);
+            s = s.substring(iprotocol + 3);
         }
-        int pp = s.indexOf(":");
-        int pt = s.indexOf("/");
-        int pq = s.indexOf("?");
-        if (pp not_eq -1) {
-            String sp = s.substring(0, pp);
+        int iport = s.indexOf(":");
+        int ipath = s.indexOf("/");
+        int iquery = s.indexOf("?");
+        if (iport not_eq -1) {
+            host = s.substring(0, iport);
+            String sp = s.substring(iport + 1);
             port = static_cast<uint16_t>(sp.toInt());
-            if (pt not_eq -1) {
-                host = s.substring(pp + 1, pt);
-                if (pq not_eq -1) {
-                    path = s.substring(pt, pq);
-                    query = s.substring(pq);
+            if (ipath not_eq -1) {
+                if (iquery not_eq -1) {
+                    path = s.substring(ipath, iquery);
+                    query = s.substring(iquery);
                 } else {
-                    path = s.substring(pt);
+                    path = s.substring(ipath);
                 }
-            } else {
-                host = s.substring(pp + 1);
             }
-        }
-        if (pt not_eq -1) {
-            host = s.substring(0, pt);
-            if (pq not_eq -1) {
-                path = s.substring(pt, pq);
-                query = s.substring(pq);
+        } else if (ipath not_eq -1) {
+            host = s.substring(0, ipath);
+            if (iquery not_eq -1) {
+                path = s.substring(ipath, iquery);
+                query = s.substring(iquery);
             } else {
-                path = s.substring(pt);
+                path = s.substring(ipath);
             }
         } else {
             host = s;
         }
+        #ifdef DEBUG
+        Serial.println("proto: \"" + protocol + "\"; host: \"" + host + "\"; port: \"" + String(port, DEC) + "\"; path: \"" + path + "\"; query: \"" + query + "\"");
+        #endif
     }
 
     String protocol;

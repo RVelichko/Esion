@@ -4,6 +4,9 @@
  * \date   16.09.2018
  */
 
+// docker run -i -t -v /home/rostislav/Develop/esion/ws-server:/ws-server nginx:ubuntu14lts /bin/bash
+// cmake -DCMAKE_C_COMPILER=gcc-4.9 -DCMAKE_CXX_COMPILER=g++-4.9 ..
+
 #include <iostream>
 #include <memory>
 #include <tuple>

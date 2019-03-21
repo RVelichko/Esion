@@ -1,6 +1,7 @@
 #ifndef SERVER_WS_HPP
 #define SERVER_WS_HPP
 
+#include "Log.hpp"
 #include "crypto.hpp"
 
 #include <boost/asio.hpp>
@@ -382,10 +383,12 @@ namespace SimpleWeb {
             if(connection->header.count("Sec-WebSocket-Key")==0)
                 return 0;
             std::string sha1 = Crypto::SHA1(connection->header["Sec-WebSocket-Key"]+ws_magic_string);
+            std::string enc = Crypto::Base64::encode(sha1);
+            LOG(DEBUG) << "-|" << enc << "|-";
             handshake << "HTTP/1.1 101 Web Socket Protocol Handshake\r\n";
             handshake << "Upgrade: websocket\r\n";
             handshake << "Connection: Upgrade\r\n";
-            handshake << "Sec-WebSocket-Accept: " << Crypto::Base64::encode(sha1) << "\r\n";
+            handshake << "Sec-WebSocket-Accept: " << enc << "\r\n";
             handshake << "\r\n";
             return 1;
         }

@@ -4,30 +4,29 @@
 #include "SdController.hpp"
 
 
-typedef StaticJsonBuffer<300> JsonBufferType;
-typedef std::unique_ptr<SdController> PSdController;
-
+typedef StaticJsonDocument<500> JsonBufferType;
 
 static const char DEFAULT_CONFIG_FILE[] = "config.js";
 static const char DEFAULT_COUNTERS_FILE[] = "counters.js";
 
 
-SdController* SdController::get() {
+PSdController& SdController::getPtr() {
     static PSdController sdc;
     if (not sdc) {
         sdc.reset(new SdController());
     }
-    return sdc.get();
+    return sdc;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 SdController::SdController() {
-    /// Инициализация SD карты.
+    Blink::get()->on();
     #ifdef DEBUG
     Serial.print("SD initialization is ");
     #endif
     if (not SD.begin()) {
+        Sos::get()->enable();
         #ifdef DEBUG
         Serial.println(String("ERROR: Fat type is: " + SD.cardType()).c_str());
         #endif
@@ -42,7 +41,9 @@ SdController::SdController() {
 SdController::~SdController() {
     if (_is_inited_sd) {
         SD.end();
+        _is_inited_sd = false;
     }
+    Blink::get()->off();
 }
 
 
@@ -57,14 +58,10 @@ void SdController::getConfig(uint32_t &send_sleep_time, uint8_t &max_send_count)
             #ifdef DEBUG
             Serial.println("file size: " + String(fsize, DEC));
             #endif
-            String json_str;
-            while (f.available()) {
-                char ch = f.read(); ///< Для строкового представления обязательно читать в чар переменную.
-                json_str += ch;
-            }
+            parseSettings(f, send_sleep_time, max_send_count);
             f.close();
-            parseSettings(json_str, send_sleep_time, max_send_count);
         } else {
+            Sos::get()->enable();
             #ifdef DEBUG
             Serial.println("ERROR: can`t open file `" + String(DEFAULT_CONFIG_FILE) + "`");
             #endif
@@ -90,12 +87,8 @@ void SdController::getCounts(uint32_t &count1,
             Serial.println("file size: " + String(fsize, DEC));
             #endif
             String json_str;
-            while (f.available()) {
-                char ch = f.read();
-                json_str += ch;
-            }
+            parseCounters(f, count1, count2, count3, count4, count5, count6);
             f.close();
-            parseCounters(json_str, count1, count2, count3, count4, count5, count6);
         } else {
             #ifdef DEBUG
             Serial.println("WARNING: can`t open file `" + String(DEFAULT_COUNTERS_FILE) + "`");
@@ -105,20 +98,18 @@ void SdController::getCounts(uint32_t &count1,
 }
 
 
-bool SdController::parseSettings(const String &sjson, uint32_t &send_sleep_time, uint8_t &max_send_count) {
-    //Blink blk;
-    if (sjson.length() not_eq 0) {
-        JsonBufferType json_buf;
-        JsonVariant var = json_buf.parse(const_cast<char*>(sjson.c_str()));
-        if (var.is<JsonObject>()) {
+bool SdController::parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t &max_send_count) {
+    if (f) {
+        JsonBufferType jbuf;
+        auto err = deserializeJson(jbuf, f);
+        if (not err) {
             #ifdef DEBUG
             Serial.println(String("Config is parsed...").c_str());
             #endif
-            JsonObject& root = var;
-            JsonObject& settings = root["settings"].as<JsonObject>();
-            if (settings.success()) {
-                JsonObject &wifi = settings["wifi"].as<JsonObject>();
-                if (wifi.success()) {
+            JsonObject settings = jbuf["settings"].as<JsonObject>();
+            if (not settings.isNull()) {
+                JsonObject wifi = settings["wifi"].as<JsonObject>();
+                if (not wifi.isNull()) {
                     String ssid =  wifi["ssid"].as<char*>();
                     if (ssid.length() not_eq 0) {
                         _wc.ssid = ssid;
@@ -146,17 +137,15 @@ bool SdController::parseSettings(const String &sjson, uint32_t &send_sleep_time,
                     Serial.println("ERROR: can`t find config wifi");
                     #endif
                 }
-                JsonObject& service = settings["service"].as<JsonObject>();
-                if (service.success()) {
+                JsonObject service = settings["service"].as<JsonObject>();
+                if (not service.isNull()) {
                     _service_addr = service["address"].as<char*>();
                     _service_port = service["port"].as<int>();
-                    _service_url = service["rest"].as<char*>();
+                    _service_rest = service["rest"].as<char*>();
                     _service_room_id = service["room_id"].as<char*>();
                     _service_timeout = service["timeout"].as<int>();
                     #ifdef DEBUG
-                    Serial.println(String("Rrad service: " + _service_addr + ":" +
-                                    String(_service_port, DEC) + _service_url + "?" + _service_room_id + "@" +
-                                    String(_service_timeout, DEC)).c_str());
+                    Serial.println(String("Rrad service: " + getUrl() + "?" + _service_room_id + "@" + String(_service_timeout, DEC)).c_str());
                     #endif
                 } else {
                     #ifdef DEBUG
@@ -183,6 +172,7 @@ bool SdController::parseSettings(const String &sjson, uint32_t &send_sleep_time,
                 #endif
             }
         } else {
+            Sos::get()->enable();
             #ifdef DEBUG
             Serial.println("ERROR: can`t parse config json");
             #endif
@@ -193,23 +183,27 @@ bool SdController::parseSettings(const String &sjson, uint32_t &send_sleep_time,
 }
 
 
-bool SdController::parseCounters(const String &sjson,     
+String SdController::getUrl() {
+    return _service_addr + ":" + String(_service_port, DEC) + _service_rest;
+}
+
+
+bool SdController::parseCounters(fs::File &f,     
                                  uint32_t &count1,
                                  uint32_t &count2,
                                  uint32_t &count3,
                                  uint32_t &count4,
                                  uint32_t &count5,
                                  uint32_t &count6) {
-    if (sjson.length() not_eq 0) {
-        JsonBufferType json_buf;
-        JsonVariant var = json_buf.parse(const_cast<char*>(sjson.c_str()));
-        if (var.is<JsonObject>()) {
+    if (f) {
+        JsonBufferType jbuf;
+        auto err = deserializeJson(jbuf, f);
+        if (not err) {
             #ifdef DEBUG
             Serial.println(String("Config is parsed...").c_str());
             #endif
-            JsonObject& root = var;
-            JsonArray& counters = root["counters"].as<JsonArray>();
-            if (counters.success()) {
+            JsonArray counters = jbuf["counters"].as<JsonArray>();
+            if (not counters.isNull()) {
                 count1 = counters[0].as<uint32_t>();
                 count2 = counters[1].as<uint32_t>();
                 count3 = counters[2].as<uint32_t>();
@@ -266,6 +260,7 @@ void SdController::saveCounters(uint32_t count1,
             f.write(p, len);
             f.close();
         } else {
+            Sos::get()->enable();
             #ifdef DEBUG
             Serial.println("ERROR: Can`t open counters file for writing.");
             #endif

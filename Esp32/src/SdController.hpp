@@ -5,31 +5,40 @@
 #pragma once
 
 #include <string>
+#include <memory> 
 
 #include "utils.hpp"
+
+class SdController;
+typedef std::shared_ptr<SdController> PSdController;
 
 
 class SdController {
     bool _is_inited_sd;
+    Blink* _blk;
 
 public:
     WifiConfig _wc;
     String _service_addr;
     int _service_port;
-    String _service_url;
+    String _service_rest;
     String _service_room_id;
     int _service_timeout;
 
-    static SdController* get();
+    static PSdController& getPtr();
 
     SdController();
-
     ~SdController();
 
     /**
      * \brief Метод выполняет чтение SD карты и получения файла с настройками.
      */ 
     void getConfig(uint32_t &send_sleep_time, uint8_t &max_send_count);
+
+    /**
+     * \brief Метод возвращает полный URL сервера обслуживания.
+     */ 
+    String getUrl();
 
     /**
      * \brief Метод выполняет чтение SD карты и получения файла со счётчиками.
@@ -62,7 +71,7 @@ public:
      *              }
      *          }
      */  
-    bool parseSettings(const String &sjson, uint32_t &send_sleep_time, uint8_t &max_send_count);
+    bool parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t &max_send_count);
 
     /**
      * \brief Метод выполняет разбор файла со сцётчиками JSON.
@@ -71,7 +80,7 @@ public:
      *              "counters":[0,0,0,0,0,0]
      *          }
      */  
-    bool parseCounters(const String &sjson,     
+    bool parseCounters(fs::File &f,     
                        uint32_t &count1,
                        uint32_t &count2,
                        uint32_t &count3,

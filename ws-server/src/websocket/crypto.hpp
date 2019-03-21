@@ -3,7 +3,6 @@
 
 #include <string>
 #include <cmath>
-#include <iostream>
 
 //Moving these to a seperate namespace for minimal global namespace cluttering does not work with clang++
 #include <openssl/evp.h>
@@ -17,8 +16,7 @@ namespace SimpleWeb {
         namespace Base64 {
             template<class type>
             void encode(const type& ascii, type& base64) {
-                BIO *bio; 
-                BIO *b64;
+                BIO *bio, *b64;
                 BUF_MEM *bptr;
 
                 b64 = BIO_new(BIO_f_base64());
@@ -28,19 +26,16 @@ namespace SimpleWeb {
                 BIO_get_mem_ptr(b64, &bptr);
 
                 //Write directly to base64-buffer to avoid copy
-                int base64_length = static_cast<int>(round(4*ceil((double)ascii.size()/3.0)));
-                //std::cout << "base64_length=" << base64_length << "\n";
-                //base64.resize(base64_length);
-                //char* data = new char[base64_length];
-                bptr->length = 0;
-                bptr->max = base64_length + 1;
-                //bptr->data = data;
+                int base64_length=static_cast<int>(round(4*ceil((double)ascii.size()/3.0)));
+                base64.resize(base64_length);
+                bptr->length=0;
+                bptr->max=base64_length+1;
+                bptr->data=(char*)&base64[0];
 
                 BIO_write(b64, &ascii[0], static_cast<int>(ascii.size()));
                 BIO_flush(b64);
 
                 //To keep &base64[0] through BIO_free_all(b64)
-                base64.insert(base64.end(), bptr->data, bptr->data + base64_length);
                 bptr->length=0;
                 bptr->max=0;
                 bptr->data=nullptr;
@@ -102,8 +97,7 @@ namespace SimpleWeb {
             SHA1_Update(&context, &input[0], input.size());
             
             hash.resize(160/8);
-            unsigned char* p = reinterpret_cast<unsigned char*>(&hash[0]);
-            SHA1_Final(p, &context);
+            SHA1_Final((unsigned char*)&hash[0], &context);
         }
         template<class type>
         type SHA1(const type& input) {

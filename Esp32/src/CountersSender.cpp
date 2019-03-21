@@ -5,22 +5,30 @@
 #include "utils.hpp"
 
 
-static const uint16_t DEFAULT_WIFI_RECONNECT_TIMEOUT = 1000; /// mlsecs
+static const uint16_t DEFAULT_RECONNECT_TIMEOUT = 1000; /// mlsecs
 
 
-typedef StaticJsonBuffer<300> JsonBufferType;
+typedef StaticJsonDocument<500> JsonBufferType;
 
 
-PCountersSender CountersSender::_cs;
+CountersSender* __cs = nullptr;
 
 
-void CountersSender::event(WStype_t type, uint8_t *payload, size_t length) {
+void Event(WStype_t type, uint8_t *payload, size_t length) {
     switch(type) {
+        case WStype_ERROR: {
+            #ifdef DEBUG
+            Serial.println("WS type: ERROR.");
+            #endif
+            Sos::get()->enable();
+        } break;
         case WStype_CONNECTED: {
             #ifdef DEBUG
             Serial.println("Connected complete.");
             #endif
-            _cs->_wsocket.sendTXT(_cs->_json.c_str());
+            if (__cs) {
+                __cs->sendData();
+            }
         } break;
         case WStype_TEXT: {
             std::vector<char> arr(length + 1, '\0');
@@ -31,44 +39,87 @@ void CountersSender::event(WStype_t type, uint8_t *payload, size_t length) {
             #ifdef DEBUG
             Serial.println(String("Recv: " + rs).c_str());
             #endif
-            _cs->recvState(String(rs));
+            if (__cs) {
+                __cs->recvState(String(rs));
+            }
         } break;
+
+        case WStype_FRAGMENT_TEXT_START:
+            #ifdef DEBUG
+            Serial.println("WS event FRAGMENT_TEXT_START.");
+            #endif
+            break;
+        case WStype_FRAGMENT_BIN_START:
+            #ifdef DEBUG
+            Serial.println("WS event FRAGMENT_BIN_START.");
+            #endif
+            break;
+        case WStype_FRAGMENT:
+            #ifdef DEBUG
+            Serial.println("WS event FRAGMENT.");
+            #endif
+            break;
+        case WStype_FRAGMENT_FIN:
+            #ifdef DEBUG
+            Serial.println("WS event FRAGMENT_FIN.");
+            #endif
+            break;
         case WStype_DISCONNECTED: 
+            #ifdef DEBUG
+            Serial.println("WS event DISCONNECTED.");
+            #endif
+            if (__cs) {
+                __cs->setError();
+            }
+            break;
         case WStype_BIN:
+            #ifdef DEBUG
+            Serial.println("WS event BIN.");
+            #endif
+            break;
         default: 
+            #ifdef DEBUG
+            Serial.println("Undefined WS event.");
+            #endif
+            if (__cs) {
+                __cs->setError();
+            }
             break;
     }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+String CountersSender::getData() {
+    return _json;
+}
+
+
+void CountersSender::sendData() {
+    #ifdef DEBUG
+    Serial.println("send: \"" + _json + "\"");
+    #endif
+    _wsocket.sendTXT(_json.c_str());
+}
+
+
+void CountersSender::setError() {
+    _is_err = true;
 }
 
 
 void CountersSender::recvState(const String &srecv) {
     _is_recv = true;
-    JsonBufferType json_buf;
-    JsonObject& root = json_buf.parseObject(srecv.c_str());
-    if (root.success()) {
-        String room_id = root["room_id"].as<char*>();
-        String status = root["status"].as<char*>();
+    JsonBufferType jbuf;
+    auto err = deserializeJson(jbuf, srecv.c_str());
+    if (not err) {
+        String room_id = jbuf["room_id"].as<char*>();
+        String status = jbuf["status"].as<char*>();
         if (_room_id == room_id and status == "ok") {
             #ifdef DEBUG
             Serial.println("Recv OK");              
             #endif
         } 
-    }
-}
-
-
-CountersSender* CountersSender::get(const String& url, const String& room_id, const String& json) {
-    if (not _cs) {
-        Url U(url);
-        _cs.reset(new CountersSender(U.host, U.port, U.path, room_id, json));
-    }
-    return _cs.get();
-}
-
-
-void CountersSender::reset() {
-    if (_cs) {
-        _cs.reset();
     }
 }
 
@@ -79,25 +130,30 @@ CountersSender::CountersSender(const String& addr, uint16_t port, const String &
     , _path(path)
     , _room_id(room_id)
     , _json(json) 
-    , _is_recv(false) {
-    #ifdef DEBUG
-    Serial.println("Create websock client: " + _addr + ":" + String(_port, DEC) + _path);
-    #endif
-    _wsocket.begin(_addr, _port, _path);
-    _wsocket.onEvent(event);
-    _wsocket.setReconnectInterval(DEFAULT_WIFI_RECONNECT_TIMEOUT);
+    , _is_recv(false) 
+    , _is_err(false) {
+    __cs = this;
 }
 
 
 CountersSender::~CountersSender() {
     /// Отключиться от сервера.
     _wsocket.disconnect();
+    __cs = nullptr;
     #ifdef DEBUG
     Serial.println("Websock client is disconnected");
     #endif
 }
 
 
-void CountersSender::update() {
+void CountersSender::execute() {
+    _wsocket.begin(_addr, _port, _path, "ws");
+    _wsocket.onEvent(Event);
+    _wsocket.setReconnectInterval(1000);
+}
+
+
+bool CountersSender::update() {
     _wsocket.loop();
+    return not _is_err and not _is_recv;
 }
