@@ -359,7 +359,6 @@ void setup() {
     #ifdef DEBUG
     Serial.begin(DEFAULT_SERIAL_SPEED);
     #endif
-
     if (__is_run) {
         WakeupReason();
     } else {

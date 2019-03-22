@@ -6,7 +6,8 @@
 #include <Arduino.h>
 #include <ArduinoNvs.h>
 
-#define DEBUG
+//#define DEBUG
+//#define DEBUG_WEBSOCKETS
 
 static const int LED_PIN = 2; 
 
