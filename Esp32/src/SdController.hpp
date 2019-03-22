@@ -22,8 +22,9 @@ public:
     String _service_addr;
     int _service_port;
     String _service_rest;
-    String _service_room_id;
     int _service_timeout;
+    int _max_count_for_send;
+    int _send_sleep_time;
 
     static PSdController& getPtr();
 
@@ -63,7 +64,6 @@ public:
      *                      "address":"127.0.0.1",
      *                      "port":20000,
      *                      "rest":"/rest/device",
-     *                      "room_id":"esion_1",
      *                      "timeout":1 
      *                  },
      *                  "send_timeout":10,

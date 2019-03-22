@@ -33,7 +33,6 @@ union BatteryValue {
 
 
 class Blink {
-
     bool _is_on;
 
     void init() {
@@ -98,6 +97,7 @@ public:
     {}
 
     void enable() {
+        /// 3 точки.
         blinkTime(POINT_DT);
         delay(POINT_DT);
         blinkTime(POINT_DT);
@@ -105,6 +105,7 @@ public:
         blinkTime(POINT_DT);
         delay(POINT_DT);
 
+        /// 3 тире.
         blinkTime(LINE_DT);
         delay(POINT_DT);
         blinkTime(LINE_DT);
@@ -112,6 +113,7 @@ public:
         blinkTime(LINE_DT);
         delay(POINT_DT);
 
+        /// 3 точки.
         blinkTime(POINT_DT);
         delay(POINT_DT);
         blinkTime(POINT_DT);
@@ -188,6 +190,10 @@ struct Nvs {
         }
         return _nvs.get();
     }
+
+    static String idToStr(uint64_t did) {
+        return String((unsigned long)((did & 0xFFFF0000) >> 16 ), DEC) + String((unsigned long)((did & 0x0000FFFF)), DEC);
+    } 
 
     Nvs() {
         NVS.begin();

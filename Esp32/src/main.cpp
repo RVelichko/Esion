@@ -38,7 +38,6 @@
 #include "CountersSender.hpp"
 
 
-static const uint32_t COUNT_SLEEP_TIME = 500;
 static const int ANALOG_PIN = 27; ///< Пин измерения напряжения на пине ADC.
 
 static const double BATTARY_FULL_VALUE = 3.8;
@@ -52,6 +51,7 @@ static const char DEFAULT_SERVICE_POINT[] = "/rest/device";
 
 
 RTC_DATA_ATTR bool __is_run = false;
+RTC_DATA_ATTR bool __is_send_timeout = false;
 RTC_DATA_ATTR uint8_t __pin_states = 0;
 
 RTC_DATA_ATTR uint32_t __count1 = 0;
@@ -139,7 +139,7 @@ public:
         _adc_level = updateAdcLEvel();
         delay(50);
         auto sdc = SdController::getPtr();
-        /// Прочитать файл настроек.
+        /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
         sdc->getConfig(SEND_SLEEP_TIME, MAX_COUNT_FOR_SEND);
         if (sdc->_wc.ssid.length()) {
             Blink::get()->on();
@@ -164,6 +164,14 @@ public:
                 #ifdef DEBUG
                 Serial.println("Time is: " + String(ctime(&_now)));
                 #endif
+                /// Выполнить проверку уникального идентификатора.
+                if (Nvs::get()->getId() == 0) {
+                    uint64_t did = _now;
+                    Nvs::get()->setId(did);
+                    #ifdef DEBUG
+                    Serial.println("CREATE UNIQUE DEVICE ID: [" + Nvs::idToStr(did) + "]");
+                    #endif
+                }
             } else {
                 Sos::get()->enable();
                 #ifdef DEBUG
@@ -185,7 +193,7 @@ public:
         SdController::getPtr().reset();
     }
     
-    void initCountersSender() {
+    void sendValues() {
         String counts;
         counts += String(__count1, DEC) + ",";
         counts += String(__count2, DEC) + ",";
@@ -196,19 +204,19 @@ public:
         String time = ctime(&_now);
         auto sdc = SdController::getPtr();
         delay(10);
-        String data_sjson = String("{\"room_id\":\"" + sdc->_service_room_id + "\"" +
+        auto dev_id = Nvs::get()->getId();
+        String room_id = Nvs::idToStr(dev_id);
+        String data_sjson = String("{\"room_id\":\"" + room_id + "\"" +
                     ", \"msg\":{\"time\":\"" + time.substring(0, time.length() - 1) + "\"" +
                     ", \"bat\":" + String(_adc_level, DEC) + 
                     ", \"counts\":[" + counts + "]}}");
         #ifdef DEBUG
-        Serial.println("Recv counters: " + counts);
+        Serial.println("Read (device id) room_id: " + room_id);
+        Serial.println("Read counters: " + counts);
         #endif
         /// Отправить данные на сервер.
         String url = sdc->getUrl();
         if (url.length()) {
-            auto dev_id = Nvs::get()->getId();
-            String room_id = String((unsigned long)((dev_id & 0xFFFF0000) >> 16 ), DEC) + 
-                             String((unsigned long)((dev_id & 0x0000FFFF)), DEC);
             Url U(url);
             _cs.reset(new CountersSender(U.host, U.port, U.path, room_id, data_sjson));
             _cs->execute();
@@ -219,18 +227,12 @@ public:
             #endif
         }
     }
-
-    bool update() {
-        bool status = false;
-        if (_cs) {
-            status = _cs->update();
-        }
-        return status;
-    }
 }; 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 void SendTimeout() {
+    __is_send_timeout = true;
     #ifdef DEBUG
     Serial.println("SEND ============================"); 
     Serial.println("Count 1: " + String(__count1, DEC)); 
@@ -244,7 +246,7 @@ void SendTimeout() {
     auto sdc = SdController::getPtr();
     if (sdc) {
         sdc->saveCounters(__count1, __count2, __count3, __count4, __count5, __count6);
-        Esion::getPtr()->initCountersSender();
+        Esion::getPtr()->sendValues();
     }
 }
 
@@ -278,7 +280,7 @@ bool CheckMaxCounts(uint32_t max) {
         return true;
     }
     #ifdef DEBUG
-    Serial.println("---> max = " + String(max, DEC) + " : last = " + String(__last_max_count, DEC)); 
+    Serial.println("---> [" + String(MAX_COUNT_FOR_SEND, DEC) + "] max = " + String(max, DEC) + " : last = " + String(__last_max_count, DEC)); 
     #endif
     return false;
 }
@@ -293,6 +295,7 @@ void WakeupReason() {
             Serial.println("Ext1 status: " + String(reinterpret_cast<uint32_t*>(&wu_bit)[1], DEC));
             #endif
             if (wu_bit & GPIO_SEL_26) {
+                /// Запустить веб сервер установки параметров контроллера.
                 #ifdef DEBUG
                 Serial.println("Press configure button.");
                 #endif
@@ -330,6 +333,7 @@ void WakeupReason() {
                 Serial.println("----------> PIN 39: " + String(__count6, DEC));
                 #endif
             }
+            /// Моргнуть светодиодом на очередной импульс.
             if ((wu_bit & GPIO_SEL_32) or 
                 (wu_bit & GPIO_SEL_33) or 
                 (wu_bit & GPIO_SEL_34) or 
@@ -341,8 +345,8 @@ void WakeupReason() {
             }
         } break;
         case ESP_SLEEP_WAKEUP_TIMER: 
-            SendTimeout();
-            __last_max_count = GetMaxCounter();
+            SendTimeout(); ///< Отправить данные на сервер.
+            __last_max_count = GetMaxCounter(); ///< Запомнить последнее максимальное значение счётчиков.
             break;
         case ESP_SLEEP_WAKEUP_EXT0:
         case ESP_SLEEP_WAKEUP_TOUCHPAD:
@@ -373,25 +377,23 @@ void setup() {
         auto sdc = SdController::getPtr();
         sdc->getCounts(__count1, __count2, __count3, __count4, __count5, __count6);
         /// Отправить данные на сервер.
-        Esion::getPtr()->initCountersSender();
+        auto e = Esion::getPtr();
+        e->sendValues();
+        e.reset();
     }
+    /// Установить обработчики прерываний на обработку входных импульсов.
+    esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34 | GPIO_SEL_33 | GPIO_SEL_32, ESP_EXT1_WAKEUP_ANY_HIGH);
+    /// Установить обработчик прерывания по таймеру.
+    if (CheckMaxCounts(GetMaxCounter())) {
+        esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000);
+    }
+    #ifdef DEBUG
+    Serial.println("To sleep. -----------------------------");
+    Serial.flush();
+    #endif
+    esp_deep_sleep_start();
 }
 
 
 void loop() {
-    auto e = Esion::getPtr();
-    if (not e->update()) {
-        esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34 | GPIO_SEL_33 | GPIO_SEL_32, ESP_EXT1_WAKEUP_ANY_HIGH);
-        uint32_t max = GetMaxCounter();
-        bool check = CheckMaxCounts(max);
-        if (check) {
-            esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000);
-        }
-        e.reset();
-        #ifdef DEBUG
-        Serial.println("To sleep. -----------------------------");
-        Serial.flush();
-        #endif
-        esp_deep_sleep_start();
-    }
 }

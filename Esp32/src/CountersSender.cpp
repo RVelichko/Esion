@@ -22,7 +22,7 @@ void CountersSender::recvState(const String &srecv) {
     if (not _is_err) {
         String room_id = jbuf["room_id"].as<char*>();
         String status = jbuf["status"].as<char*>();
-        if (_room_id == room_id and "ok" == status) {
+        if (room_id == _room_id and status == "ok") {
             #ifdef DEBUG
             Serial.println("Recv OK");              
             #endif
@@ -61,27 +61,23 @@ CountersSender::~CountersSender() {
 
 void CountersSender::execute() {
     if (_wsocket.connect(_addr, _path, _port)) {
+        #ifdef DEBUG
+        Serial.println("Connected to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
+        #endif
         _wsocket.send(_json);
+        #ifdef DEBUG
+        Serial.println("Send \"" + _json + "\"");
+        #endif
+        while (not _is_err and not _is_recv) {
+            String msg;
+            if (_wsocket.getMessage(msg)) {
+                recvState(msg);
+            }
+        }
     } else  {
         #ifdef DEBUG
         Serial.println("Can`t connect to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
         #endif
         _is_err = true;
     }
-}
-
-
-bool CountersSender::update() {
-    if (not _wsocket.isConnected()) {
-        #ifdef DEBUG
-        Serial.println("WS Client need stop updating.");
-        #endif
-        _is_err = true;
-    } else {
-        String msg;
-		if (_wsocket.getMessage(msg)) {
-            recvState(msg);
- 		}
-    }
-    return not _is_err and not _is_recv;
 }

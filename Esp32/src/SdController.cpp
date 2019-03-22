@@ -21,6 +21,8 @@ PSdController& SdController::getPtr() {
 
 
 SdController::SdController() {
+    _max_count_for_send = 0;
+    _send_sleep_time = 0;
     Blink::get()->on();
     #ifdef DEBUG
     Serial.print("SD initialization is ");
@@ -142,10 +144,9 @@ bool SdController::parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t
                     _service_addr = service["address"].as<char*>();
                     _service_port = service["port"].as<int>();
                     _service_rest = service["rest"].as<char*>();
-                    _service_room_id = service["room_id"].as<char*>();
                     _service_timeout = service["timeout"].as<int>();
                     #ifdef DEBUG
-                    Serial.println(String("Rrad service: " + getUrl() + "?" + _service_room_id + "@" + String(_service_timeout, DEC)).c_str());
+                    Serial.println(String("Read service: " + getUrl() + "?timeout=" + String(_service_timeout, DEC)).c_str());
                     #endif
                 } else {
                     #ifdef DEBUG
@@ -156,6 +157,7 @@ bool SdController::parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t
                 if (not send_sleep_time) {
                     send_sleep_time = 10;
                 }
+                _send_sleep_time = send_sleep_time;
                 #ifdef DEBUG
                 Serial.println("Read send_timeout: " + String(send_sleep_time, DEC));
                 #endif
@@ -163,6 +165,7 @@ bool SdController::parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t
                 if (not max_send_count) {
                     max_send_count = 10;
                 }
+                _max_count_for_send = max_send_count;
                 #ifdef DEBUG
                 Serial.println("Read max_count: " + String(max_send_count, DEC));
                 #endif
