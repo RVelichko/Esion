@@ -6,6 +6,7 @@
 
 // docker run -i -t -v /home/rostislav/Develop/esion/ws-server:/ws-server nginx:ubuntu14lts /bin/bash
 // cmake -DCMAKE_C_COMPILER=gcc-4.9 -DCMAKE_CXX_COMPILER=g++-4.9 ..
+// sudo systemctl status esion-srv.service
 
 #include <iostream>
 #include <memory>
@@ -21,8 +22,8 @@
 
 static const size_t DEFAULT_SERVER_PORT = 20000;
 static char DEFAULT_SSL[] = "";
-static char DEFAULT_DEVICE_POINT[] = "^/rest/device?$";
-static char DEFAULT_PAGE_POINT[] = "^/rest/page?$";
+static char DEFAULT_DEVICE_POINT[] = "^/device?$";
+static char DEFAULT_PAGE_POINT[] = "^/info?$";
 
 
 struct GlobalArgs {

@@ -25,12 +25,17 @@ namespace SimpleWeb {
                 BIO_push(b64, bio);
                 BIO_get_mem_ptr(b64, &bptr);
 
-                //Write directly to base64-buffer to avoid copy
-                int base64_length=static_cast<int>(round(4*ceil((double)ascii.size()/3.0)));
-                base64.resize(base64_length);
-                bptr->length=0;
-                bptr->max=base64_length+1;
-                bptr->data=(char*)&base64[0];
+                ////Write directly to base64-buffer to avoid copy
+                //int base64_length=static_cast<int>(round(4*ceil((double)ascii.size()/3.0)));
+                //base64.resize(base64_length);
+                //bptr->length=0;
+                //bptr->max=base64_length+1;
+                //bptr->data=(char*)&base64[0];
+
+                /// Ubuntu >= 18.04
+                int base64_length = static_cast<int>(round(4*ceil((double)ascii.size()/3.0)));
+                bptr->length = 0;
+                bptr->max = base64_length + 1;
 
                 BIO_write(b64, &ascii[0], static_cast<int>(ascii.size()));
                 BIO_flush(b64);

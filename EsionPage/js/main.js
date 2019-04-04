@@ -3,12 +3,12 @@
  */
 
 window.config = {
-    "name": "Debug page",
+    "name": "Control info page",
 	"service": {
-		"address": "172.17.0.2",
+		"address": "94.127.68.132",
 		"port": 20000,
-		"rest": "/rest/page",
-		"room_id": "esion_1"
+		"rest": "/info",
+		"room_id": "2370053276"
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////

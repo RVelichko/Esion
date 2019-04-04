@@ -13,14 +13,10 @@
 
 #include "utils.hpp"
 
-
 class ConfigureServer;
-typedef std::unique_ptr<ConfigureServer> PConfigureServer;
-
+typedef std::shared_ptr<ConfigureServer> PConfigureServer;
 
 class ConfigureServer {
-    static PConfigureServer _conf_srv;
-
     String _srv_ssid;
     String _srv_pswd;
     ESP32WebServer _server;
@@ -30,8 +26,13 @@ class ConfigureServer {
     WifiConfig _wc;
     String _service_url;
 
+    static String _dev_id;
+    static double _bat_level;
+
 public:
-    static ConfigureServer* get(const String& srv_ssid = "esion", const String& srv_pswd = "12345678");
+    static String getPage(const String& device_id, const String& bat_level);
+
+    static PConfigureServer& getPtr(const String& srv_ssid = "esion", const String& srv_pswd = "12345678");
 
     static bool resetServer();
 
@@ -44,7 +45,7 @@ public:
     ConfigureServer(const String& srv_ssid = "esion", const String& srv_pswd = "12345678");
     ~ConfigureServer();
 
-    void execute(void);
+    void execute(const String& dev_id, double bat_level);
 
     bool parseSettings(const String &js);
 };

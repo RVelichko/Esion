@@ -60,6 +60,10 @@ CountersSender::~CountersSender() {
 
 
 void CountersSender::execute() {
+    //_addr = "94.127.68.132";
+    //_path = "/device";
+    //_port = 20000;
+
     if (_wsocket.connect(_addr, _path, _port)) {
         #ifdef DEBUG
         Serial.println("Connected to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");

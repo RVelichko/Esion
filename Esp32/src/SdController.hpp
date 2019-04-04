@@ -7,6 +7,8 @@
 #include <string>
 #include <memory> 
 
+#include <SD.h>
+
 #include "utils.hpp"
 
 class SdController;
@@ -15,14 +17,13 @@ typedef std::shared_ptr<SdController> PSdController;
 
 class SdController {
     bool _is_inited_sd;
-    Blink* _blk;
 
 public:
     WifiConfig _wc;
     String _service_addr;
     int _service_port;
     String _service_rest;
-    int _service_timeout;
+    int _service_timoeut;
     int _max_count_for_send;
     int _send_sleep_time;
 
@@ -72,6 +73,16 @@ public:
      *          }
      */  
     bool parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t &max_send_count);
+
+    /**
+     * \brief Метод выполняет перезапись базовых настроек.
+     * \param wifi_ssid    Имя wifi сети, пердоставляющей доступ к интернет.
+     * \param wifi_pswd    Пароль wifi сети.
+     * \param srv_url      Полный путь к серверу обслуживания устройств.
+     * \param send_timeout Таймаут отправки после достижения максимальной разници счётчиков от предыдущего значения прошлой отправки.
+     * \param max_count    Максиамльно допустимое до начала отправки превышающее предыдущее значение счётчиков.
+     */
+    void saveSettings(const String& wifi_ssid, const String& wifi_pswd, const String srv_url, int send_timeout = 10, int max_count = 10);
 
     /**
      * \brief Метод выполняет разбор файла со сцётчиками JSON.

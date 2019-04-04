@@ -1,5 +1,4 @@
 #include <ArduinoJson.h>
-#include <SD.h>
 
 #include "SdController.hpp"
 
@@ -21,6 +20,7 @@ PSdController& SdController::getPtr() {
 
 
 SdController::SdController() {
+    _service_timoeut = 1;
     _max_count_for_send = 0;
     _send_sleep_time = 0;
     Blink::get()->on();
@@ -144,9 +144,9 @@ bool SdController::parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t
                     _service_addr = service["address"].as<char*>();
                     _service_port = service["port"].as<int>();
                     _service_rest = service["rest"].as<char*>();
-                    _service_timeout = service["timeout"].as<int>();
+                    _service_timoeut = service["timeout"].as<int>();
                     #ifdef DEBUG
-                    Serial.println(String("Read service: " + getUrl() + "?timeout=" + String(_service_timeout, DEC)).c_str());
+                    Serial.println(String("Read service: " + getUrl() + "?timeout=" + String(_service_timoeut, DEC)).c_str());
                     #endif
                 } else {
                     #ifdef DEBUG
@@ -188,6 +188,39 @@ bool SdController::parseSettings(fs::File &f, uint32_t &send_sleep_time, uint8_t
 
 String SdController::getUrl() {
     return _service_addr + ":" + String(_service_port, DEC) + _service_rest;
+}
+
+
+void SdController::saveSettings(const String& wifi_ssid, const String& wifi_pswd, const String srv_url, int send_timeout, int max_count) {
+    if (_is_inited_sd) {
+        String conf;
+        conf += "{\"settings\":{\n\t\"wifi\":{\n";
+        conf += "\t\t\"ssid\":\"" + wifi_ssid + "\",\n";
+        conf += "\t\t\"pswd\":\"" + wifi_pswd + "\"\n\t},\n";
+        Url U(srv_url);
+        conf += "\t\"service\":{\n";
+        conf += "\t\t\"address\":\"" + U.host + "\",\n";
+        conf += "\t\t\"port\":" + String(U.port, DEC) + ",\n";
+        conf += "\t\t\"rest\":\"" + U.path + "\",\n";
+        conf += "\t\t\"timeout\":" + String(_service_timoeut, DEC) +  "\n\t},\n";
+        conf += "\t\"send_timeout\":" + String(send_timeout, DEC) +  ",\n";
+        conf += "\t\"max_count\":" + String(max_count, DEC) + "\n\t}\n}";
+        File f = SD.open(String("/") + DEFAULT_CONFIG_FILE, FILE_WRITE);
+        if (f) {
+            const uint8_t* p = reinterpret_cast<const uint8_t*>(conf.c_str());
+            size_t len = conf.length();
+            #ifdef DEBUG
+            Serial.println("Write to file \"" + String(DEFAULT_CONFIG_FILE) + "\": " + String(len, DEC)  + ": "+ conf);
+            #endif
+            f.write(p, len);
+            f.close();
+        } else {
+            Sos::get()->enable();
+            #ifdef DEBUG
+            Serial.println("ERROR: Can`t open config file for writing.");
+            #endif
+        }
+    }
 }
 
 

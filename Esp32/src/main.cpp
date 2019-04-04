@@ -44,7 +44,7 @@ static const double BATTARY_FULL_VALUE = 3.8;
 
 static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
 
-static const uint16_t MAX_ATTEMPS_CONNECTIONS = 1000;
+static const uint16_t MAX_ATTEMPS_CONNECTIONS = 100;
 static const uint32_t DEFAULT_LOCAL_PORT = 20000;
 static const char DEFAULT_SERVICE_URL[] = "localhost";
 static const char DEFAULT_SERVICE_POINT[] = "/rest/device";
@@ -65,6 +65,9 @@ RTC_DATA_ATTR uint32_t __last_max_count = 0;
 RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 20;
 RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10000;
 
+RTC_DATA_ATTR uint64_t __device_id = 0;
+RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
+
 
 typedef StaticJsonDocument<500> JsonBufferType;
 
@@ -79,12 +82,8 @@ class Esion {
     typedef std::unique_ptr<Blink> PBlink;
     typedef std::unique_ptr<CountersSender> PCOuntersSender;
 
-public:
-    BatteryValue _bat_val;
-
 private:
     int _service_timeout; ///< Время перезапуска отправки данных в минутах.
-    double _adc_level; ///< Уровень зарядки аккумуляторов.
     time_t _now;
     PCOuntersSender _cs;
     
@@ -133,10 +132,9 @@ public:
         return e;
     }
 
-    Esion()
-        : _adc_level(0.0) {
+    Esion() {
         /// Проверить уровень заряда аккумулятора.
-        _adc_level = updateAdcLEvel();
+        __adc_level = updateAdcLEvel();
         delay(50);
         auto sdc = SdController::getPtr();
         /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
@@ -166,11 +164,13 @@ public:
                 #endif
                 /// Выполнить проверку уникального идентификатора.
                 if (Nvs::get()->getId() == 0) {
-                    uint64_t did = _now;
-                    Nvs::get()->setId(did);
+                    __device_id = _now;
+                    Nvs::get()->setId(__device_id);
                     #ifdef DEBUG
-                    Serial.println("CREATE UNIQUE DEVICE ID: [" + Nvs::idToStr(did) + "]");
+                    Serial.println("CREATE UNIQUE DEVICE ID: [" + Nvs::idToStr(__device_id) + "]");
                     #endif
+                } else if (not __device_id) {
+                    __device_id = Nvs::get()->getId();
                 }
             } else {
                 Sos::get()->enable();
@@ -189,7 +189,9 @@ public:
     }
 
     ~Esion() {
-        WiFi.disconnect(true, true);
+        WiFi.disconnect(); // обрываем WIFI соединения
+        WiFi.softAPdisconnect(); // отключаем отчку доступа(если она была
+        WiFi.mode(WIFI_OFF); // отключаем WIFI
         SdController::getPtr().reset();
     }
     
@@ -204,11 +206,10 @@ public:
         String time = ctime(&_now);
         auto sdc = SdController::getPtr();
         delay(10);
-        auto dev_id = Nvs::get()->getId();
-        String room_id = Nvs::idToStr(dev_id);
+        String room_id = Nvs::idToStr(__device_id);
         String data_sjson = String("{\"room_id\":\"" + room_id + "\"" +
                     ", \"msg\":{\"time\":\"" + time.substring(0, time.length() - 1) + "\"" +
-                    ", \"bat\":" + String(_adc_level, DEC) + 
+                    ", \"bat\":" + String(__adc_level, DEC) + 
                     ", \"counts\":[" + counts + "]}}");
         #ifdef DEBUG
         Serial.println("Read (device id) room_id: " + room_id);
@@ -299,9 +300,11 @@ void WakeupReason() {
                 #ifdef DEBUG
                 Serial.println("Press configure button.");
                 #endif
-                auto cs = ConfigureServer::get();
-                cs->execute();
-                cs->resetServer();
+                auto cs = ConfigureServer::getPtr();
+                if (cs) {
+                    cs->execute(Nvs::idToStr(__device_id), __adc_level);
+                    cs.reset();
+                }
             } else if (wu_bit & GPIO_SEL_32) {
                 ++__count1;
                 #ifdef DEBUG
