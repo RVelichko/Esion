@@ -77,9 +77,19 @@ BOOST_AUTO_TEST_CASE(TestDbFacade) {
     DbFacade dbf;
     dbf.connect(DEFAULT_DB_ADDRESS, DEFAULT_DB_NAME, DEFAULT_DB_LOGIN, DEFAULT_DB_PASSWORD);
     dbf.addDevice(jdev);
+    LOG(DEBUG) << "######################################";
+    size_t num = 0;
+    for (auto jdev : dbf.getDevices(10, 2)) {
+        LOG(DEBUG) << "[" << ++num << "] " << jdev;
+    } 
     dbf.updateDevice(GetTestDevice("1554910784", "UPDATED DEVICE"));
-    LOG(DEBUG) << dbf.getDevice("1554910784");
-    dbf.deleteDevice(jdev);
+    LOG(DEBUG) << "[GET] " << dbf.getDevice("1554910784");
+    dbf.removeDevice("1554910784");
+    LOG(DEBUG) << "######################################";
+    num = 0;
+    for (auto jdev : dbf.getDevices()) {
+        LOG(DEBUG) << "[" << ++num << "] " << jdev;
+    } 
     dbf.disconnect();
     //BOOST_CHECK_NO_THROW((i == old_num));
     //BOOST_REQUIRE(TEST_MAX_NUMBER_1 == swe.getNumber());

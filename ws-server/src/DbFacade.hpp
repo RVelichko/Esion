@@ -11,7 +11,7 @@
 namespace server {
 
 typedef nlohmann::json Json;
-typedef std::vector<std::string> DevIds; 
+typedef std::vector<Json> Jsons;
 typedef mongo::BSONObj BsonObj;
 
 
@@ -24,22 +24,70 @@ class DbFacade {
     std::string _db_name;
     PDbConnection _dbc;
     
+    /**
+     * \brief Метод возвращает имя базы и коллекции для выполнения операций.
+     */ 
     std::string getMdbNs();
 
 public:
+    /**
+     * \brief Метод преобразует Json в Bson.
+     */ 
     static BsonObj toBson(const Json& json);
+
+    /**
+     * \brief Метод преобразует Bson в Json.
+     */ 
     static Json toJson(const BsonObj& json);
     
     DbFacade();
     virtual ~DbFacade();
     
-    bool connect(const std::string& add, const std::string db_name, const std::string& login, const std::string& pswd);
+    /**
+     * \brief Метод преобразует Bson в Json.
+     * \param addr    Адрес для подключения к БД.
+     * \param db_name Имя БД.
+     * \param login   Логин для доступа к БД.
+     * \param pswd    Пароль для доступа к БД.
+     */ 
+    bool connect(const std::string& addr, const std::string db_name, const std::string& login, const std::string& pswd);
+
+    /**
+     * \brief Метод выполняет отключение от БД.
+     */ 
     void disconnect();
     
-    DevIds getIds();
+    /**
+     * \brief Метод возвращает N имеющихся устройств.
+     * \param num_objs  Количество запрашиваемых устройств.
+     * \param skip_objs Количество пропускаемых в запросе устройств.
+     */ 
+    Jsons getDevices(uint8_t num_objs = 10, uint8_t skip_objs = 0);
+
+    /**
+     * \brief Метод доавляет новое устройство.
+     * \param dev Json с описание нового устройства.
+     */ 
     bool addDevice(const Json& dev);
+
+    /**
+     * \brief Метод обновляет информацию устройства.
+     * \param dev Json с описание нового устройства.
+     */ 
     bool updateDevice(const Json& dev);  
-    bool deleteDevice(const std::string& dev_id);  
+
+    /**
+     * \brief Метод обновляет информацию устройства.
+     * \param dev_id Идентификатор удаляемого устройства.
+     */ 
+    bool removeDevice(const std::string& dev_id);  
+
+    /**
+     * \brief Метод возвращает информацию об устройстве.
+     * \param dev_id Идентификатор требуемого устройства.
+     */ 
     Json getDevice(const std::string& dev_id);
+    
+    
 };
 } /// server

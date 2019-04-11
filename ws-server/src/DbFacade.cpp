@@ -13,6 +13,8 @@ using namespace server;
 namespace mdb = mongo;
 
 typedef mongo::BSONObjBuilder BsonObjBuilder;
+typedef std::vector<BsonObj> BsonObjs;
+
 
 
 BsonObj DbFacade::toBson(const Json& json) try {
@@ -77,8 +79,6 @@ bool DbFacade::connect(const std::string& addr,
 
 
 void DbFacade::disconnect() try {
-    BsonObj bo;
-    //_dbc.logout(_db_name, bo);
     _dbc.reset();
     _db_name.clear();
 } catch (const mdb::DBException &e) {
@@ -86,8 +86,17 @@ void DbFacade::disconnect() try {
 }
 
 
-DevIds DbFacade::getIds() {
-    return DevIds();
+Jsons DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
+    BsonObjs found_devs;
+    _dbc->findN(found_devs, getMdbNs(), BsonObjBuilder().obj(), num_objs,  skip_objs);
+    Jsons jdevs;
+    for (auto bdev : found_devs) {
+        jdevs.push_back(DbFacade::toJson(bdev));
+    }
+    return jdevs;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << num_objs << " `" << skip_objs << "] devices from DB: " << e.what();
+    return Jsons();
 }
 
 
@@ -123,7 +132,7 @@ bool DbFacade::updateDevice(const Json& dev) try {
 }
 
 
-bool DbFacade::deleteDevice(const std::string& dev_id) {
+bool DbFacade::removeDevice(const std::string& dev_id) try {
     auto q = BsonObjBuilder().append("id", dev_id).obj();
     auto found_dev = _dbc->findOne(getMdbNs(), q);
     if (not found_dev.isEmpty()) {
@@ -133,10 +142,13 @@ bool DbFacade::deleteDevice(const std::string& dev_id) {
         LOG(ERROR) << "Can`t remove device [" << dev_id << "].";
     }
     return false;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t delete device [" << dev_id << "] in DB: " << e.what();
+    return false;
 }
 
 
-Json DbFacade::getDevice(const std::string& dev_id) {
+Json DbFacade::getDevice(const std::string& dev_id) try {
     auto q = BsonObjBuilder().append("id", dev_id).obj();
     auto found_dev = _dbc->findOne(getMdbNs(), q);
     if (not found_dev.isEmpty()) {
@@ -145,4 +157,7 @@ Json DbFacade::getDevice(const std::string& dev_id) {
         LOG(ERROR) << "Can`t find device [" << dev_id << "].";
     }
     return Json();
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get device [" << dev_id << "] in DB: " << e.what();
+    return false;
 }

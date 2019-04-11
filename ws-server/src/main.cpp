@@ -13,10 +13,12 @@
 #include <tuple>
 #include <functional>
 
-#include "ws_server.hpp"
+#include "DevicePeerWorker.hpp"
+#include "OperatorPeerWorker.hpp"
 #include "SignalDispatcher.hpp"
 #include "RoomController.hpp"
 #include "WebSocketServer.hpp"
+#include "DbFacade.hpp"
 #include "Log.hpp"
 
 
@@ -32,21 +34,20 @@ static char DEFAULT_DB_PASSWORD[] = "esionpassword";
 
 
 struct GlobalArgs {
-    int port;           /// параметр -p
-    char* ssl_crt;      /// параметр -c
-    char* ssl_key;      /// параметр -k
-    char* device_point; /// параметр -e
-    char* page_point;   /// параметр -w
-    char* db_addr;      /// параметр -a
-    char* db_name;      /// параметр -n
-    char* db_ligin;     /// параметр -l
-    char* db_pswd;      /// параметр -s
+    int port;           ///< параметр -p
+    char* ssl_crt;      ///< параметр -c
+    char* ssl_key;      ///< параметр -k
+    char* device_point; ///< параметр -e
+    char* page_point;   ///< параметр -w
+    char* db_addr;      ///< параметр -a
+    char* db_name;      ///< параметр -n
+    char* db_ligin;     ///< параметр -l
+    char* db_pswd;      ///< параметр -s
 } __global_args;
 
 
 static const char *__opt_string = "p:k:c:e:w:a:l:n:s:h?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 
 void HelpMessage() {
@@ -69,12 +70,14 @@ void HelpMessage() {
 
 typedef utils::SignalDispatcher SignalDispatcher;
 typedef std::shared_ptr<SignalDispatcher> PSignalDispatcher;
+typedef server::DbFacade DbFacade;
+typedef server::PDbFacade PDbFacade;
 typedef server::SingleRoomController SingleRoomController;
 typedef server::PSingleRoomController PSingleRoomController;
 typedef server::DevicePeerWorker DevicePeerWorker;
-typedef server::ClientPagePeerWorker ClientPagePeerWorker;
+typedef server::OperatorPeerWorker OperatorPeerWorker;
 typedef std::shared_ptr<DevicePeerWorker> PDevicePeerWorker;
-typedef std::shared_ptr<ClientPagePeerWorker> PClientPagePeerWorker;
+typedef std::shared_ptr<OperatorPeerWorker> POperatorPeerWorker;
 typedef wsocket::WSServer WSServer;
 
 
@@ -136,20 +139,24 @@ int main(int argc_, char **argv_) {
         opt = getopt(argc_, argv_, __opt_string);
     }
     LOG_TO_STDOUT;
-    PSingleRoomController room_controller = std::make_shared<SingleRoomController>(); ///< Контроллер комнат
-    std::mutex mutex; ///< Объект синхронизации доступа к общим объектам из разных воркеров и подклю1
-    
-    /// Точка подключения робота - источника видеочений
-    PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, room_controller);
-    /// Точка подключения оператора - потребителя видео
-    PClientPagePeerWorker page_pw = std::make_shared<ClientPagePeerWorker>(mutex, room_controller);
-
-    /// Конструирование сервера
-    WSServer p2p(__global_args.port, 
-                 __global_args.ssl_crt, 
-                 __global_args.ssl_key,
-                 std::make_pair(__global_args.device_point, device_pw),
-                 std::make_pair(__global_args.page_point, page_pw));
-
-    return EXIT_SUCCESS;
+    /// Доступ к БД.
+    PDbFacade db(new DbFacade());
+    if (db->connect(__global_args.db_addr, __global_args.db_name, __global_args.db_ligin, __global_args.db_pswd)) {
+        /// Контроллер комнат
+        PSingleRoomController room_controller = std::make_shared<SingleRoomController>();
+        std::mutex mutex; ///< Объект синхронизации доступа к общим объектам.
+        /// Точка подключения робота - источника видеочений
+        PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, room_controller, db);
+        /// Точка подключения оператора - потребителя видео
+        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, room_controller, db);
+        /// Конструирование сервера
+        WSServer p2p(__global_args.port, 
+                     __global_args.ssl_crt, 
+                     __global_args.ssl_key,
+                     std::make_pair(__global_args.device_point, device_pw),
+                     std::make_pair(__global_args.page_point, oper_pw));
+        return EXIT_SUCCESS;
+    }
+    LOG(ERROR) << "Check Database parameters.";
+    return EXIT_FAILURE;
 }

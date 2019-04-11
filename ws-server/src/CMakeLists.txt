@@ -4,7 +4,9 @@ include_directories(${MongoClient_INCLUDE_DIR})
 set(LIB_ESION_SERVER esion_server)
 add_library(${LIB_ESION_SERVER} STATIC
     DbFacade.cpp
-    ws_server.cpp
+    BaseWorker.cpp
+    DevicePeerWorker.cpp
+    OperatorPeerWorker.cpp
     )
 set(APP_ESION_SERVER esion-server)
 add_executable(${APP_ESION_SERVER} main.cpp)
