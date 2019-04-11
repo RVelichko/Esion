@@ -9,13 +9,11 @@
 #include <memory>
 
 #include "json.hpp"
-#include "Log.hpp"
-#include "Timer.hpp"
 #include "RoomController.hpp"
 #include "WebSocketServer.hpp"
 
 
-namespace device {
+namespace server {
 
 typedef nlohmann::json Json;
 typedef Json RoomDataType; ///< Тип хранимых данных - json настройки устройств
@@ -102,4 +100,4 @@ public:
     ClientPagePeerWorker(std::mutex &mutex, const PSingleRoomController &room_controller);
     virtual ~ClientPagePeerWorker();
 };
-} /// Device
+} /// server

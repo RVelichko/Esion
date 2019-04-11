@@ -23,19 +23,28 @@
 static const size_t DEFAULT_SERVER_PORT = 20000;
 static char DEFAULT_SSL[] = "";
 static char DEFAULT_DEVICE_POINT[] = "^/device?$";
-static char DEFAULT_PAGE_POINT[] = "^/info?$";
+static char DEFAULT_PAGE_POINT[]   = "^/info?$";
+
+static char DEFAULT_DB_ADDRESS[]  = "94.127.68.132";
+static char DEFAULT_DB_NAME[]     = "devices";
+static char DEFAULT_DB_LOGIN[]    = "esion";
+static char DEFAULT_DB_PASSWORD[] = "esionpassword";
 
 
 struct GlobalArgs {
-    int port;       /// параметр -p
-    char* ssl_crt;  /// параметр -c
-    char* ssl_key;  /// параметр -k
+    int port;           /// параметр -p
+    char* ssl_crt;      /// параметр -c
+    char* ssl_key;      /// параметр -k
     char* device_point; /// параметр -e
     char* page_point;   /// параметр -w
+    char* db_addr;      /// параметр -a
+    char* db_name;      /// параметр -n
+    char* db_ligin;     /// параметр -l
+    char* db_pswd;      /// параметр -s
 } __global_args;
 
 
-static const char *__opt_string = "p:k:c:e:w:h?";
+static const char *__opt_string = "p:k:c:e:w:a:l:n:s:h?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -48,6 +57,10 @@ void HelpMessage() {
               << "\t[-k]\t SSL key path.\n"
               << "\t[-e]\t Device connection point. Default: " << DEFAULT_DEVICE_POINT << "\n"
               << "\t[-w]\t Web page connection point. Default: " << DEFAULT_PAGE_POINT << "\n"
+              << "\t[-a]\t DB address. Default: " << DEFAULT_DB_ADDRESS << "\n"
+              << "\t[-n]\t DB name. Default: " << DEFAULT_DB_NAME << "\n"
+              << "\t[-l]\t DB login. Default: " << DEFAULT_DB_LOGIN << "\n"
+              << "\t[-s]\t DB password. Default: " << DEFAULT_DB_PASSWORD << "\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
 }
@@ -56,10 +69,10 @@ void HelpMessage() {
 
 typedef utils::SignalDispatcher SignalDispatcher;
 typedef std::shared_ptr<SignalDispatcher> PSignalDispatcher;
-typedef device::SingleRoomController SingleRoomController;
-typedef device::PSingleRoomController PSingleRoomController;
-typedef device::DevicePeerWorker DevicePeerWorker;
-typedef device::ClientPagePeerWorker ClientPagePeerWorker;
+typedef server::SingleRoomController SingleRoomController;
+typedef server::PSingleRoomController PSingleRoomController;
+typedef server::DevicePeerWorker DevicePeerWorker;
+typedef server::ClientPagePeerWorker ClientPagePeerWorker;
 typedef std::shared_ptr<DevicePeerWorker> PDevicePeerWorker;
 typedef std::shared_ptr<ClientPagePeerWorker> PClientPagePeerWorker;
 typedef wsocket::WSServer WSServer;
@@ -67,11 +80,15 @@ typedef wsocket::WSServer WSServer;
 
 int main(int argc_, char **argv_) {
     /// Инициализация globalArgs до начала работы с ней.
-    __global_args.port = DEFAULT_SERVER_PORT;    
-    __global_args.ssl_crt = DEFAULT_SSL;
-    __global_args.ssl_key = DEFAULT_SSL;
+    __global_args.port         = DEFAULT_SERVER_PORT;    
+    __global_args.ssl_crt      = DEFAULT_SSL;
+    __global_args.ssl_key      = DEFAULT_SSL;
     __global_args.device_point = DEFAULT_DEVICE_POINT;
-    __global_args.page_point = DEFAULT_PAGE_POINT;
+    __global_args.page_point   = DEFAULT_PAGE_POINT;
+    __global_args.db_addr      = DEFAULT_DB_ADDRESS;
+    __global_args.db_name      = DEFAULT_DB_NAME;
+    __global_args.db_ligin     = DEFAULT_DB_LOGIN;
+    __global_args.db_pswd      = DEFAULT_DB_PASSWORD;
 
     /// Обработка входных опций.
     int opt = getopt(argc_, argv_, __opt_string);
@@ -95,6 +112,18 @@ int main(int argc_, char **argv_) {
                 break;
             case 'w':
                 __global_args.page_point = optarg;
+                break;
+            case 'a':
+                __global_args.db_addr = optarg;
+                break;
+            case 'n':
+                __global_args.db_name = optarg;
+                break;
+            case 'l':
+                __global_args.db_ligin = optarg;
+                break;
+            case 's':
+                __global_args.db_pswd = optarg;
                 break;
 
             case 'h':

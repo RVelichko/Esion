@@ -137,9 +137,13 @@ find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
 
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 include(${CMAKE_DIR}/TakeComponent.cmake)
 include(${CMAKE_DIR}/FindLibEvent.cmake)
+include(${CMAKE_DIR}/FindMongoClient.cmake)
+
+message(STATUS "Found Mongo client: ${MongoClient_LIBRARIES}")
 
 
 # Установка общих директорий включаемых файлов

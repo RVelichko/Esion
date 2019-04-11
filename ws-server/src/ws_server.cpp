@@ -9,7 +9,7 @@
 #include "ws_server.hpp"
 
 
-using namespace device;
+using namespace server;
 
 typedef std::lock_guard<std::mutex> LockQuard;
 
