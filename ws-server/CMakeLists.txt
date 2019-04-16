@@ -65,6 +65,22 @@ add_definitions(-DSRC_DIR="${SRC_DIR}")
 link_directories("/usr/lib")
 link_directories("/usr/local/lib")
 
+# Поиск дополнительных библиотек
+find_package(OpenSSL REQUIRED)
+find_package(Threads REQUIRED)
+find_package(CURL REQUIRED)
+
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
+include(${CMAKE_DIR}/TakeComponent.cmake)
+include(${CMAKE_DIR}/FindMongoClient.cmake)
+
+
+# Установка общих директорий включаемых файлов
+include_directories(${UTILS_DIR})
+include_directories(${WEBSOCKET_DIR})
+include_directories(${MongoClient_INCLUDE_DIR})
+
 
 if(ENABLE_BOOST)
     # Поиск библиотек Boost версии старше 1.50
@@ -130,23 +146,6 @@ if(ENABLE_BOOST)
         message(STATUS "Directory tests is not included to build. Run cmake -DENABLE_TESTS=ON or -DENABLE_TESTS=\"ut_test_1 ut_test_2 ...\" to include.")
     endif()
 endif()
-
-
-# Поиск дополнительных библиотек
-find_package(OpenSSL REQUIRED)
-find_package(Threads REQUIRED)
-find_package(CURL REQUIRED)
-
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
-include(${CMAKE_DIR}/TakeComponent.cmake)
-include(${CMAKE_DIR}/FindMongoClient.cmake)
-
-
-# Установка общих директорий включаемых файлов
-include_directories(${MongoClient_INCLUDE_DIR})
-include_directories(${UTILS_DIR})
-include_directories(${WEBSOCKET_DIR})
 
 
 # Включение в сборку компонент

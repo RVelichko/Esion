@@ -19,11 +19,11 @@ void DevicePeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn
         LockQuard l(_mutex);
         json = Json::parse(msg);
     };
-    std::string dev_id = json.value("dev_id", "");
+    std::string dev_id = json.value("id", "");
     if (not dev_id.empty()) {
         fn(dev_id, json);
     } else {
-        LOG(ERROR) << "Can`t find value \"dev_id\".";
+        LOG(ERROR) << "Can`t find value \"id\".";
     }
 } catch(std::exception &e) {
     LOG(ERROR) << "Can`t parse recieved json: " << e.what();
@@ -38,19 +38,16 @@ PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std:
         con_val = std::make_shared<DeviceConnectionValue>();
         con_val->dev_id = dev_id;
         /// Отправить Ok устройству.
-        Json ok = {
-            {"dev_id", dev_id},
-            {"status", "ok"}
-        };
+        Json ok = {{"status", "ok"}};
         LOG(DEBUG) << "send to device: " << connection_id << "; \"" <<  ok.dump() << "\"";
         _msg_fn(connection_id, ok.dump(), WS_STRING_MESSAGE);
         /// Загрузить данные в БД.
-        Json jdev = json.value("device", Json());
-        if (not jdev.empty() and jdev.is_object()) {
+        Json jcounts = json.value("counters", Json());
+        if (not jcounts.empty() and jcounts.is_array()) {
             { /// LOCK
                 LockQuard l(_mutex);
                 if (_db) {
-                    _db->insertDevice(jdev);
+                    _db->insertDevice(json);
                 } else {
                     LOG(FATAL) << "DB is NULL!";
                 }
@@ -58,7 +55,7 @@ PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std:
             /// Если оператор уже подключён - оправить ему данные устройства.
             size_t operator_id = BaseWorker::getOperatorConnectionId();
             if (operator_id) {
-                LOG(DEBUG) << "send to operator: " << operator_id << "; \"" <<  jdev.dump() << "\"";
+                LOG(DEBUG) << "send to operator: " << operator_id << "; \"" <<  jcounts.dump() << "\"";
                 _msg_fn(operator_id, json.dump(), WS_STRING_MESSAGE);
             }
         }

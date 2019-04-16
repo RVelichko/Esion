@@ -315,14 +315,22 @@ function HandleSettings() {
         };
 
         window.websock.onmessage = function(e) {
-            console.log("recv: " + e.data);
+            console.log('recv: ' + e.data);
             var json = JSON.parse(e.data);
             if (json === null) {
-                AddLeftLog("Device is not connected yet.");
-            } else if ("msg" in json) {
+                AddLeftLog('Device is not connected yet.');
+            } else if (typeof json['cmd'] !== "undefined") { ///< Обработка команд.
+                var cmd = json.cmd;
+                if (cmd === 'close_old') {
+                    console.log('Recv: CLOSE OLD');
+                }
+            } else if (typeof json['msg'] !== "undefined")) { ///< Обработка сообщений.
                 var msg = json.msg;
-                /// Обновить информацию об подключённом устройстве.
-                AddLeftLog("Recv device: " + JSON.stringify(msg));
+                if (msg === 'connected') {
+                    AddLeftLog('Recv MSG: CONNECTED');
+                }
+            } else if (typeof json['id'] !== "undefined") && typeof json['counters'] !== "undefined")) { ///< Обработка обновлений с устройств.
+                AddLeftLog("Recv device: " + JSON.stringify(json));
                 if ("time" in msg) {
                     $("#time_label").text(msg.time);
                 }

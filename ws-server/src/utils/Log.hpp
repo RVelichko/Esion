@@ -1,4 +1,4 @@
-/**
+/*!
  * \brief  Система логирования.
  * \author R.N.Velichko rostislav.vel@gmail.com
  * \date   02.03.2013
@@ -6,17 +6,24 @@
 
 #pragma once
 
-#include <cstdint>
+#ifdef _WIN32
+#include <iso646.h>
+#endif
+
+#include <array>
+#include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <fstream>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <sstream>
 #include <string>
-#include <typeinfo>
-#include <tuple>
-#include <memory>
 #include <thread>
+#include <tuple>
+#include <typeinfo>
+#include <functional>
 
 #include "Singleton.hpp"
 
@@ -25,136 +32,152 @@ namespace utils {
 
 static const uint32_t LOG_FILE_DEPTH = 1024 * 1024;
 
+struct TimevalWrap;
+typedef std::shared_ptr<TimevalWrap> PTimevalWrap;
+
 
 class Log {
 public:
-  enum class Level {
-    _test,
-    _debug,
-    _info,
-    _warning,
-    _error,
-    _fatal
-  };
+    typedef std::function<void(const char*)> ExtOutFunc;
+    typedef struct timeval Timeval;
+
+    enum class Level { _test, _debug, _trace, _info, _warning, _error, _fatal, _quantity };
 
 private:
-  typedef std::tuple<Level, std::string, std::string, std::uint64_t> QueueTask;
-  typedef std::queue<QueueTask> Queue;
+    typedef std::tuple<Level, std::string, std::string, PTimevalWrap> QueueTask;
+    typedef std::queue<QueueTask> Queue;
+    typedef std::array<bool, static_cast<size_t>(Level::_quantity)> ToggleArray;
 
-  virtual void execute();
-  virtual void handleCancel();
+    ToggleArray _toggle_levels;
 
-  virtual void onStop()
-  {}
+    std::ofstream _file;
 
-  void open();
-  void close();
+    size_t _file_number;
+    size_t _file_size;
+    size_t _file_line_number;
 
-  std::ofstream _file;
+    Queue _queue;
+    std::mutex _mutex;
+    std::condition_variable _cond;
 
-  std::uint32_t _file_number;
-  std::uint32_t _file_size;
-  std::uint32_t _file_line_number;
+    std::shared_ptr<std::thread> _thread;
+    std::atomic_bool _is_run;
 
-  Queue _queue;
-  std::mutex _mutex;
-  std::condition_variable _cond;
+    ExtOutFunc _ext_out_func;
 
-  std::shared_ptr<std::thread> _thread;
-  bool _is_run;
+    bool _is_log_out;
+    bool _is_log_out_file;
+    bool _full_out_to_ext_func;
+    size_t _log_file_depth;
 
-  bool _log_out;
-  bool _log_out_file;
-  uint32_t _log_file_depth;
+    virtual void execute();
+    virtual void handleCancel();
+
+    virtual void onStop() {}
+
+    void open();
+    void close();
 
 public:
-  Log();
-  ~Log();
+    Log();
+    ~Log();
 
-  void init(bool log_out, bool log_out_file, uint32_t log_file_depth = LOG_FILE_DEPTH);
-  void print(const Level& level, const std::string& module, const std::string& message);
+    void init(bool is_log_out_, bool is_log_out_file_, size_t log_file_depth_ = LOG_FILE_DEPTH);
+    void initExtFunc(ExtOutFunc&& ext_out_func_, bool full_out);
+    void print(const Level& level_, const std::string& module_, const std::string& message_);
 
-  void start();
-  void stop();
+    void start();
+    void stop();
+
+    void toggle(const Level& level_, bool is_on_);
+
+    bool isLogOutFile() const;
 };
 
 
 struct LogSequence {
-  struct Head {
-    struct Next {
-      std::stringstream *_stream;
+    struct Head {
+        struct Next {
+            std::stringstream* _stream;
 
-      template<class Type>
-      explicit Next(std::stringstream *stream, const Type &value)
-        : _stream(stream) {
-        (*_stream) << value;
-      }
+            template<class Type>
+            explicit Next(std::stringstream* stream_, const Type& value_)
+                : _stream(stream_) {
+                (*_stream) << value_;
+            }
 
-      Next(const Next &next);
+            Next(const Next& next_);
 
-      template<class Type>
-      Next operator << (const Type &value) {
-        return Next(_stream, value);
-      }
+            template<class Type> Next operator<<(const Type& value_) {
+                return Next(_stream, value_);
+            }
+        };
+
+        std::shared_ptr<std::stringstream> _stream;
+        Log::Level _level;
+        std::string _module;
+
+        template<class Type>
+        explicit Head(const Log::Level& level_, const std::string& module_, const Type& value_)
+            : _stream(new std::stringstream)
+            , _level(level_)
+            , _module(module_) {
+            (*_stream) << value_;
+        }
+
+        Head(const Head& head_);
+
+        ~Head() {
+            Singleton<Log>::get()->print(_level, _module, _stream->str().c_str());
+        }
+
+        template<class Type> Next operator<<(const Type& value_) {
+            return Next(_stream.get(), value_);
+        }
     };
 
-    std::shared_ptr<std::stringstream> _stream;
     Log::Level _level;
     std::string _module;
 
-    template<class Type>
-    explicit Head(const Log::Level &level, const std::string &module, const Type &value)
-      : _stream(new std::stringstream)
-      , _level(level)
-      , _module(module) {
-      (*_stream) << value;
+    LogSequence(const Log::Level& level_, const std::string& module_);
+
+    template<class Type> Head operator<<(const Type& value_) {
+        return Head(_level, _module, value_);
     }
-
-    Head(const Head &head);
-
-    ~Head() {
-      Singleton<Log>::get()->print(_level, _module, _stream->str().c_str());
-    }
-
-    template<class Type>
-    Next operator << (const Type &value) {
-      return Next(_stream.get(), value);
-    }
-  };
-
-  Log::Level _level;
-  std::string _module;
-
-  LogSequence(const Log::Level &level, const std::string &module);
-
-  template<class Type>
-  Head operator << (const Type &value) {
-      return Head(_level, _module, value);
-  }
 };
-} /// utils
+
+} // namespace utils
 
 
-#define AFTERX(name, x) name ## x
+#define AFTERX(name, x) name##x
 #define XAFTERX(name, x) AFTERX(name, x)
 
 #ifndef _MSC_VER
-#define __FUNC__ __PRETTY_FUNCTION__
+#define FN __PRETTY_FUNCTION__
 #else // _MSC_VER
-#define __FUNC__ __FUNCTION__
+#define FN __FUNCTION__
 #endif // _MSC_VER
 
-#define METHOD (__FUNC__)
-#define MODULE typeid(*this).name()
+#define LOG_METHOD (FN)
+#define LOG_MODULE typeid(*this).name()
 
+#define LOG_TO_FUNC(func, full_out) utils::Singleton<utils::Log>::get()->initExtFunc((func), (full_out));
 #define LOG_TO_STDOUT utils::Singleton<utils::Log>::get()->init(true, false);
+#define LOG_TO_STDOUT_AND_FILE utils::Singleton<utils::Log>::get()->init(true, true);
 
-#define LOGM(level, method) utils::LogSequence XAFTERX(log_, __LINE__)((level), (method)); XAFTERX(log_, __LINE__) << ""
-#define LOG(level) LOGM((level), METHOD)
+#define IS_LOG_TO_FILE utils::Singleton<utils::Log>::get()->isLogOutFile()
 
-#define TEST    utils::Log::Level::_test
-#define DEBUG   utils::Log::Level::_debug
-#define INFO    utils::Log::Level::_info
+#define LOGM(level, method)                                                                                            \
+    utils::LogSequence XAFTERX(log_, __LINE__)((level), (method));                                                     \
+    XAFTERX(log_, __LINE__) << ""
+#define LOG(level) LOGM((level), (LOG_METHOD))
+
+#define LOG_TOGGLE(level, is_on) utils::Singleton<utils::Log>::get()->toggle((level), (is_on));
+
+#define TEST utils::Log::Level::_test
+#define DEBUG utils::Log::Level::_debug
+#define TRACE utils::Log::Level::_trace
+#define INFO utils::Log::Level::_info
 #define WARNING utils::Log::Level::_warning
-#define ERROR   utils::Log::Level::_error
-#define FATAL   utils::Log::Level::_fatal
+#define ERROR utils::Log::Level::_error
+#define FATAL utils::Log::Level::_fatal

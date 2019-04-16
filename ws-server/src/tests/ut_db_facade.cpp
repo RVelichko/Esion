@@ -32,12 +32,13 @@ static char DEFAULT_DB_PASSWORD[] = "esionpassword";
 static char TEST_USER[] = "TEST_RECORDS";
 
 
-Json GetTestDevice(const std::string& dev_id, const std::string& desc = "test description") {
+Json GetTestDevice(const std::string& dev_id, time_t time, const std::string& desc = "test description") {
     Json dev = {
         {"id", dev_id},
         {"power_type", "4AA, [6V]"},
         {"power", "5.9999"},
         {"user", TEST_USER},
+        {"time", *((int64_t*)&time)},
         {"counters", {
             {
                 {"count", 100},
@@ -68,9 +69,10 @@ Json GetTestDevice(const std::string& dev_id, const std::string& desc = "test de
 
 BOOST_AUTO_TEST_CASE(TestDbFacade) {
     LOG_TO_STDOUT;
-    
-    auto dev_id = std::to_string(time(nullptr));
-    auto jdev = GetTestDevice(dev_id);
+
+    auto t = time(nullptr);
+    auto dev_id = std::to_string(t);
+    auto jdev = GetTestDevice(dev_id, t);
     //auto jdev = GetTestDevice("1554910784");
     LOG(DEBUG) << jdev.dump();
     auto bdev = DbFacade::toBson(jdev);
@@ -85,7 +87,7 @@ BOOST_AUTO_TEST_CASE(TestDbFacade) {
     for (auto jdev : dbf.getDevices(10, 2)) {
         LOG(DEBUG) << "[" << ++num << "] " << jdev;
     } 
-    dbf.insertDevice(GetTestDevice(dev_id, "UPDATED DEVICE"));
+    dbf.insertDevice(GetTestDevice(dev_id, time(nullptr), "UPDATED DEVICE"));
     LOG(DEBUG) << "[GET] " << dbf.getDevice("1554910784");
     dbf.removeDevice("1554910784");
     LOG(DEBUG) << "######################################";
