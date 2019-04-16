@@ -7,50 +7,24 @@ using namespace server;
 typedef std::lock_guard<std::mutex> LockQuard;
 
 
-void BaseWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
-    Json json;
-    { ///< LOCK Розобрать полученную строку в json.
-        LockQuard l(_mutex);
-        json = Json::parse(msg);
-    };
-    if (not json["room_id"].is_null() and json["room_id"].is_string()) {
-        /// Обработать привильный, в первом приближении, JSON.
-        fn(json["room_id"], json);
-    } else {
-        LOG(ERROR) << "Can`t find value \"room_id\".";
-    }
-} catch(std::exception &e) {
-    LOG(ERROR) << "Can`t parse recieved json: " << e.what();
-}
+size_t BaseWorker::_operator_connection_id = 0;
 
 
-std::string BaseWorker::getRoomId(size_t connection_id) {
-    std::string room_id;
+void BaseWorker::setOperatorConnectionId(size_t connection_id) {
     { ///< LOCK
         LockQuard l(_mutex);
-        ConnectionValuesIter iter = _connection_values.find(connection_id);
-        if (iter not_eq _connection_values.end()) {
-            ConnectionRoom *con_rom = dynamic_cast<ConnectionRoom*>(iter->second.get());
-            if (con_rom) {
-                room_id = con_rom->_room_id;
-            }
-        }
+        BaseWorker::_operator_connection_id = connection_id;
     }
-    return room_id;
 }
 
 
-void BaseWorker::sendClose(size_t connection_id) {
-    /// Получить ссылку на комнату и идентификатор подключения.
-    std::string room_id = getRoomId(connection_id);
-    if (not room_id.empty()) {
-        SingleRoomMembers room_ch;
-        { ///< LOCK
-            LockQuard l(_mutex);
-            room_ch = _room_controller->getRoom(room_id);
-        }
-        sendCloseTo(room_id, room_ch);
+size_t BaseWorker::getOperatorConnectionId() {
+    size_t operator_connection_id = 0;
+    { ///< LOCK
+        LockQuard l(_mutex);
+        operator_connection_id = BaseWorker::_operator_connection_id;
     }
+    return operator_connection_id;
 }
 
 
@@ -66,9 +40,8 @@ void BaseWorker::onClose(size_t connection_id, int status, const std::string &re
 }
 
 
-BaseWorker::BaseWorker(std::mutex &mutex, const PSingleRoomController &room_controller, const PDbFacade& db)
+BaseWorker::BaseWorker(std::mutex &mutex, const PDbFacade& db)
     : Worker(mutex)
-    , _room_controller(room_controller) 
     , _db(db)
 {}
 

@@ -29,13 +29,13 @@ static char DEFAULT_DB_LOGIN[]    = "esion";
 static char DEFAULT_DB_PASSWORD[] = "esionpassword";
 
 //static char TEST_DEVICE_ID[] = "12345678";
-static char TEST_USER[] = "test user information";
+static char TEST_USER[] = "TEST_RECORDS";
 
 
 Json GetTestDevice(const std::string& dev_id, const std::string& desc = "test description") {
     Json dev = {
         {"id", dev_id},
-        {"power_type", "6V"},
+        {"power_type", "4AA, [6V]"},
         {"power", "5.9999"},
         {"user", TEST_USER},
         {"counters", {
@@ -45,7 +45,8 @@ Json GetTestDevice(const std::string& dev_id, const std::string& desc = "test de
                 {"unit", "liter"},
                 {"units_count", 1},
                 {"max_value", 1000000000},
-                {"description", "test description 1"}
+                {"serial_num", 001},
+                {"desc", "test description 1"}
             },
             {
                 {"count", 50},
@@ -53,12 +54,13 @@ Json GetTestDevice(const std::string& dev_id, const std::string& desc = "test de
                 {"unit", "liter"},
                 {"units_count", 1},
                 {"max_value", 1000000000},
-                {"description", "test description 2"}
+                {"serial_num", 002},
+                {"desc", "test description 2"}
             },
             {{"type", "none"}},
-            {{"type", "none"}},
+            {{"type", "none"}}
         }},
-        {"description", desc}
+        {"desc", desc}
     };
     return dev;
 }
@@ -67,8 +69,9 @@ Json GetTestDevice(const std::string& dev_id, const std::string& desc = "test de
 BOOST_AUTO_TEST_CASE(TestDbFacade) {
     LOG_TO_STDOUT;
     
-    //auto jdev = GetTestDevice(std::to_string(time(nullptr)));
-    auto jdev = GetTestDevice("1554910784");
+    auto dev_id = std::to_string(time(nullptr));
+    auto jdev = GetTestDevice(dev_id);
+    //auto jdev = GetTestDevice("1554910784");
     LOG(DEBUG) << jdev.dump();
     auto bdev = DbFacade::toBson(jdev);
     jdev = DbFacade::toJson(bdev);
@@ -76,13 +79,13 @@ BOOST_AUTO_TEST_CASE(TestDbFacade) {
     
     DbFacade dbf;
     dbf.connect(DEFAULT_DB_ADDRESS, DEFAULT_DB_NAME, DEFAULT_DB_LOGIN, DEFAULT_DB_PASSWORD);
-    dbf.addDevice(jdev);
+    dbf.insertDevice(jdev);
     LOG(DEBUG) << "######################################";
     size_t num = 0;
     for (auto jdev : dbf.getDevices(10, 2)) {
         LOG(DEBUG) << "[" << ++num << "] " << jdev;
     } 
-    dbf.updateDevice(GetTestDevice("1554910784", "UPDATED DEVICE"));
+    dbf.insertDevice(GetTestDevice(dev_id, "UPDATED DEVICE"));
     LOG(DEBUG) << "[GET] " << dbf.getDevice("1554910784");
     dbf.removeDevice("1554910784");
     LOG(DEBUG) << "######################################";

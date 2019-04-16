@@ -4,7 +4,7 @@
  * \date   16.09.2018
  */
 
-// docker run -i -t -v /home/rostislav/Develop/esion/ws-server:/ws-server nginx:ubuntu14lts /bin/bash
+// docker run -i -t -v /home/rostislav/Develop/esion/ws-server:/ws-server ubuntu14 /bin/bash
 // cmake -DCMAKE_C_COMPILER=gcc-4.9 -DCMAKE_CXX_COMPILER=g++-4.9 ..
 // sudo systemctl status esion-srv.service
 
@@ -16,7 +16,6 @@
 #include "DevicePeerWorker.hpp"
 #include "OperatorPeerWorker.hpp"
 #include "SignalDispatcher.hpp"
-#include "RoomController.hpp"
 #include "WebSocketServer.hpp"
 #include "DbFacade.hpp"
 #include "Log.hpp"
@@ -72,8 +71,6 @@ typedef utils::SignalDispatcher SignalDispatcher;
 typedef std::shared_ptr<SignalDispatcher> PSignalDispatcher;
 typedef server::DbFacade DbFacade;
 typedef server::PDbFacade PDbFacade;
-typedef server::SingleRoomController SingleRoomController;
-typedef server::PSingleRoomController PSingleRoomController;
 typedef server::DevicePeerWorker DevicePeerWorker;
 typedef server::OperatorPeerWorker OperatorPeerWorker;
 typedef std::shared_ptr<DevicePeerWorker> PDevicePeerWorker;
@@ -142,13 +139,11 @@ int main(int argc_, char **argv_) {
     /// Доступ к БД.
     PDbFacade db(new DbFacade());
     if (db->connect(__global_args.db_addr, __global_args.db_name, __global_args.db_ligin, __global_args.db_pswd)) {
-        /// Контроллер комнат
-        PSingleRoomController room_controller = std::make_shared<SingleRoomController>();
         std::mutex mutex; ///< Объект синхронизации доступа к общим объектам.
         /// Точка подключения робота - источника видеочений
-        PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, room_controller, db);
+        PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, db);
         /// Точка подключения оператора - потребителя видео
-        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, room_controller, db);
+        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db);
         /// Конструирование сервера
         WSServer p2p(__global_args.port, 
                      __global_args.ssl_crt, 

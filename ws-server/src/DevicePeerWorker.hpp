@@ -9,22 +9,19 @@
 #include "BaseWorker.hpp"
 
 namespace server {
-    
+
+
 /**
  * Клас, обрабатывающий подключения от устройства.
  */
 class DevicePeerWorker : public BaseWorker {
-    struct DeviceConnectionRoom : ConnectionRoom {
-        virtual ~DeviceConnectionRoom();
-    };
-    typedef std::shared_ptr<DeviceConnectionRoom> PDeviceConnectionRoom;
-
+    virtual void parseMessage(const std::string &msg, const ConcreteFn &func);
     virtual PConnectionValue firstMessage(size_t connection_id, const std::string &msg);
     virtual bool lastMessage(const ConnectionValuesIter &iter, const std::string &msg);
-    virtual void sendCloseTo(const std::string &room_id, const SingleRoomMembers &room_ch);
+    virtual void sendClose(size_t connection_id);
 
 public:
-    DevicePeerWorker(std::mutex &mutex, const PSingleRoomController &room_controller, const PDbFacade& db);
+    DevicePeerWorker(std::mutex &mutex, const PDbFacade& db);
     virtual ~DevicePeerWorker();
 };
 } /// server

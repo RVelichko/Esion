@@ -1,6 +1,4 @@
 # Сборка приложения.
-include_directories(${MongoClient_INCLUDE_DIR})
-
 set(LIB_ESION_SERVER esion_server)
 add_library(${LIB_ESION_SERVER} STATIC
     DbFacade.cpp

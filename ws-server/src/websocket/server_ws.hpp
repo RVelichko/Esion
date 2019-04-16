@@ -382,9 +382,9 @@ namespace SimpleWeb {
         bool generate_handshake(std::shared_ptr<Connection> connection, std::ostream& handshake) const {
             if(connection->header.count("Sec-WebSocket-Key")==0)
                 return 0;
-            std::string sha1 = Crypto::SHA1(connection->header["Sec-WebSocket-Key"]+ws_magic_string);
+            std::string sha1 = Crypto::SHA1(connection->header["Sec-WebSocket-Key"] + ws_magic_string);
             std::string enc = Crypto::Base64::encode(sha1);
-            LOG(DEBUG) << "-|" << enc << "|-";
+            LOG(DEBUG) << "ENCODE -|" << enc << "|-";
             handshake << "HTTP/1.1 101 Web Socket Protocol Handshake\r\n";
             handshake << "Upgrade: websocket\r\n";
             handshake << "Connection: Upgrade\r\n";

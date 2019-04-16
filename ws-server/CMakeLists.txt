@@ -140,13 +140,11 @@ find_package(CURL REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 include(${CMAKE_DIR}/TakeComponent.cmake)
-include(${CMAKE_DIR}/FindLibEvent.cmake)
 include(${CMAKE_DIR}/FindMongoClient.cmake)
-
-message(STATUS "Found Mongo client: ${MongoClient_LIBRARIES}")
 
 
 # Установка общих директорий включаемых файлов
+include_directories(${MongoClient_INCLUDE_DIR})
 include_directories(${UTILS_DIR})
 include_directories(${WEBSOCKET_DIR})
 

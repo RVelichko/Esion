@@ -37,15 +37,17 @@ namespace SimpleWeb {
                 bptr->length = 0;
                 bptr->max = base64_length + 1;
 
-                BIO_write(b64, &ascii[0], static_cast<int>(ascii.size()));
+                int ascii_size = ascii.size();
+                BIO_write(b64, &ascii[0], static_cast<int>(ascii_size));
                 BIO_flush(b64);
 
                 //To keep &base64[0] through BIO_free_all(b64)
-                bptr->length=0;
-                bptr->max=0;
-                bptr->data=nullptr;
-
+                base64.insert(base64.end(), bptr->data, bptr->data + base64_length);
                 BIO_free_all(b64);
+
+                //bptr->length = 0;
+                //bptr->max = 0;
+                //bptr->data = nullptr;
             }
             template<class type>
             type encode(const type& ascii) {

@@ -7,10 +7,10 @@
 // sudo service mongod restart
 // sudo netstat -tnlp
 
+// use admin
+// db.createUser({user:"esion",pwd:"esionpassword",roles:[{ role:"userAdminAnyDatabase", db:"admin"}]})
 
 using namespace server;
-
-namespace mdb = mongo;
 
 typedef mongo::BSONObjBuilder BsonObjBuilder;
 typedef std::vector<BsonObj> BsonObjs;
@@ -18,7 +18,7 @@ typedef std::vector<BsonObj> BsonObjs;
 
 
 BsonObj DbFacade::toBson(const Json& json) try {
-    BsonObj bo = mdb::fromjson(json.dump());
+    BsonObj bo = mongo::fromjson(json.dump());
     return bo;
 } catch (std::exception& e) {
     LOG(ERROR) << e.what();
@@ -44,7 +44,7 @@ std::string DbFacade::getMdbNs() {
 
 DbFacade::DbFacade() {
     LOG(DEBUG);
-    mdb::client::initialize();
+    mongo::client::initialize();
 }
 
 
@@ -60,7 +60,7 @@ bool DbFacade::connect(const std::string& addr,
     _db_name = db_name;
     bool is_ok = true;
     _dbc.reset(new DbConnection());
-    LOG(ERROR) << "Connecting to DB [" << db_name << "," << login << "," << pswd << "]";
+    LOG(ERROR) << "Connecting to DB [" << addr << ":" << db_name << "," << login << "," << pswd << "]";
     std::string err_msg;
     if (not _dbc->connect(addr, err_msg)) {
         LOG(ERROR) << "Can`t connect to DB: " << err_msg;
@@ -72,7 +72,7 @@ bool DbFacade::connect(const std::string& addr,
         }
     }
     return is_ok;
-} catch (const mdb::DBException &e) {
+} catch (const mongo::DBException &e) {
     LOG(ERROR) << "Can`t connect to DB: " << e.what();
     return false;
 }
@@ -81,17 +81,19 @@ bool DbFacade::connect(const std::string& addr,
 void DbFacade::disconnect() try {
     _dbc.reset();
     _db_name.clear();
-} catch (const mdb::DBException &e) {
+} catch (const mongo::DBException &e) {
     LOG(ERROR) << "Can`t disconnect from DB: " << e.what();
 }
 
 
-Jsons DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
+Json DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
     BsonObjs found_devs;
     _dbc->findN(found_devs, getMdbNs(), BsonObjBuilder().obj(), num_objs,  skip_objs);
-    Jsons jdevs;
+    Json jdevs;
+    size_t i = 0; 
     for (auto bdev : found_devs) {
-        jdevs.push_back(DbFacade::toJson(bdev));
+        jdevs[i] = (DbFacade::toJson(bdev));
+        ++i;
     }
     return jdevs;
 } catch (const std::exception &e) {
@@ -100,34 +102,22 @@ Jsons DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
 }
 
 
-bool DbFacade::addDevice(const Json& dev) try {
+bool DbFacade::insertDevice(const Json& dev) try {
     std::string dev_id = dev["id"];
     auto q = BsonObjBuilder().append("id", dev_id).obj();
     auto found_dev = _dbc->findOne(getMdbNs(), q);
     if (found_dev.isEmpty()) {
         _dbc->insert(getMdbNs(), DbFacade::toBson(dev));
+        LOG(INFO) << "Add new device [" << dev_id << "] to DB";
         return true;
-    }
+    } else {
+        _dbc->update(getMdbNs(), q, DbFacade::toBson(dev));
+        LOG(INFO) << "Update device [" << dev_id << "] in DB";
+        return true;
+    } 
     return false;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t add new device to DB: " << e.what();
-    return false;
-}
-
-
-bool DbFacade::updateDevice(const Json& dev) try {
-    std::string dev_id = dev["id"];
-    auto q = BsonObjBuilder().append("id", dev_id).obj();
-    auto found_dev = _dbc->findOne(getMdbNs(), q);
-    if (not found_dev.isEmpty()) {
-        _dbc->update(getMdbNs(), q, DbFacade::toBson(dev));
-        return true;
-    } else {
-        LOG(ERROR) << "Can`t update device [" << dev_id << "].";
-    }
-    return false;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t update device in DB: " << e.what();
     return false;
 }
 

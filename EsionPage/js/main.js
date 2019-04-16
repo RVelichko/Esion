@@ -1,11 +1,41 @@
+test_json = {
+    "id":12345678,
+    "power_type": "6V",
+    "power": "5.9999",
+    "counters": [
+        {
+            "count": 100,
+            "type": "test type1",
+            "unit": "liter",
+            "units_count": 1,
+            "max_value": 1000000000,
+            "serial_num": 001,
+            "desc": "Контроль потребления холодной воды."
+        },
+        {
+            "count": 50,
+            "type": "test type2",
+            "unit": "liter",
+            "units_count": 10,
+            "max_value": 1000000000,
+            "serial_num": 002,
+            "desc": "Контроль потребления горячей воды."
+        },
+        {"type":"none"},
+        {"type":"none"}
+    ],
+    "desc": "Тестовое описание устройства."
+}
+
+
 /**
  * \brief Глобальные переменные.
  */
-
 window.config = {
     "name": "Control info page",
 	"service": {
-		"address": "94.127.68.132",
+		"address": "127.0.0.1",
+        "_address": "94.127.68.132",
 		"port": 20000,
 		"rest": "/info",
 		"room_id": "2370053276"
@@ -83,6 +113,144 @@ function AddRightLog(msg) {
 
 
 /**
+ * \brief Функция выполняет заполнение поля счётчика.
+ */
+function FillCencor(num, jcount) {
+    if (jcount !== null) {
+        $('#censor_' + num).remove();
+        $('#censors').append('<div id=\'censor_' + num + '\' class=\'col-xs-12\'></div>');
+        var type = 'none';
+        if ('type' in jcount) {
+            type = jcount.type;
+        }
+        if (type !== 'none') {
+            var count = 0;
+            if ('count' in jcount) {
+                count = jcount.count;
+            }
+            var unit = 0;
+            if ('unit' in jcount) {
+                unit = jcount.unit;
+            }
+            var units_count = 0;
+            if ('units_count' in jcount) {
+                units_count = jcount.units_count;
+            }
+            var serial_num = '000';
+            if ('serial_num' in jcount) {
+                serial_num = jcount.serial_num;
+            }
+            var desc = 'Счётчик потребления воды.';
+            if ('desc' in jcount) {
+                desc = jcount.desc;
+            }
+            $('#censor_' + num).append(
+                '<div class=\'row col-xs-12\'>' +
+                    '<div class=\'row col-xs-4\'>' +
+                        '<label style=\'color: green;\'>№ </label>' +
+                        '<label style=\'font-size:150%;\'>' + num + '.</label>' +
+                        '<label style=\'color: green;\'>[Ипл.]: </label>' +
+                        '<label>' + count + '</label>' +
+                    '</div>' +
+                    '<div class=\'row col-xs-4\'>' +
+                        '<label style=\'color: green;\'>[Юнит]: </label>' +
+                        '<label>' + unit + '</label>' +
+                    '</div>' +
+                    '<div class=\'row col-xs-4\'>' +
+                        '<label style=\'color: green;\'>[Юнит/Импл.]: </label>' +
+                        '<label>' + units_count + '</label>' +
+                    '</div>' +
+                '</div>' +
+                '<div class=\'row col-xs-12\'>' +
+                    '<div class=\'row col-xs-3\'' +
+                        '<label style=\'color: green;\'>Тип: </label>' +
+                        '<label>' + type + '</label>' +
+                    '</div>' +
+                    '<div class=\'row col-xs-6\'>' +
+                        '<label style=\'color: green;\'>Серийный номер:</label>' +
+                        '<label>' + serial_num + '</label>' +
+                    '</div>' +
+                '</div>' +
+                '<div class=\'row col-xs-12\'>' +
+                    '<label style=\'color: green;\'>Описание:</label>' +
+                    '<label>' + desc + '</label>' +
+                '</div>');
+        } else {
+            $('#censor_' + num).append('<label style=\'color: green;\'>№ </label><label >' + num + '.</label><label>Не подключён</label>');
+        }
+    }
+}
+
+
+function FillCencors(jcensors) {
+    if ('counters' in jcensors) {
+        FillCencor(1, jcensors.counters[0]);
+        $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+        FillCencor(2, jcensors.counters[1]);
+        $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+        FillCencor(3, jcensors.counters[2]);
+        $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+        FillCencor(4, jcensors.counters[3]);
+    }
+}
+
+
+/**
+ * \brief Функция выполняет заполнение сброс поля счётчика.
+ */
+function ClearCencor(num) {
+    $('#censor_' + num).remove();
+    $('#censors').append('<div id=\'censor_' + num + '\' class=\'col-xs-12\'></div>');
+    $('#censor_' + num).append('<label style=\'color: green;\'>№ </label><label >' + num + '.</label><label>Не подключён</label>');
+}
+
+
+function ClearCencors() {
+    ClearCencor(1);
+    $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+    ClearCencor(2);
+    $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+    ClearCencor(3);
+    $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+    ClearCencor(4);
+}
+
+
+/**
+ * \brief Функция выполняет добавление краткой забиси об активном устройстве.
+ */
+function ShowDevice(jstr) {
+    console.log(jstr);
+}
+
+
+function AddDeviceListLine(json) {
+    var desc = 'Контроллер без адреса.';
+    if ('desc' in json['desc']) {
+        desc = json['desc'];
+    };
+    if ('id' in json) {
+        var id = json['id'];
+        $('#devices_list').append(
+            '<div id=\'show_device_' + id + '\' class=\'row col-xs-12\' json=' + json + '>' +
+                '<div class=\'row col-xs-1 vcenter\'>' +
+                    '<button id=\'show_' + id + '_bt\' class=\'btn btn-success\' onclick=\'ShowDevice(' + JSON.stringify(json) + ')\'>></button>' +
+                '</div>' +
+                '<div class=\'row col-xs-2 vcenter\'>' +
+                    //'<label style=\'color: green;\'>№ </label>' +
+                    '<label style=\'font-size:130%;\'>' + id + '.</label>' +
+                '</div>' +
+                '<div class=\'row col-xs-9 vcenter\'>' +
+                    '<label style=\'color: green;\'>:</label>' +
+                    '<label>' + desc + '</label>' +
+                '</div>' +
+            '</div>');
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/**
  * \brief Функция выполняет обновление редактируемых полей и меняет конфигураци для заданного поля.
  */
 function СhangeSetting(id) {
@@ -110,9 +278,9 @@ function HandleSettings() {
     $("#room_id").attr('placeholder', room_id);
 
     /// Инициализация обработки нажатия кнопки CONNECT.
-    $("#connect").click(function() {
+    $("#connect").click(function(e) {
         var url = "ws://" + СhangeSetting("#service_url");
-        var room_id = СhangeSetting("#room_id");
+        var room_id = "OPERATOR";
         AddRightLog("Connecting to url: '" + url + "'; room: '" + room_id + "'");
         console.log("URL: " + url);
         /// Выполнить подключение к сервису.
@@ -127,6 +295,19 @@ function HandleSettings() {
             var jstr = JSON.stringify(connect);
             console.log("Send to server: " + jstr);
             window.websock.send(jstr);
+            /// Запоросить список устройств.
+            var get_list_cmd = {
+                room_id: room_id,
+                cmd: {
+                    get_list: {
+                        num: 0,
+                        skip: 10
+                    }
+                }
+            };
+            var jstr = JSON.stringify(get_list_cmd);
+            console.log("Send to server: " + jstr);
+            window.websock.send(get_list_cmd);
         };
 
         window.websock.onerr = function(e) {
@@ -177,6 +358,9 @@ $(document).ready(function() {
 
     /// Подключение к сервису для логирования текущих данных от устройства по websocket.
     ConnectToService();
+    /// Сбросить счётчики.
+    //var json = JSON.parse(test_json);
+    FillCencors(test_json);
 
     /// Обновить высоту лога и Скрола для лога.
     SetLogHeight();

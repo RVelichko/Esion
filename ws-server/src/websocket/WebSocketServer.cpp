@@ -1,6 +1,7 @@
 #include "WebSocketServer.hpp"
 #include "Log.hpp"
 
+typedef std::lock_guard<std::mutex> LockQuard;
 
 namespace wsocket {
 
@@ -39,10 +40,12 @@ bool Worker::lastMessage(const ConnectionValuesIter &iter, const std::string &ms
 
 
 Worker::Worker(std::mutex &mutex)
-    : _mutex(mutex) {}
+    : _mutex(mutex)
+{}
 
 
-Worker::~Worker() {}
+Worker::~Worker()
+{}
 
 
 void Worker::onMessage(size_t connection_id, const std::string &msg) {
@@ -50,14 +53,15 @@ void Worker::onMessage(size_t connection_id, const std::string &msg) {
     //LOG(DEBUG) << connection_id;
     /// Получить локальную потоковую копию массива описателей.
     ConnectionValues connection_values;
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
+    { /// LOCK
+        LockQuard l(_mutex);
         connection_values = _connection_values;
     };
     /// Обработать текущее сообщение.
     ConnectionValuesIter iter = connection_values.find(connection_id);
     if (iter == connection_values.end()) {
-        auto con_val = firstMessage(connection_id, msg); ///< Вызвать функцию для первого принятого сообщения от клиента.
+        /// Вызвать функцию для первого принятого сообщения от клиента.
+        auto con_val = firstMessage(connection_id, msg);
         if (con_val) {
             con_val->_connection_id = connection_id;
             connection_values.insert(std::make_pair(connection_id, con_val));
@@ -237,7 +241,8 @@ WebSocketServer::WebSocketServer(int port)
 }
 
 
-WebSocketServer::~WebSocketServer() {}
+WebSocketServer::~WebSocketServer()
+{}
 
 
 bool WebSocketServer::addEndpoint(const std::string &endpoint_str, const std::shared_ptr<Worker> &worker) {

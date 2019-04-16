@@ -8,6 +8,7 @@
 
 #include "json.hpp"
 
+
 namespace server {
 
 typedef nlohmann::json Json;
@@ -62,13 +63,13 @@ public:
      * \param num_objs  Количество запрашиваемых устройств.
      * \param skip_objs Количество пропускаемых в запросе устройств.
      */ 
-    Jsons getDevices(uint8_t num_objs = 10, uint8_t skip_objs = 0);
+    Json getDevices(uint8_t num_objs = 10, uint8_t skip_objs = 0);
 
     /**
-     * \brief Метод доавляет новое устройство.
+     * \brief Метод доавляет новое устройство или обновляет существующее.
      * \param dev Json с описание нового устройства.
      */ 
-    bool addDevice(const Json& dev);
+    bool insertDevice(const Json& dev);
 
     /**
      * \brief Метод обновляет информацию устройства.
