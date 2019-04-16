@@ -266,6 +266,32 @@ function СhangeSetting(id) {
 
 
 /**
+ * \brief Функция выполняет отправку запроса на получение списка устройств.
+ */
+function GetList(num, skip) {
+    if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
+        var service_login = СhangeSetting('#service_login');
+        var service_pswd = СhangeSetting('#service_pswd');
+        var get_list_cmd = {
+            login: service_login,
+            pswd: service_pswd,
+            cmd: {
+                get_list: {
+                    num: num,
+                    skip: skip
+                }
+            }
+        };
+        var jstr = JSON.stringify(get_list_cmd);
+        window.websock.send(jstr);
+        AddRightLog('Snd GET LIST');
+        console.log("Send to server: " + jstr);
+    } else {
+        console.log('ERR: WebSocket is not opened.');
+    }
+}
+
+/**
  * \brief Функция инициализирует обслуживание настроек и кнопок.
  */
 function HandleSettings() {
@@ -279,38 +305,31 @@ function HandleSettings() {
 
     /// Инициализация обработки нажатия кнопки CONNECT.
     $("#connect").click(function(e) {
+        /// Деактивировать кнопку.
+        $("#connect").hide();
         var url = "ws://" + СhangeSetting("#service_url");
-        var room_id = "OPERATOR";
-        AddRightLog("Connecting to url: '" + url + "'; room: '" + room_id + "'");
+        AddRightLog("Connecting to url: '" + url + '"');
         console.log("URL: " + url);
         /// Выполнить подключение к сервису.
         window.websock = new WebSocket(url);
 
         window.websock.onopen = function() {
             var now = new Date();
+            var service_login = СhangeSetting('#service_login');
+            var service_pswd = СhangeSetting('#service_pswd');
             var connect = {
-                room_id: room_id,
+                login: service_login,
+                pswd: service_pswd,
                 msg: "Подключился оператор: " + window.config.name
             };
             var jstr = JSON.stringify(connect);
-            console.log("Send to server: " + jstr);
             window.websock.send(jstr);
-            /// Запоросить список устройств.
-            var get_list_cmd = {
-                room_id: room_id,
-                cmd: {
-                    get_list: {
-                        num: 0,
-                        skip: 10
-                    }
-                }
-            };
-            var jstr = JSON.stringify(get_list_cmd);
             console.log("Send to server: " + jstr);
-            window.websock.send(get_list_cmd);
         };
 
         window.websock.onerr = function(e) {
+            AddLeftLog('ERR: ' + e.message);
+            $("#connect").show();
             console.log(e.message);
         };
 
@@ -319,36 +338,43 @@ function HandleSettings() {
             var json = JSON.parse(e.data);
             if (json === null) {
                 AddLeftLog('Device is not connected yet.');
-            } else if (typeof json['cmd'] !== "undefined") { ///< Обработка команд.
+            } else if (typeof json['cmd'] !== 'undefined') { ///< Обработка команд.
                 var cmd = json.cmd;
                 if (cmd === 'close_old') {
-                    console.log('Recv: CLOSE OLD');
+                    AddLeftLog('Recv CLOSE OLD');
+                    $("#connect").show();
                 }
-            } else if (typeof json['msg'] !== "undefined")) { ///< Обработка сообщений.
+            } else if (typeof json['msg'] !== 'undefined') { ///< Обработка сообщений.
                 var msg = json.msg;
                 if (msg === 'connected') {
                     AddLeftLog('Recv MSG: CONNECTED');
+                    /// Запоросить список устройств.
+                    GetList(10, 0);
                 }
-            } else if (typeof json['id'] !== "undefined") && typeof json['counters'] !== "undefined")) { ///< Обработка обновлений с устройств.
+            } else if (typeof json['devs'] !== 'undefined') { ///< Обработка списка устройств.
+                
+            } else if (typeof json['id'] !== 'undefined' && typeof json['counters'] !== 'undefined') { ///< Обработка обновлений с устройств.
                 AddLeftLog("Recv device: " + JSON.stringify(json));
-                if ("time" in msg) {
+                if (typeof json['time'] !== 'undefined') {
                     $("#time_label").text(msg.time);
                 }
-                if ("bat" in msg) {
+                if (typeof json['bat'] !== 'undefined') {
                     $("#battery_label").text(msg.bat);
                 }
-                if ("counts" in msg) {
+                if (typeof json['counts'] !== 'undefined') {
                     $.each(msg.counts, function(key, count) {
                         $("#sensor_" + key + "_label").text(count);
                     });
                 }
-                /// Проинформировать об отключении устройства.
-                if ("disconnected" in msg) {
-                    AddLeftLog("Device is disconnected: " + msg.disconnected);
-                }
             }
-            console.log("Recv: " + JSON.stringify(json));
         };
+
+        window.websock.onclose = function(e) {
+            console.log(e.message);
+            AddRightLog('WebSocket is Closed.');
+            $("#connect").show();
+        };
+
     });
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////

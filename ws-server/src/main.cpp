@@ -23,6 +23,8 @@
 
 static const size_t DEFAULT_SERVER_PORT = 20000;
 static char DEFAULT_SSL[] = "";
+static char DEFAULT_SRV_OPERATOR_LOGIN[] = "esion_operator";
+static char DEFAULT_SRV_OPERATOR_PSWD[]  = "esion_operatorpassowrd";
 static char DEFAULT_DEVICE_POINT[] = "^/device?$";
 static char DEFAULT_PAGE_POINT[]   = "^/info?$";
 
@@ -36,6 +38,8 @@ struct GlobalArgs {
     int port;           ///< параметр -p
     char* ssl_crt;      ///< параметр -c
     char* ssl_key;      ///< параметр -k
+    char* srv_ligin;    ///< параметр -q
+    char* srv_pswd;     ///< параметр -r
     char* device_point; ///< параметр -e
     char* page_point;   ///< параметр -w
     char* db_addr;      ///< параметр -a
@@ -45,22 +49,24 @@ struct GlobalArgs {
 } __global_args;
 
 
-static const char *__opt_string = "p:k:c:e:w:a:l:n:s:h?";
+static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:h?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void HelpMessage() {
     std::cout << "  Use:\n\t#ws-server -p " << DEFAULT_SERVER_PORT << "\n"
               << "  Args:\n"
-              << "\t[-p]\t Web socket server port. Default: " << DEFAULT_SERVER_PORT << "\n"
+              << "\t[-p]\t Web socket server port. [" << DEFAULT_SERVER_PORT << "\n"
               << "\t[-c]\t SSL sertificate path.\n"
               << "\t[-k]\t SSL key path.\n"
-              << "\t[-e]\t Device connection point. Default: " << DEFAULT_DEVICE_POINT << "\n"
-              << "\t[-w]\t Web page connection point. Default: " << DEFAULT_PAGE_POINT << "\n"
-              << "\t[-a]\t DB address. Default: " << DEFAULT_DB_ADDRESS << "\n"
-              << "\t[-n]\t DB name. Default: " << DEFAULT_DB_NAME << "\n"
-              << "\t[-l]\t DB login. Default: " << DEFAULT_DB_LOGIN << "\n"
-              << "\t[-s]\t DB password. Default: " << DEFAULT_DB_PASSWORD << "\n"
+              << "\t[-q]\t Server operator Login.[" << DEFAULT_SRV_OPERATOR_LOGIN << "]\n"
+              << "\t[-r]\t Server operator Password.[" << DEFAULT_SRV_OPERATOR_PSWD << "]\n"
+              << "\t[-e]\t Device connection point. [" << DEFAULT_DEVICE_POINT << "]\n"
+              << "\t[-w]\t Web page connection point. [" << DEFAULT_PAGE_POINT << "]\n"
+              << "\t[-a]\t DB address. [" << DEFAULT_DB_ADDRESS << "]\n"
+              << "\t[-n]\t DB name. [" << DEFAULT_DB_NAME << "]\n"
+              << "\t[-l]\t DB login. [" << DEFAULT_DB_LOGIN << "]\n"
+              << "\t[-s]\t DB password. [" << DEFAULT_DB_PASSWORD << "]\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
 }

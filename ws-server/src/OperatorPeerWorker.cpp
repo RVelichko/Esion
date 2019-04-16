@@ -55,16 +55,19 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
             auto jcmd = json.value("cmd", Json());
             if (not jcmd.empty() and jcmd.is_object()) {
                 /// Обработка команды запроса списка устройств из базы.
-                auto jget_list = json.value("get_list", Json());
+                auto jget_list = jcmd.value("get_list", Json());
                 if (not jget_list.empty() and jget_list.is_object()) {
                     auto jnum = jget_list.value("num", Json());
                     auto jskip = jget_list.value("skip", Json());
                     if (not jnum.empty() and not jskip.empty()) {
-                        uint8_t num = static_cast<uint8_t>(jget_list.value("num", 0));
-                        uint8_t skip = static_cast<uint8_t>(jget_list.value("skip", 10));
+                        uint8_t num = static_cast<uint8_t>(jget_list.value("num", 10));
+                        uint8_t skip = static_cast<uint8_t>(jget_list.value("skip", 0));
                         LockQuard l(_mutex);
                         if (_db) {
-                            LOG(DEBUG) << _db->getDevices(num, skip);
+                            auto devs = _db->getDevices(num, skip);
+                            Json jsnd = {{"devs", devs}};
+                            _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
+                            LOG(DEBUG) << jsnd;
                         } else {
                             LOG(FATAL) << "DB is NULL!";
                         }
