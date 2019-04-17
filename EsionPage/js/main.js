@@ -56,7 +56,12 @@ function ConnectToService() {
  * \brief Функция динамически корректирует высоту скролируемой области лога.
  */
 function SetScrollLogHeight() {
-    var h = $('#settings_container').height() - $('#log_label').height() - 50;
+    var h = 100;
+    if ($('#devices_list_container').css('display') == 'none') {
+        h = $('#settings_container').height() - $('#log_label').height() - 50;
+    } else {
+        h = $('#devices_list_container').height() - $('#log_label').height() - 50;
+    }
     $('#esion_log').css('max-height', h);
     //console.log('# ' + h);
 }
@@ -66,7 +71,12 @@ function SetScrollLogHeight() {
  * \brief Функция динамически корректирует высоту лога.
  */
 function SetLogHeight() {
-    var h = $('#settings_container').height();
+    var h = 100;
+    if ($('#devices_list_container').css('display') == 'none') {
+        h = $('#settings_container').height();
+    } else {
+        h = $('#devices_list_container').height();
+    }
     $('#log_container').css('height', h);
     //console.log('# ' + h);
 }
@@ -120,28 +130,28 @@ function FillCencor(num, jcount) {
         $('#censor_' + num).remove();
         $('#censors').append('<div id=\'censor_' + num + '\' class=\'col-xs-12\'></div>');
         var type = 'none';
-        if ('type' in jcount) {
+        if (typeof jcount['type'] !== 'undefined') {
             type = jcount.type;
         }
         if (type !== 'none') {
             var count = 0;
-            if ('count' in jcount) {
+            if (typeof jcount['count'] !== 'undefined') {
                 count = jcount.count;
             }
             var unit = 0;
-            if ('unit' in jcount) {
+            if (typeof jcount['unit'] !== 'undefined') {
                 unit = jcount.unit;
             }
             var units_count = 0;
-            if ('units_count' in jcount) {
+            if (typeof jcount['units_count'] !== 'undefined') {
                 units_count = jcount.units_count;
             }
             var serial_num = '000';
-            if ('serial_num' in jcount) {
+            if (typeof jcount['serial_num'] !== 'undefined') {
                 serial_num = jcount.serial_num;
             }
             var desc = 'Счётчик потребления воды.';
-            if ('desc' in jcount) {
+            if (typeof jcount['desc'] !== 'undefined') {
                 desc = jcount.desc;
             }
             $('#censor_' + num).append(
@@ -183,20 +193,23 @@ function FillCencor(num, jcount) {
 
 
 function FillCencors(jcensors) {
-    if ('counters' in jcensors) {
-        FillCencor(1, jcensors.counters[0]);
-        $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
-        FillCencor(2, jcensors.counters[1]);
-        $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
-        FillCencor(3, jcensors.counters[2]);
-        $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
-        FillCencor(4, jcensors.counters[3]);
+    if (jcensors.length === 4) {
+        FillCencor(1, jcensors[0]);
+        $('#cens_line_01').remove();
+        $('#censors').append('<div id=\'cens_line_01\' class=\'row col-xs-12\'><hr></div>');
+        FillCencor(2, jcensors[1]);
+        $('#cens_line_12').remove();
+        $('#censors').append('<div id=\'cens_line_12\' class=\'row col-xs-12\'><hr></div>');
+        FillCencor(3, jcensors[2]);
+        $('#cens_line_23').remove();
+        $('#censors').append('<div id=\'cens_line_23\' class=\'row col-xs-12\'><hr></div>');
+        FillCencor(4, jcensors[3]);
     }
 }
 
 
 /**
- * \brief Функция выполняет заполнение сброс поля счётчика.
+ * \brief Функция выполняет сброс поля счётчика.
  */
 function ClearCencor(num) {
     $('#censor_' + num).remove();
@@ -207,29 +220,75 @@ function ClearCencor(num) {
 
 function ClearCencors() {
     ClearCencor(1);
-    $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+    $('#cens_line_01').remove();
+    $('#censors').append('<div id=\'cens_line_01\' class=\'row col-xs-12\'><hr></div>');
     ClearCencor(2);
-    $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+    $('#cens_line_12').remove();
+    $('#censors').append('<div id=\'cens_line_12\' class=\'row col-xs-12\'><hr></div>');
     ClearCencor(3);
-    $('#censors').append('<div class=\'row col-xs-12\'><hr></div>');
+    $('#cens_line_23').remove();
+    $('#censors').append('<div id=\'cens_line_23\' class=\'row col-xs-12\'><hr></div>');
     ClearCencor(4);
+}
+
+
+function ParseData(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var seconds = date.getSeconds();
+    var day = date.getDate();
+    var month = date.getMonth();
+    var year = date.getFullYear();
+    return day + "." + month + "." + year + " " + hours + ":" + minutes + ":" + seconds;
 }
 
 
 /**
  * \brief Функция выполняет добавление краткой забиси об активном устройстве.
  */
-function ShowDevice(jstr) {
-    console.log(jstr);
+function ShowDevice(json) {
+    console.log(json);
+    if (typeof json['id'] !== 'undefined') {
+        $('#device_id_label').text(json.id);
+    } else {
+        $('#device_id_label').text('');
+    }
+    if (typeof json['time'] !== 'undefined') {
+        var date = new Date();
+        date.setTime(parseInt(json.time));
+        $('#update_time_label').text(ParseData(date));
+    } else {
+        $('#update_time_label').text('');
+    }
+    if (typeof json['power_type'] !== 'undefined') {
+        $('#battery_type_label').text(json.power_type);
+    } else {
+        $('#battery_type_label').text('');
+    }
+    if (typeof json['power'] !== 'undefined') {
+        $('#battery_label').text(json.power);
+    } else {
+        $('#battery_label').text('');
+    }
+    if (typeof json['counters'] !== 'undefined') {
+        FillCencors(json.counters);
+    } else {
+        ClearCencors();
+    }
+    $('#devices_list_container').hide();
+    $('#settings_container').show();
+    SetLogHeight();
+    SetScrollLogHeight();
 }
 
 
 function AddDeviceListLine(json) {
+    console.log(JSON.stringify(json));
     var desc = 'Контроллер без адреса.';
-    if ('desc' in json['desc']) {
+    if (typeof json['desc'] !== 'undefined') {
         desc = json['desc'];
     };
-    if ('id' in json) {
+    if (typeof json['id'] !== 'undefined') {
         var id = json['id'];
         $('#devices_list').append(
             '<div id=\'show_device_' + id + '\' class=\'row col-xs-12\' json=' + json + '>' +
@@ -238,7 +297,7 @@ function AddDeviceListLine(json) {
                 '</div>' +
                 '<div class=\'row col-xs-2 vcenter\'>' +
                     //'<label style=\'color: green;\'>№ </label>' +
-                    '<label style=\'font-size:130%;\'>' + id + '.</label>' +
+                    '<label style=\'font-size:120%;\'>' + id + '</label>' +
                 '</div>' +
                 '<div class=\'row col-xs-9 vcenter\'>' +
                     '<label style=\'color: green;\'>:</label>' +
@@ -352,7 +411,12 @@ function HandleSettings() {
                     GetList(10, 0);
                 }
             } else if (typeof json['devs'] !== 'undefined') { ///< Обработка списка устройств.
-                
+                var devs = json.devs;
+                if (devs.length) {
+                    devs.forEach(function(dev) { AddDeviceListLine(dev); });
+                    SetLogHeight();
+                    SetScrollLogHeight();
+                }
             } else if (typeof json['id'] !== 'undefined' && typeof json['counters'] !== 'undefined') { ///< Обработка обновлений с устройств.
                 AddLeftLog("Recv device: " + JSON.stringify(json));
                 if (typeof json['time'] !== 'undefined') {
@@ -374,7 +438,13 @@ function HandleSettings() {
             AddRightLog('WebSocket is Closed.');
             $("#connect").show();
         };
+    });
 
+    $('#show_all_bt').click(function(e) {
+        $('#devices_list_container').show();
+        $('#settings_container').hide();
+        SetLogHeight();
+        SetScrollLogHeight();
     });
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////

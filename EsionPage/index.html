@@ -39,18 +39,41 @@
                         <h3>V 2.0</h3>
                     </div>
                 </div>
-                <div id='devices_list_container'class='col-xs-7' >
+                <div id='devices_list_container'class='col-xs-8' >
                     <div class='border col-xs-12'>
                         <div class='col-xs-12'>
                             <div id='edit_service'>
                                 <div class='row col-xs-12'>
-                                    <input id='service_url' class='col-xs-12' type='text' placeholder='Укажите URL сервера обслуживания.'>
+                                    <div class='row col-xs-2 vcenter'>
+                                        <label style='color: green;'>URL</label>
+                                    </div>
+                                    <div class='row col-xs-10 vcenter style='text-align: right;'>
+                                        <input id='service_url' class='col-xs-12' type='text' placeholder='Укажите URL сервера обслуживания.'>
+                                    </div>
                                 </div>
                                 <div class='row col-xs-12'>
-                                    <input id='service_login' class='col-xs-12' type='text' placeholder='esion_operator'>
+                                    <div class='row col-xs-2 vcenter'>
+                                        <label style='color: green;'>Оператор</label>
+                                    </div>
+                                    <div class='row col-xs-10 vcenter style='text-align: right;'>
+                                        <input id='service_login' class='col-xs-12' type='text' placeholder='esion_operator'>
+                                    </div>
                                 </div>
                                 <div class='row col-xs-12'>
-                                    <input id='service_pswd' class='col-xs-12' type='password' placeholder='esion_operatorpassword'>
+                                    <div class='row col-xs-2 vcenter'>
+                                        <label style='color: green;'>Пароль</label>
+                                    </div>
+                                    <div class='row col-xs-10 vcenter style='text-align: right;'>
+                                        <input id='service_pswd' class='col-xs-12' type='password' placeholder='esion_operatorpassword'>
+                                    </div>
+                                </div>
+                                <div class='row col-xs-12'>
+                                    <div class='row col-xs-2 vcenter'>
+                                        <label style='color: green;'>Коллекция</label>
+                                    </div>
+                                    <div class='row col-xs-10 vcenter style='text-align: right;'>
+                                        <input id='collection_name' class='col-xs-12' type='password' placeholder='TEST'>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -66,48 +89,37 @@
                                 <div id='list_label' style='text-align: center;'>
                                     <h3 style="color: green;">Список контроллеров:</h3>
                                 </div>
-                                <div id='devices_list' style='overflow-y: auto;'>
-                                    <label id='empty_list_label'>Подключитесь к серверу обслуживания...</label>
-                                    <div id='show_device_' class='row col-xs-12'>
-                                        <div class='row col-xs-1 vcenter'>
-                                            <button id='show_bt_' class='btn btn-success'>></button>
-                                        </div>
-                                        <div class='row col-xs-2 vcenter'>
-                                            <label style='font-size:130%;'>1234567</label>
-                                        </div>
-                                        <div class='row col-xs-9 vcenter'>
-                                            <label style='color: green;'>:</label>
-                                            <label>Контроллер в Санкт-Петербурге.</label>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div id='devices_list' style='overflow-y: auto;'></div>
+                            </div>
+                            <div class='row col-xs-12'>
+                                <button id='connect' class='btn btn-success' style='font-size:130%'>Загрузить ещё...</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div id='settings_container' class='col-xs-7' style='display:none'>
+                <div id='settings_container' class='col-xs-8' style='display:none'>
                     <div class='border col-xs-12'>
                         <div class='row col-xs-12'>
-                            <div id='device_id' class='row col-xs-5' style='text-align: left;'>
+                            <div class='row col-xs-5' style='text-align: left;'>
                                 <label style='color: green;'>ID: </label>
                                 <label id='device_id_label' style='font-size:150%;'>00000000</label>
                             </div>
-                            <div id='update_time' class='col-xs-5'>
-                                <label style='color: green;'>Время последнего обновления: </label>
+                            <div class='col-xs-4'>
+                                <label style='color: green;'>Время обновления: </label>
                             </div>
-                            <div id='update_time' class='col-xs-2' style='text-align: right;'>
+                            <div class='col-xs-3' style='text-align: right;'>
                                 <label id='update_time_label'>00:00:00</label>
                             </div>
                         </div>
                         <div class='row col-xs-12'>
-                            <div id='battery_type' class='row col-xs-5' style='text-align: left;'>
+                            <div class='row col-xs-5' style='text-align: left;'>
                                 <label style='color: green;'>Тип питания: </label>
                                 <label id='battery_type_label'>NONE</label>
                             </div>
-                            <div id='battery' class='col-xs-5'>
+                            <div class='col-xs-5'>
                                 <label style='color: green;'>Напряжение батареи: </label>
                             </div>
-                            <div id='update_time' class='col-xs-2' style='text-align: right;'>
+                            <div class='col-xs-2' style='text-align: right;'>
                                 <label id='battery_label'>0V</label>
                             </div>
                         </div>
@@ -115,26 +127,6 @@
                             <div id='censors' class='col-xs-12 border' style='overflow-y: auto;'>
                                 <div class='row col-xs-12'>
                                     <label style='color: green;'>Счетчики:</label>
-                                </div>
-                                <div id='censor_1' class='row col-xs-12'>
-                                    <label style='color: green;'>№ </label>
-                                    <label >1.</label>
-                                    <label>Не подключён</label>
-                                </div>
-                                <div id='censor_2' class='row col-xs-12'>
-                                    <label style='color: green;'>№ </label>
-                                    <label >2.</label>
-                                    <label>Не подключён</label>
-                                </div>
-                                <div id='censor_3' class='row col-xs-12'>
-                                    <label style='color: green;'>№ </label>
-                                    <label >3.</label>
-                                    <label>Не подключён</label>
-                                </div>
-                                <div id='censor_4' class='row col-xs-12'>
-                                    <label style='color: green;'>№ </label>
-                                    <label >4.</label>
-                                    <label>Не подключён</label>
                                 </div>
                             </div>
                         </div>
@@ -147,17 +139,16 @@
                                 <hr>
                             </div>
                         </div>
-                        <div class='clear'></div>
                         <div class='row col-xs-12'>
                             <div class='row col-xs-3'></div>
                             <div class='row col-xs-6'>
-                                <button id='connect' class='btn btn-success' style='font-size:130%'>Показать все контроллеры</button>
+                                <button id='show_all_bt' class='btn btn-success' style='font-size:130%'>Показать все контроллеры</button>
                             </div>
                             <div class='row col-xs-3'></div>
                         </div>
                     </div>
                 </div>
-                <div class='col-xs-5'>
+                <div class='col-xs-4'>
                     <div id='log_container' class='border col-xs-12'>
                         <div id='log_label' style='text-align: center;'>
                             <h3 style="color: green;">Логи событий:</h3>
