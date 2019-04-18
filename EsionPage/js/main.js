@@ -233,13 +233,25 @@ function ClearCencors() {
 
 
 function ParseData(date) {
-    var hours = date.getHours();
-    var minutes = date.getMinutes();
-    var seconds = date.getSeconds();
     var day = date.getDate();
     var month = date.getMonth();
     var year = date.getFullYear();
-    return day + "." + month + "." + year + " " + hours + ":" + minutes + ":" + seconds;
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var seconds = date.getSeconds();
+    var hstr = hours.toString();
+    if (hours < 10) {
+        hstr = '0' + hours.toString();
+    }
+    var mstr = minutes.toString();
+    if (minutes < 10) {
+        var mstr = '0' + minutes.toString();
+    }
+    var sstr = minutes.toString();
+    if (seconds < 10) {
+        var sstr = '0' + seconds.toString();
+    }
+    return day + '.' + month + '.' + year + ' ' + hstr + ':' + mstr + ':' + sstr;
 }
 
 
@@ -251,24 +263,24 @@ function ShowDevice(json) {
     if (typeof json['id'] !== 'undefined') {
         $('#device_id_label').text(json.id);
     } else {
-        $('#device_id_label').text('');
+        $('#device_id_label').text('000000000000');
     }
     if (typeof json['time'] !== 'undefined') {
         var date = new Date();
-        date.setTime(parseInt(json.time));
+        date.setTime(parseInt(json.time) * 1000);
         $('#update_time_label').text(ParseData(date));
     } else {
-        $('#update_time_label').text('');
+        $('#update_time_label').text('00.00.00 00:00:00');
     }
     if (typeof json['power_type'] !== 'undefined') {
         $('#battery_type_label').text(json.power_type);
     } else {
-        $('#battery_type_label').text('');
+        $('#battery_type_label').text('none');
     }
     if (typeof json['power'] !== 'undefined') {
-        $('#battery_label').text(json.power);
+        $('#battery_label').text(json.power + 'V');
     } else {
-        $('#battery_label').text('');
+        $('#battery_label').text('0V');
     }
     if (typeof json['counters'] !== 'undefined') {
         FillCencors(json.counters);
@@ -331,9 +343,11 @@ function GetList(num, skip) {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
         var service_login = СhangeSetting('#service_login');
         var service_pswd = СhangeSetting('#service_pswd');
+        var collection = СhangeSetting('#collection_name');
         var get_list_cmd = {
             login: service_login,
             pswd: service_pswd,
+            coll: collection,
             cmd: {
                 get_list: {
                     num: num,
@@ -345,6 +359,8 @@ function GetList(num, skip) {
         window.websock.send(jstr);
         AddRightLog('Snd GET LIST');
         console.log("Send to server: " + jstr);
+        window.list_num  = window.list_num + 10;
+        window.list_skip = window.list_skip + 10;
     } else {
         console.log('ERR: WebSocket is not opened.');
     }
@@ -354,6 +370,8 @@ function GetList(num, skip) {
  * \brief Функция инициализирует обслуживание настроек и кнопок.
  */
 function HandleSettings() {
+    window.list_num = 10;
+    window.list_skip = 0;
     /// Установка параметров из конфига.
     var url = window.config.service.address + ":" +
               window.config.service.port +
@@ -376,9 +394,11 @@ function HandleSettings() {
             var now = new Date();
             var service_login = СhangeSetting('#service_login');
             var service_pswd = СhangeSetting('#service_pswd');
+            var collection = СhangeSetting('#collection_name');
             var connect = {
                 login: service_login,
                 pswd: service_pswd,
+                coll: collection,
                 msg: "Подключился оператор: " + window.config.name
             };
             var jstr = JSON.stringify(connect);
@@ -407,15 +427,19 @@ function HandleSettings() {
                 var msg = json.msg;
                 if (msg === 'connected') {
                     AddLeftLog('Recv MSG: CONNECTED');
-                    /// Запоросить список устройств.
-                    GetList(10, 0);
+                    GetList(window.list_num, window.list_skip);
                 }
             } else if (typeof json['devs'] !== 'undefined') { ///< Обработка списка устройств.
                 var devs = json.devs;
-                if (devs.length) {
+                if (devs !== null) {
                     devs.forEach(function(dev) { AddDeviceListLine(dev); });
                     SetLogHeight();
                     SetScrollLogHeight();
+                } else {
+                    if (10 < window.list_num) {
+                        window.list_num  = window.list_num - 10;
+                        window.list_skip = window.list_skip - 10;
+                    }
                 }
             } else if (typeof json['id'] !== 'undefined' && typeof json['counters'] !== 'undefined') { ///< Обработка обновлений с устройств.
                 AddLeftLog("Recv device: " + JSON.stringify(json));
@@ -438,6 +462,10 @@ function HandleSettings() {
             AddRightLog('WebSocket is Closed.');
             $("#connect").show();
         };
+    });
+
+    $('#next_bt').click(function(e) {
+        GetList(window.list_num, window.list_skip);
     });
 
     $('#show_all_bt').click(function(e) {

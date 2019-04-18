@@ -19,6 +19,10 @@ void OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &
     };
     std::string login = json.value("login", "");
     std::string pswd = json.value("pswd", "");
+    std::string coll = json.value("coll", "");
+    if (not coll.empty()) {
+        _db->setCollection(coll);
+    }
     fn(GetVerify(login, pswd), json);
 } catch(std::exception &e) {
     LOG(ERROR) << "Can`t parse recieved json: " << e.what();

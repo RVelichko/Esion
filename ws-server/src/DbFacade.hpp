@@ -16,7 +16,7 @@ typedef std::vector<Json> Jsons;
 typedef mongo::BSONObj BsonObj;
 
 
-static const char CONTROOLERS_COLLECTION_NAME[] = "controllers";
+static const char CONTROOLERS_COLLECTION_NAME[] = "test";
     
 class DbFacade {
     typedef mongo::DBClientConnection DbConnection;
@@ -24,6 +24,7 @@ class DbFacade {
     
     std::string _db_name;
     PDbConnection _dbc;
+    std::string _coll_name;
     
     /**
      * \brief Метод возвращает имя базы и коллекции для выполнения операций.
@@ -44,6 +45,11 @@ public:
     DbFacade();
     virtual ~DbFacade();
     
+    /**
+     * \brief Метод устанавливает коллекцию в запросах.
+     */
+    void setCollection(const std::string &coll_name);
+
     /**
      * \brief Метод преобразует Bson в Json.
      * \param addr    Адрес для подключения к БД.

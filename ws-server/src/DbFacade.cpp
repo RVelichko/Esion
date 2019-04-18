@@ -37,12 +37,13 @@ Json DbFacade::toJson(const BsonObj& bson) try {
 
 
 std::string DbFacade::getMdbNs() {
-    return _db_name + "." + CONTROOLERS_COLLECTION_NAME;
+    return _db_name + "." + _coll_name;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-DbFacade::DbFacade() {
+DbFacade::DbFacade()
+    : _coll_name(CONTROOLERS_COLLECTION_NAME) {
     LOG(DEBUG);
     mongo::client::initialize();
 }
@@ -75,6 +76,15 @@ bool DbFacade::connect(const std::string& addr,
 } catch (const mongo::DBException &e) {
     LOG(ERROR) << "Can`t connect to DB: " << e.what();
     return false;
+}
+
+
+void DbFacade::setCollection(const std::string &coll_name) {
+    if (coll_name.empty()) {
+        _coll_name = CONTROOLERS_COLLECTION_NAME;
+    } else {
+        _coll_name = coll_name;
+    }
 }
 
 

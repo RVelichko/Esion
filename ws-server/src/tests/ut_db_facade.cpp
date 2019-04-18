@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(TestDbFacade) {
     } 
     dbf.insertDevice(GetTestDevice(dev_id, time(nullptr), "UPDATED DEVICE"));
     LOG(DEBUG) << "[GET] " << dbf.getDevice("1554910784");
-    dbf.removeDevice("1554910784");
+    //dbf.removeDevice("1554910784");
     LOG(DEBUG) << "######################################";
     num = 0;
     for (auto jdev : dbf.getDevices()) {
