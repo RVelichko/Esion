@@ -31,6 +31,8 @@
 #include <ESP32WebServer.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 #include "utils.hpp"
 #include "ConfigureServer.hpp"
@@ -38,13 +40,15 @@
 #include "CountersSender.hpp"
 
 
-static const int ANALOG_PIN = 27; ///< Пин измерения напряжения на пине ADC.
+static const int ENABLE_MEASURE_PIN = 25;       ///< Пин включения измерения напряжения.
+static const int MEASURE_PIN = 27; //ADC2_CHANNEL_7;  ///< Пин измерения напряжения.
 
-static const double BATTARY_FULL_VALUE = 3.8;
+static const double BATTARY_FULL_VALUE = 6.0;
+//static const double BATTARY_FULL_VALUE = 3.8;
 
 static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
 
-static const uint16_t MAX_ATTEMPS_CONNECTIONS = 100;
+static const uint16_t MAX_ATTEMPS_CONNECTIONS = 200;
 static const uint32_t DEFAULT_LOCAL_PORT = 20000;
 static const char DEFAULT_SERVICE_URL[] = "localhost";
 static const char DEFAULT_SERVICE_POINT[] = "/rest/device";
@@ -58,69 +62,76 @@ RTC_DATA_ATTR uint32_t __count1 = 0;
 RTC_DATA_ATTR uint32_t __count2 = 0;
 RTC_DATA_ATTR uint32_t __count3 = 0;
 RTC_DATA_ATTR uint32_t __count4 = 0;
-RTC_DATA_ATTR uint32_t __count5 = 0;
-RTC_DATA_ATTR uint32_t __count6 = 0;
 RTC_DATA_ATTR uint32_t __last_max_count = 0;
 
-RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 20;
+RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 10;
 RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10000;
 
 RTC_DATA_ATTR uint64_t __device_id = 0;
 RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
 
 
-typedef StaticJsonDocument<500> JsonBufferType;
+
+void ResetCounters();
+void SaveCounters();
+void RestoreCounters();
+void SendTimeout();
+bool CheckMaxCounts(uint32_t);
+
 
 class Esion;
 typedef std::shared_ptr<Esion> PEsion;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /**
  * \brief Класс реализует основные функции WIFI контроллера.
  */ 
 class Esion {
-    typedef std::unique_ptr<Blink> PBlink;
-    typedef std::unique_ptr<CountersSender> PCOuntersSender;
+    typedef std::unique_ptr<CountersSender> PCountersSender;
 
 private:
     int _service_timeout; ///< Время перезапуска отправки данных в минутах.
     time_t _now;
-    PCOuntersSender _cs;
+    PCountersSender _cs;
+    DeviceConfig _dev_conf;
     
     /**
      * \brief Метод выполняет чтение точного сетевого времени.
      */ 
     time_t getInternetTime() {
-        configTime(1 * 3600, 60 * 60, "pool.ntp.org", "time.nist.gov");
+        WiFiUDP ntpUDP;
+        NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
+        timeClient.begin();
+        timeClient.update();
+        time_t t = static_cast<time_t>(timeClient.getEpochTime());
         #ifdef DEBUG
-        Serial.println("Waiting for time");
+        Serial.println("Time: " + String(t, DEC));
         #endif
-        do  {
-            #ifdef DEBUG
-            Serial.print(".");
-            #endif
-            delay(100);
-        } while(not time(nullptr));
-        #ifdef DEBUG
-        Serial.println("");
-        #endif
-        return time(nullptr);
+        return t;
     }
 
     /**
      * \brief Метод выполняет считывание значений напряжения питания.
      */ 
     double updateAdcLEvel() {
-        int analog_value = 0;
-        analog_value = analogRead(ANALOG_PIN);
-        if (analog_value == 0) {
-            analog_value = 1;
+        pinMode(ENABLE_MEASURE_PIN, OUTPUT);
+        digitalWrite(ENABLE_MEASURE_PIN, HIGH);
+        delay(100);
+        int analog_value = analogRead(MEASURE_PIN);
+        delay(100);
+        double vbat = 0.0f;
+        if (analog_value not_eq 0) {
+            vbat = BATTARY_FULL_VALUE * double(analog_value) / 4096.0f;
+            if (vbat < (BATTARY_FULL_VALUE * 0.7)) {
+                ErrorLights::get()->warning();
+            }
         }
-        double level = BATTARY_FULL_VALUE * ((double)(analog_value) / 4096.0);
         #ifdef DEBUG
-        Serial.println("Bat > [" + String(analog_value, DEC) + "]: " + String(level, DEC) + " V");
+        Serial.println("POWER: [" + String(analog_value, DEC) + "]: " + String(vbat, DEC) + " V");
         #endif
-        return level;
+        digitalWrite(ENABLE_MEASURE_PIN, LOW);
+        return vbat;
     }
 
 public:
@@ -135,23 +146,32 @@ public:
     Esion() {
         /// Проверить уровень заряда аккумулятора.
         __adc_level = updateAdcLEvel();
-        delay(50);
-        auto sdc = SdController::getPtr();
         /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
-        sdc->getConfig(SEND_SLEEP_TIME, MAX_COUNT_FOR_SEND);
-        if (sdc->_wc.ssid.length()) {
-            Blink::get()->on();
+        auto nvs = Nvs::get();
+        __device_id = Nvs::get()->getId();
+        #ifdef DEBUG
+        Serial.println("UNIQUE DEVICE ID: [" + Nvs::idToStr(__device_id) + "]");
+        #endif
+        _dev_conf.wc.ssid = nvs->getSsid();
+        _dev_conf.wc.pswd = nvs->getPswd();
+        if (_dev_conf.wc.ssid.length()) {
+            Blink<BLUE_PIN>::get()->on();
             /// Подключение к сети wifi.
             #ifdef DEBUG
-            Serial.println("Connecting to WIFI: \"" + sdc->_wc.ssid + "\"|\"" + sdc->_wc.pswd + "\"");
+            Serial.println("Connecting to WIFI: \"" + _dev_conf.wc.ssid + "\"|\"" + _dev_conf.wc.pswd + "\"");
             #endif
-            WiFi.begin(sdc->_wc.ssid.c_str(), sdc->_wc.pswd.c_str());
-            for (uint16_t i = 0; i < MAX_ATTEMPS_CONNECTIONS && WiFi.status() not_eq WL_CONNECTED; ++i) {
-                delay(100);
+            Blink<BLUE_PIN>::get()->off();
+            WiFi.begin(_dev_conf.wc.ssid.c_str(), _dev_conf.wc.pswd.c_str());
+            for (uint16_t i = 0; ((i < MAX_ATTEMPS_CONNECTIONS) and (WiFi.status() not_eq WL_CONNECTED)); ++i) {
+                Blink<BLUE_PIN>::get()->on();
+                delay(50);
                 #ifdef DEBUG
                 Serial.print(".");
                 #endif
+                Blink<BLUE_PIN>::get()->off();
+                delay(50);
             } 
+            Blink<BLUE_PIN>::get()->on();
             delay(50);
             if (WiFi.status() == WL_CONNECTED) {
                 #ifdef DEBUG
@@ -163,27 +183,25 @@ public:
                 Serial.println("Time is: " + String(ctime(&_now)));
                 #endif
                 /// Выполнить проверку уникального идентификатора.
-                if (Nvs::get()->getId() == 0) {
+                if (__device_id == 0) {
                     __device_id = _now;
                     Nvs::get()->setId(__device_id);
                     #ifdef DEBUG
                     Serial.println("CREATE UNIQUE DEVICE ID: [" + Nvs::idToStr(__device_id) + "]");
                     #endif
-                } else if (not __device_id) {
-                    __device_id = Nvs::get()->getId();
                 }
             } else {
-                Sos::get()->enable();
+                ErrorLights::get()->error();
                 #ifdef DEBUG
                 Serial.println("ERROR: Can`t connet to WIFI.");
                 #endif
             }
             delay(50);
-            Blink::get()->off();
+            Blink<BLUE_PIN>::get()->off();
         } else {
-            Sos::get()->enable();
+            ErrorLights::get()->error();
             #ifdef DEBUG
-            Serial.println("WIFI is not configured.");
+            Serial.println("ERROR: WIFI is not configured.");
             #endif
         }
     }
@@ -192,44 +210,124 @@ public:
         WiFi.disconnect(); // обрываем WIFI соединения
         WiFi.softAPdisconnect(); // отключаем отчку доступа(если она была
         WiFi.mode(WIFI_OFF); // отключаем WIFI
-        SdController::getPtr().reset();
     }
     
     void sendValues() {
-        String counts;
-        counts += String(__count1, DEC) + ",";
-        counts += String(__count2, DEC) + ",";
-        counts += String(__count3, DEC) + ",";
-        counts += String(__count4, DEC) + ",";
-        counts += String(__count5, DEC) + ",";
-        counts += String(__count6, DEC);
-        String time = ctime(&_now);
-        auto sdc = SdController::getPtr();
-        delay(10);
-        String room_id = Nvs::idToStr(__device_id);
-        String data_sjson = String("{\"room_id\":\"" + room_id + "\"" +
-                    ", \"msg\":{\"time\":\"" + time.substring(0, time.length() - 1) + "\"" +
-                    ", \"bat\":" + String(__adc_level, DEC) + 
-                    ", \"counts\":[" + counts + "]}}");
-        #ifdef DEBUG
-        Serial.println("Read (device id) room_id: " + room_id);
-        Serial.println("Read counters: " + counts);
-        #endif
-        /// Отправить данные на сервер.
-        String url = sdc->getUrl();
-        if (url.length()) {
-            Url U(url);
-            _cs.reset(new CountersSender(U.host, U.port, U.path, room_id, data_sjson));
-            _cs->execute();
+        auto nvs = Nvs::get();
+        if (__device_id and nvs) {
+            auto service_url = nvs->getUrl();
+            if (service_url.length()) {
+                String time = ctime(&_now);
+                String id = Nvs::idToStr(__device_id);
+                std::array<uint32_t, 4> icounts({__count1, __count2, __count3, __count4});
+                auto user_name = nvs->getUser();
+                auto desc = nvs->getDescription();
+                auto coll = nvs->getCollectionName();
+                String data_sjson =
+                    "{\"id\":\"" + id + "\"," \
+                    "\"coll\":\"" + coll + "\"," \
+                    "\"power_type\":\"" + POWER_TYPE + "\"," \
+                    "\"power\":\"" + String(__adc_level, DEC) + "\"," \
+                    "\"user\":\"" + user_name + "\"," \
+                    "\"desc\":\"" + desc + "\"," \
+                    "\"time\":" + String(_now, DEC) + "," \
+                    "\"counters\":[";
+                for (uint8_t i = 0; i < icounts.size(); ++i) {
+                    auto count_cfg = nvs->getCounterConfig(i);
+                    data_sjson +=
+                        "{\"type\":\"" + count_cfg.type + "\"";
+                    if (count_cfg.type not_eq "none") {
+                        data_sjson +=
+                            ",\"count\":\"" + String(icounts[i], DEC) + "\"," \
+                            "\"unit\":\"" + count_cfg.unit + "\"," \
+                            "\"units_count\":\"" + count_cfg.unit_impl + "\"," \
+                            "\"serial\":\"" + count_cfg.serial + "\"," \
+                            "\"desc\":\"" + count_cfg.desc + "\"";
+                    }
+                    if (i < icounts.size() - 1) {
+                        data_sjson += "},";
+                    } else {
+                        data_sjson += "}";
+                    }
+                }
+                data_sjson += "]}";
+                #ifdef DEBUG
+                Serial.println("Send: " + data_sjson);
+                #endif
+                /// Отправить данные на сервер.
+                Url U(service_url);
+                _cs.reset(new CountersSender(U.host, U.port, U.path, id, data_sjson));
+                _cs->execute();
+            } else {
+                ErrorLights::get()->error();
+                #ifdef DEBUG
+                Serial.println("ERROR: Can`t send data. Service URL is not set.");
+                #endif
+            }
         } else {
-            Sos::get()->enable();
+            ErrorLights::get()->warning();
             #ifdef DEBUG
-            Serial.println("ERROR: Can`t send data. Service URL is not set.");
+            Serial.println("WARNING: Device ID is not set.");
             #endif
         }
     }
 }; 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void ResetCounters() {
+    auto nvs = Nvs::get();
+    if (nvs) {
+        nvs->setCounter(0, 0);
+        nvs->setCounter(1, 0);
+        nvs->setCounter(2, 0);
+        nvs->setCounter(3, 0);
+        nvs->setCounter(4, 0);
+    }
+}
+
+
+void SaveCounters() {
+    auto nvs = Nvs::get();
+    if (nvs) {
+        if (__count1) {
+            nvs->setCounter(0, __count1);
+        }
+        if (__count2) {
+            nvs->setCounter(1, __count2);
+        }
+        if (__count3) {
+            nvs->setCounter(2, __count3);
+        }
+        if (__count4) {
+            nvs->setCounter(3, __count4);
+        }
+        if (__last_max_count) {
+            nvs->setCounter(4, __last_max_count);
+        }
+    }
+}
+
+
+void RestoreCounters() {
+    auto nvs = Nvs::get();
+    if (nvs) {
+        __count1 = nvs->getCounter(0);
+        __count2 = nvs->getCounter(1);
+        __count3 = nvs->getCounter(2);
+        __count4 = nvs->getCounter(3);
+        __last_max_count = nvs->getCounter(4);
+        #ifdef DEBUG
+        Serial.println("RESTORE -------------------------"); 
+        Serial.println("Count 1: " + String(__count1, DEC)); 
+        Serial.println("Count 2: " + String(__count2, DEC)); 
+        Serial.println("Count 3: " + String(__count3, DEC)); 
+        Serial.println("Count 4: " + String(__count4, DEC)); 
+        Serial.println("Max: " + String(__last_max_count, DEC)); 
+        Serial.println("---------------------------------"); 
+        #endif
+    }
+}
 
 
 void SendTimeout() {
@@ -240,35 +338,16 @@ void SendTimeout() {
     Serial.println("Count 2: " + String(__count2, DEC)); 
     Serial.println("Count 3: " + String(__count3, DEC)); 
     Serial.println("Count 4: " + String(__count4, DEC)); 
-    Serial.println("Count 5: " + String(__count5, DEC)); 
-    Serial.println("Count 6: " + String(__count6, DEC)); 
+    Serial.println("Max: " + String(__last_max_count, DEC)); 
     Serial.println("---------------------------------"); 
     #endif
-    auto sdc = SdController::getPtr();
-    if (sdc) {
-        sdc->saveCounters(__count1, __count2, __count3, __count4, __count5, __count6);
-        Esion::getPtr()->sendValues();
-    }
+    SaveCounters();
+    Esion::getPtr()->sendValues();
 }
 
 
 uint32_t GetMaxCounter() {
-    uint32_t max = __count1;
-    if (max < __count2) {
-        max = __count2;
-    }
-    if (max < __count3) {
-        max = __count3;
-    }
-    if (max < __count4) {
-        max = __count4;
-    }
-    if (max < __count5) {
-        max = __count5;
-    }
-    if (max < __count6) {
-        max = __count6;
-    }
+    uint32_t max = __count1 + __count2 + __count3 + __count4;
     return max;
 }
 
@@ -278,6 +357,9 @@ bool CheckMaxCounts(uint32_t max) {
         #ifdef DEBUG
         Serial.println("Check for send is TRUE."); 
         #endif
+        Blink<BLUE_PIN>::get()->on();
+        delay(10);
+        Blink<BLUE_PIN>::get()->off();
         return true;
     }
     #ifdef DEBUG
@@ -285,6 +367,7 @@ bool CheckMaxCounts(uint32_t max) {
     #endif
     return false;
 }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void WakeupReason() {
@@ -305,51 +388,40 @@ void WakeupReason() {
                     cs->execute(Nvs::idToStr(__device_id), __adc_level);
                     cs.reset();
                 }
-            } else if (wu_bit & GPIO_SEL_32) {
+            } else if (wu_bit & GPIO_SEL_34) {
                 ++__count1;
                 #ifdef DEBUG
-                Serial.println("----------> PIN 32: " + String(__count1, DEC));
+                Serial.println("C1---------> PIN 34: " + String(__count1, DEC));
                 #endif
-            } else if (wu_bit & GPIO_SEL_33) {
+            } else if (wu_bit & GPIO_SEL_39) {
                 ++__count2;
                 #ifdef DEBUG
-                Serial.println("----------> PIN 33: " + String(__count2, DEC));
+                Serial.println("C2---------> PIN 39: " + String(__count2, DEC));
                 #endif
-            } else if (wu_bit & GPIO_SEL_34) {
+            } else if (wu_bit & GPIO_SEL_36) {
                 ++__count3;
                 #ifdef DEBUG
-                Serial.println("----------> PIN 34: " + String(__count3, DEC));
+                Serial.println("C3---------> PIN 36: " + String(__count3, DEC));
                 #endif
             } else if (wu_bit & GPIO_SEL_35) {
                 ++__count4;
                 #ifdef DEBUG
-                Serial.println("----------> PIN 35: " + String(__count4, DEC));
-                #endif
-            } else if (wu_bit & GPIO_SEL_36) {
-                ++__count5;
-                #ifdef DEBUG
-                Serial.println("----------> PIN 36: " + String(__count5, DEC));
-                #endif
-            } else if (wu_bit & GPIO_SEL_39) {
-                ++__count6;
-                #ifdef DEBUG
-                Serial.println("----------> PIN 39: " + String(__count6, DEC));
+                Serial.println("C4---------> PIN 35: " + String(__count4, DEC));
                 #endif
             }
             /// Моргнуть светодиодом на очередной импульс.
-            if ((wu_bit & GPIO_SEL_32) or 
-                (wu_bit & GPIO_SEL_33) or 
-                (wu_bit & GPIO_SEL_34) or 
+            if ((wu_bit & GPIO_SEL_34) or 
                 (wu_bit & GPIO_SEL_35) or 
                 (wu_bit & GPIO_SEL_36) or 
                 (wu_bit & GPIO_SEL_39)) {
-                Blink::get()->on();
-                Blink::get()->off();
+                Blink<RED_PIN>::get()->on();
+                delay(5);
+                Blink<RED_PIN>::get()->off();
             }
         } break;
         case ESP_SLEEP_WAKEUP_TIMER: 
-            SendTimeout(); ///< Отправить данные на сервер.
             __last_max_count = GetMaxCounter(); ///< Запомнить последнее максимальное значение счётчиков.
+            SendTimeout(); ///< Отправить данные на сервер.
             break;
         case ESP_SLEEP_WAKEUP_EXT0:
         case ESP_SLEEP_WAKEUP_TOUCHPAD:
@@ -369,23 +441,23 @@ void setup() {
     if (__is_run) {
         WakeupReason();
     } else {
-        Blink::get()->on();
+        Blink<BLUE_PIN>::get()->on();
         delay(100);
         #ifdef DEBUG
         Serial.println("Start. ==============================");
         #endif
         __is_run = true;
-        Blink::get()->off();
-        /// Прочитать счётчики после перезапуска контроллера.
-        auto sdc = SdController::getPtr();
-        sdc->getCounts(__count1, __count2, __count3, __count4, __count5, __count6);
-        /// Отправить данные на сервер.
-        auto e = Esion::getPtr();
-        e->sendValues();
-        e.reset();
+        Blink<BLUE_PIN>::get()->off();
+        //ResetCounters();
+        /// Прочитать счётчики после перезапуски контроллера.
+        RestoreCounters();
+        ///// Отправить данные на сервер.
+        //auto e = Esion::getPtr();
+        //e->sendValues();
+        //e.reset();
     }
     /// Установить обработчики прерываний на обработку входных импульсов.
-    esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34 | GPIO_SEL_33 | GPIO_SEL_32, ESP_EXT1_WAKEUP_ANY_HIGH);
+    esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34, ESP_EXT1_WAKEUP_ANY_HIGH);
     /// Установить обработчик прерывания по таймеру.
     if (CheckMaxCounts(GetMaxCounter())) {
         esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000);

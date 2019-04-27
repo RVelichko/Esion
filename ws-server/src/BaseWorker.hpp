@@ -33,7 +33,7 @@ protected:
     
     PDbFacade _db; ///< Объект доступа к БД.
 
-    virtual void parseMessage(const std::string &msg, const ConcreteFn &func) = 0;
+    virtual bool parseMessage(const std::string &msg, const ConcreteFn &func) = 0;
     virtual void sendClose(size_t connection_id) = 0;
 
     virtual void onError(size_t connection_id, const boost::system::error_code &ec);

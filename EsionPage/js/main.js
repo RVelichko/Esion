@@ -1,55 +1,16 @@
-test_json = {
-    "id":12345678,
-    "power_type": "6V",
-    "power": "5.9999",
-    "counters": [
-        {
-            "count": 100,
-            "type": "test type1",
-            "unit": "liter",
-            "units_count": 1,
-            "max_value": 1000000000,
-            "serial_num": 001,
-            "desc": "Контроль потребления холодной воды."
-        },
-        {
-            "count": 50,
-            "type": "test type2",
-            "unit": "liter",
-            "units_count": 10,
-            "max_value": 1000000000,
-            "serial_num": 002,
-            "desc": "Контроль потребления горячей воды."
-        },
-        {"type":"none"},
-        {"type":"none"}
-    ],
-    "desc": "Тестовое описание устройства."
-}
-
-
 /**
  * \brief Глобальные переменные.
  */
 window.config = {
     "name": "Control info page",
 	"service": {
-		"address": "127.0.0.1",
-        "_address": "94.127.68.132",
+		"_address": "127.0.0.1",
+        "address": "94.127.68.132",
 		"port": 20000,
-		"rest": "/info",
-		"room_id": "2370053276"
+		"rest": "/info"
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-/**
- * \brief Функция выполняет подключение к сервису связи с устройствойм.
- */
-function ConnectToService() {
-
-}
 
 
 /**
@@ -63,7 +24,6 @@ function SetScrollLogHeight() {
         h = $('#devices_list_container').height() - $('#log_label').height() - 50;
     }
     $('#esion_log').css('max-height', h);
-    //console.log('# ' + h);
 }
 
 
@@ -78,7 +38,6 @@ function SetLogHeight() {
         h = $('#devices_list_container').height();
     }
     $('#log_container').css('height', h);
-    //console.log('# ' + h);
 }
 
 
@@ -159,7 +118,7 @@ function FillCencor(num, jcount) {
                     '<div class=\'row col-xs-4\'>' +
                         '<label style=\'color: green;\'>№ </label>' +
                         '<label style=\'font-size:150%;\'>' + num + '.</label>' +
-                        '<label style=\'color: green;\'>[Ипл.]: </label>' +
+                        '<label style=\'color: green;\'>[Импл.]: </label>' +
                         '<label>' + count + '</label>' +
                     '</div>' +
                     '<div class=\'row col-xs-4\'>' +
@@ -172,11 +131,11 @@ function FillCencor(num, jcount) {
                     '</div>' +
                 '</div>' +
                 '<div class=\'row col-xs-12\'>' +
-                    '<div class=\'row col-xs-3\'' +
+                    '<div class=\'row col-xs-3\'>' +
                         '<label style=\'color: green;\'>Тип: </label>' +
                         '<label>' + type + '</label>' +
                     '</div>' +
-                    '<div class=\'row col-xs-6\'>' +
+                    '<div class=\'row col-xs-9\'>' +
                         '<label style=\'color: green;\'>Серийный номер:</label>' +
                         '<label>' + serial_num + '</label>' +
                     '</div>' +
@@ -295,7 +254,7 @@ function ShowDevice(json) {
 
 
 function AddDeviceListLine(json) {
-    console.log(JSON.stringify(json));
+    console.log(json);
     var desc = 'Контроллер без адреса.';
     if (typeof json['desc'] !== 'undefined') {
         desc = json['desc'];
@@ -358,7 +317,7 @@ function GetList(num, skip) {
         var jstr = JSON.stringify(get_list_cmd);
         window.websock.send(jstr);
         AddRightLog('Snd GET LIST');
-        console.log("Send to server: " + jstr);
+        console.log("Send to server: " + get_list_cmd);
         window.list_num  = window.list_num + 10;
         window.list_skip = window.list_skip + 10;
     } else {
@@ -403,13 +362,24 @@ function HandleSettings() {
             };
             var jstr = JSON.stringify(connect);
             window.websock.send(jstr);
-            console.log("Send to server: " + jstr);
+            console.log("Send to server: " + connect);
+            /// Запустить ping
+            window.jpin_str = JSON.stringify({
+                login: service_login,
+                pswd: service_pswd,
+                coll: collection,
+                ping:'ping'
+            });
+            window.ping_loop = setInterval(function() {
+                window.websock.send(window.jpin_str);
+            }, 10000);
         };
 
         window.websock.onerr = function(e) {
             AddLeftLog('ERR: ' + e.message);
             $("#connect").show();
             console.log(e.message);
+            clearInterval(window.ping_loop);
         };
 
         window.websock.onmessage = function(e) {
@@ -444,15 +414,21 @@ function HandleSettings() {
             } else if (typeof json['id'] !== 'undefined' && typeof json['counters'] !== 'undefined') { ///< Обработка обновлений с устройств.
                 AddLeftLog("Recv device: " + JSON.stringify(json));
                 if (typeof json['time'] !== 'undefined') {
-                    $("#time_label").text(msg.time);
+                    var date = new Date();
+                    date.setTime(parseInt(json.time) * 1000);
+                    $("#update_time_label").text(ParseData(date));
+                } else {
+                    $("#update_time_label").text('00.00.00 00:00:00');
                 }
-                if (typeof json['bat'] !== 'undefined') {
-                    $("#battery_label").text(msg.bat);
+                if (typeof json['power'] !== 'undefined') {
+                    $("#battery_label").text(json.power);
+                } else {
+                    $("#battery_label").text('0V');
                 }
-                if (typeof json['counts'] !== 'undefined') {
-                    $.each(msg.counts, function(key, count) {
-                        $("#sensor_" + key + "_label").text(count);
-                    });
+                if (typeof json['counters'] !== 'undefined') {
+                    FillCencors(json.counters);
+                } else {
+                    ClearCencors();
                 }
             }
         };
@@ -487,12 +463,6 @@ $(window).resize(function() {
 $(document).ready(function() {
     /// Инициализация обработки кнопки и полей с параметрами.
     HandleSettings();
-
-    /// Подключение к сервису для логирования текущих данных от устройства по websocket.
-    ConnectToService();
-    /// Сбросить счётчики.
-    //var json = JSON.parse(test_json);
-    FillCencors(test_json);
 
     /// Обновить высоту лога и Скрола для лога.
     SetLogHeight();

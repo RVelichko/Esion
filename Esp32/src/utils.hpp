@@ -6,10 +6,13 @@
 #include <Arduino.h>
 #include <ArduinoNvs.h>
 
-//#define DEBUG
-//#define DEBUG_WEBSOCKETS
+static const char POWER_TYPE[] = "4AA [6V]"; ///< .
+//static const char POWER_TYPE[] = "Li-ion 18650 [3.8V]"; ///< .
 
-static const int LED_PIN = 2; 
+static const int NUM_COUNTERS = 4; 
+
+static const int BLUE_PIN = 2; 
+static const int RED_PIN = 4; 
 
 
 struct WifiConfig {
@@ -17,8 +20,8 @@ struct WifiConfig {
     String pswd;
     
     WifiConfig() 
-        : ssid({""})
-        , pswd({""})
+        : ssid({""}) //"wifi"})
+        , pswd({""}) //"wifipassword"})
     {}
 };
 
@@ -32,6 +35,7 @@ union BatteryValue {
 };
 
 
+template <int LED_PIN>
 class Blink {
     bool _is_on;
 
@@ -77,52 +81,94 @@ public:
 };
 
 
-class Sos {
+class ErrorLights {
     static constexpr int POINT_DT = 60;     
-    static constexpr int LINE_DT = 500;     
+    static constexpr int LINE_DT = 400;     
 
+    template<int LED_PIN>
     void blinkTime(int dt) {
-        Blink::get()->on();
+        Blink<LED_PIN>::get()->on();
         delay(dt);
-        Blink::get()->off();
+        Blink<LED_PIN>::get()->off();
+        delay(POINT_DT);
     }
 
 public:
-    static Sos* get() {
-        static Sos sos;
-        return &sos;
+    static ErrorLights* get() {
+        static ErrorLights el;
+        return &el;
     }
 
-    Sos() 
+    ErrorLights() 
     {}
 
-    void enable() {
-        /// 3 точки.
-        blinkTime(POINT_DT);
-        delay(POINT_DT);
-        blinkTime(POINT_DT);
-        delay(POINT_DT);
-        blinkTime(POINT_DT);
-        delay(POINT_DT);
+    void error() {
+        blinkTime<RED_PIN>(POINT_DT);
+        blinkTime<BLUE_PIN>(POINT_DT);
+        blinkTime<RED_PIN>(POINT_DT);
+        blinkTime<BLUE_PIN>(POINT_DT);
+        blinkTime<RED_PIN>(POINT_DT);
+        blinkTime<BLUE_PIN>(POINT_DT);
+        blinkTime<RED_PIN>(POINT_DT);
+        blinkTime<BLUE_PIN>(POINT_DT);
+        blinkTime<RED_PIN>(POINT_DT);
+        blinkTime<BLUE_PIN>(POINT_DT);
+        blinkTime<RED_PIN>(POINT_DT);
+        blinkTime<BLUE_PIN>(POINT_DT);
 
-        /// 3 тире.
-        blinkTime(LINE_DT);
-        delay(POINT_DT);
-        blinkTime(LINE_DT);
-        delay(POINT_DT);
-        blinkTime(LINE_DT);
-        delay(POINT_DT);
-
-        /// 3 точки.
-        blinkTime(POINT_DT);
-        delay(POINT_DT);
-        blinkTime(POINT_DT);
-        delay(POINT_DT);
-        blinkTime(POINT_DT);
-        delay(LINE_DT);
+        ///// E.
+        //blinkTime(POINT_DT);
+        ///// R
+        //blinkTime(POINT_DT);
+        //blinkTime(LINE_DT);
+        //blinkTime(POINT_DT);
+        ///// R
+        //blinkTime(POINT_DT);
+        //blinkTime(LINE_DT);
+        //blinkTime(POINT_DT);
+        ///// O
+        //blinkTime(LINE_DT);
+        //blinkTime(LINE_DT);
+        //blinkTime(LINE_DT);
+        ///// R
+        //blinkTime(POINT_DT);
+        //blinkTime(LINE_DT);
+        //blinkTime(POINT_DT);
     }
 
-    ~Sos() 
+    void warning() {
+        blinkTime<RED_PIN>(LINE_DT);
+        blinkTime<RED_PIN>(LINE_DT);
+        blinkTime<RED_PIN>(LINE_DT);
+        blinkTime<RED_PIN>(LINE_DT);
+        blinkTime<RED_PIN>(LINE_DT);
+        ////// W
+        ///blinkTime(POINT_DT);
+        ///blinkTime(LINE_DT);
+        ///blinkTime(LINE_DT);
+        ////// A
+        ///blinkTime(POINT_DT);
+        ///blinkTime(LINE_DT);
+        ////// R
+        ///blinkTime(POINT_DT);
+        ///blinkTime(LINE_DT);
+        ///blinkTime(POINT_DT);
+        ////// N
+        ///blinkTime(LINE_DT);
+        ///blinkTime(POINT_DT);
+        ////// I
+        ///blinkTime(POINT_DT);
+        ///blinkTime(POINT_DT);
+        ////// N
+        ///blinkTime(LINE_DT);
+        ///blinkTime(POINT_DT);
+        ////// G
+        ///blinkTime(LINE_DT);
+        ///blinkTime(LINE_DT);
+        ///blinkTime(POINT_DT);
+    }
+
+    ~ErrorLights() 
     {}
 };
 
@@ -178,11 +224,30 @@ struct Url {
 
 
 /**
+ * \brief Структура описывает подключённый прибор учёта.
+ */ 
+struct CounterConfig {
+    String type;
+    String unit;
+    String unit_impl;
+    String serial;
+    String desc;
+
+    CounterConfig() 
+        : type("none")
+    {}
+};
+
+
+/**
  * \brief Класс обработки энергонезависимой памяти контроллера.
  */ 
 struct Nvs {
     typedef std::unique_ptr<Nvs> PNvs;
 
+    /**
+     * \brief Метод возвращает статичный указатель объект обработчик постоянной памяти.
+     */ 
     static Nvs* get() {
         static PNvs _nvs;
         if (not _nvs) {
@@ -191,29 +256,173 @@ struct Nvs {
         return _nvs.get();
     }
 
+    /**
+     * \brief Метод выполняет преобразование числового идентификатора устройства в строковое представление.
+     */ 
     static String idToStr(uint64_t did) {
         return String((unsigned long)((did & 0xFFFF0000) >> 16 ), DEC) + String((unsigned long)((did & 0x0000FFFF)), DEC);
     } 
 
+    /**
+     * \brief Конструктор инициализирует доступ к постоянной памяти.
+     */ 
     Nvs() {
         NVS.begin();
     }
 
-    void setId(uint64_t id) {
-        NVS.setInt("device_id", id);
+    ~Nvs() {
+        NVS.close();
     }
 
+    /**
+     * \brief Метод выполняет запись идентификатор (должен выполняться 1 раз).
+     */ 
+    void setId(uint64_t id) {
+        NVS.setInt("id", id);
+    }
+
+    /**
+     * \brief Метод возвращает идентификатор контроллера.
+     */ 
     uint64_t getId() {
-        uint64_t uui64 = NVS.getInt("device_id");    
+        uint64_t uui64 = NVS.getInt("id");    
         return uui64;
     }
 
-    void setConfig(const String& conf_dump) {
-        NVS.setString("config", conf_dump);
+    void setSsid(const String& ssid) {
+        NVS.setString("ssid", ssid);
+        #ifdef DEBUG
+        Serial.println("$ Set SSID: " + ssid);
+        #endif
     }
 
-    String getConfig() {
-        String conf = NVS.getString("config");
-        return conf;
+    String getSsid() {
+        String ssid = NVS.getString("ssid");
+        #ifdef DEBUG
+        Serial.println("$ Get SSID: " + ssid);
+        #endif
+        return ssid;
+    }
+
+    void setPswd(const String& pswd) {
+        NVS.setString("pswd", pswd);
+        #ifdef DEBUG
+        Serial.println("$ Set PSWD: " + pswd);
+        #endif
+    }
+
+    String getPswd() {
+        String pswd = NVS.getString("pswd");
+        #ifdef DEBUG
+        Serial.println("$ Get PSWD: " + pswd);
+        #endif
+        return pswd;
+    }
+
+    void setCollectionName(const String& coln) {
+        NVS.setString("coln", coln);
+        #ifdef DEBUG
+        Serial.println("$ Set Collection name: " + coln);
+        #endif
+    }
+
+    String getCollectionName() {
+        String coln = NVS.getString("coln");
+        #ifdef DEBUG
+        Serial.println("$ Get Collection name: " + coln);
+        #endif
+        return coln;
+    }
+
+    void setUser(const String& user) {
+        NVS.setString("usr", user);
+    }
+
+    String getUser() {
+        String user = NVS.getString("usr");
+        return user;
+    }
+
+    void setDescription(const String& desc) {
+        NVS.setString("desc", desc);
+    }
+
+    String getDescription() {
+        String desc = NVS.getString("desc");
+        return desc;
+    }
+
+    void setUrl(const String& url) {
+        NVS.setString("url", url);
+        #ifdef DEBUG
+        Serial.println("$ Set URL: " + url);
+        #endif
+    }
+
+    String getUrl() {
+        String url = NVS.getString("url");
+        #ifdef DEBUG
+        Serial.println("$ Get URL: " + url);
+        #endif
+        return url;
+    }
+
+    void setCounterConfig(uint8_t num, const CounterConfig& count_conf) {
+        String cc = "none";
+        if (count_conf.type not_eq "none") {
+            cc = count_conf.type + "|" + count_conf.serial + "|" + count_conf.unit + "|" + count_conf.unit_impl + "|" + count_conf.desc;
+            NVS.setString("ccfg" + String(num, DEC), cc);
+        }
+        #ifdef DEBUG
+        Serial.println("$ Set counters config: " + cc);
+        #endif
+    }
+
+    CounterConfig getCounterConfig(uint8_t num) {
+        String cc = NVS.getString("ccfg" + String(num, DEC));
+        CounterConfig count_conf;
+        if (cc.length() and cc.substring(0, 4) not_eq "none") {
+            int i = cc.indexOf("|");
+            if (i not_eq -1 and i < cc.length()) {
+                count_conf.type = cc.substring(0, i);
+                cc = cc.substring(i + 1);
+                i = cc.indexOf("|");
+                if (i not_eq -1 and i < cc.length()) {
+                    count_conf.serial = cc.substring(0, i);
+                    cc = cc.substring(i + 1);
+                    i = cc.indexOf("|");
+                    if (i not_eq -1 and i < cc.length()) {
+                        count_conf.unit = cc.substring(0, i);
+                        cc = cc.substring(i + 1);
+                        i = cc.indexOf("|");
+                        if (i not_eq -1 and i < cc.length()) {
+                            count_conf.unit_impl = cc.substring(0, i);
+                            count_conf.desc = cc.substring(i + 1);
+                        }
+                    }
+                }
+            }
+        }
+        #ifdef DEBUG
+        Serial.println("$ Get counters config: " + cc);
+        #endif
+        return count_conf;
+    }
+
+    /**
+     * \brief Метод выполняет запись счётчика в отдельную собственную область.
+     * \param count_num  Номер счётчика.
+     * \param counter  Значение счётчика.
+     */ 
+    void setCounter(uint8_t count_num, uint32_t counter) {
+        NVS.setInt(("ctr" + String(count_num, DEC)).c_str(), counter);
+    }
+
+    /**
+     * \brief Метод возвращает конфигурацию данного контроллера.
+     * \param count_num  Номер счётчика.
+     */ 
+    uint32_t getCounter(uint8_t count_num) {
+        return NVS.getInt(("ctr" + String(count_num, DEC)).c_str());
     }
 };

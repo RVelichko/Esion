@@ -6,7 +6,9 @@
 
 // docker run -i -t -v /home/rostislav/Develop/esion/ws-server:/ws-server ubuntu14 /bin/bash
 // cmake -DCMAKE_C_COMPILER=gcc-4.9 -DCMAKE_CXX_COMPILER=g++-4.9 ..
-// sudo systemctl status esion-srv.service
+// sudo cp esion-srv.service /etc/systemd/system/
+// sudo systemctl start esion-srv
+// sudo systemctl status esion-srv
 
 #include <iostream>
 #include <memory>

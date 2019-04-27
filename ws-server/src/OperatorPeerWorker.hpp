@@ -14,7 +14,7 @@ namespace server {
  * Клас, обрабатывающий подключения клиентских страниц.
  */
 class OperatorPeerWorker : public BaseWorker {
-    virtual void parseMessage(const std::string &msg, const ConcreteFn &func);
+    virtual bool parseMessage(const std::string &msg, const ConcreteFn &func);
     virtual PConnectionValue firstMessage(size_t connection_id, const std::string &msg);
     virtual bool lastMessage(const ConnectionValuesIter &iter, const std::string &msg);
     virtual void sendClose(size_t connection_id);

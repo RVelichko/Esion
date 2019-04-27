@@ -11,7 +11,7 @@ std::string GetVerify(const std::string& login, const std::string& pswd) {
 }
 
 
-void OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
+bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
     Json json;
     { ///< LOCK Розобрать полученную строку в json.
         LockQuard l(_mutex);
@@ -24,8 +24,10 @@ void OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &
         _db->setCollection(coll);
     }
     fn(GetVerify(login, pswd), json);
+    return true;
 } catch(std::exception &e) {
     LOG(ERROR) << "Can`t parse recieved json: " << e.what();
+    return false;
 }
 
 
@@ -56,6 +58,13 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
     if (connection_id == cur_operator_id) {
         LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
         parseMessage(msg, [=](const std::string &verify, const Json &json) {
+            /// Обработка запроса проверки подключения.
+            auto ping = json.value("ping", "");
+            if (not ping.empty()) {
+                Json jsnd = {{"pong", "pong"}};
+                _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
+                LOG(DEBUG) << jsnd;
+            }
             auto jcmd = json.value("cmd", Json());
             if (not jcmd.empty() and jcmd.is_object()) {
                 /// Обработка команды запроса списка устройств из базы.

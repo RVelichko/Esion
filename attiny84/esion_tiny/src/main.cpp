@@ -10,25 +10,29 @@
 #include <avr/power.h>
 
 #include <Arduino.h>
-//#include <SoftwareSerial.h>
 
-//SoftwareSerial Serial(4, 5);  //rx, tx
+//              Attiny84
+//                 _
+//          Vcc --| |-- Gnd
+//  0        10 --| |-- 0         10
+//  1         9 --| |-- 1         9
+// 11       Rst --| |-- 2         8
+//  2         8 --| |-- 3         7
+//  3         7 --| |-- 4  (SCK)  6
+//  4 (MOSI)  6 --|_|-- 5  (MISO) 5
 
 
-#define PI_1 0
-#define PI_2 1
-#define PI_3 11
-#define PI_4 2
-#define PI_5 3
-#define PI_6 4
+#define PI_1 3 // 7
+#define PI_2 2 // 8
+#define PI_3 1 // 9
+#define PI_4 0 // 10
 
-#define PO_1 10
-#define PO_2 9
-#define PO_3 8
-#define PO_4 7
-#define PO_5 6
-#define PO_6 5
+#define PO_1 8 // 2
+#define PO_2 7 // 3
+#define PO_3 6 // 4
+#define PO_4 5
 
+static const uint8_t IMPULS_DEPTH = 10;
 
 // Routines to set and claer bits (used in the sleep code)
 #ifndef cbi
@@ -45,7 +49,6 @@
 // Variables for the Sleep/power down modes:
 volatile boolean f_wdt = 1;
 volatile byte f_flags = 0x00;
-//volatile uint8_t f_test = 0;
 
 
 // 0 = 16ms, 1 = 32ms, 2 = 64ms, 3 = 128ms, 4 = 250ms, 5 = 500ms
@@ -72,35 +75,24 @@ void SetupWatchdog(int ii) {
 // set system into the sleep state
 // system wakes up when wtchdog is timed out
 void SystemSleep() {
-    cbi(ADCSRA,ADEN);                    // switch Analog to Digitalconverter OFF
+    cbi(ADCSRA, ADEN);                   // switch Analog to Digitalconverter OFF
     set_sleep_mode(SLEEP_MODE_PWR_DOWN); // sleep mode is set here
     sleep_enable();
     sleep_mode();                        // System actually sleeps here
     sleep_disable();                     // System continues execution here when watchdog timed out
-    sbi(ADCSRA,ADEN);                    // switch Analog to Digitalconverter ON
+    sbi(ADCSRA, ADEN);                   // switch Analog to Digitalconverter ON
 }
 
 
-void test(int pin) {
-    digitalWrite(pin, HIGH);
-    _delay_ms(100);
-    digitalWrite(pin, LOW);
-    //_delay_ms(100);
-}
+//void test(int pin) {
+//    digitalWrite(pin, HIGH);
+//    _delay_ms(100);
+//    digitalWrite(pin, LOW);
+//    //_delay_ms(100);
+//}
 
 
 void CheckPin(int in_pin, int out_pin, uint8_t mask) {
-    //test(PO_1);
-    //test(PO_2);
-    //test(PO_3);
-    //test(PO_4);
-    //test(PO_5);
-    //test(PO_6);
-    //f_test = f_test + 1;
-    //if (255 < f_test) {
-    //    test();
-    //    f_test = 0;
-    //}
     bool is_pin = (digitalRead(in_pin) == 1);
     bool is_flag = f_flags & mask;
     if (is_pin and not is_flag) {
@@ -114,20 +106,15 @@ void CheckPin(int in_pin, int out_pin, uint8_t mask) {
 
 
 void WorkInputs() {
-    //Serial.print(".");
     CheckPin(PI_1, PO_1, 0b00000001);
     CheckPin(PI_2, PO_2, 0b00000010);
     CheckPin(PI_3, PO_3, 0b00000100);
     CheckPin(PI_4, PO_4, 0b00001000);
-    CheckPin(PI_5, PO_5, 0b00010000);
-    CheckPin(PI_6, PO_6, 0b00100000);
-    _delay_ms(10);
+    _delay_ms(IMPULS_DEPTH);
     digitalWrite(PO_1, LOW);
     digitalWrite(PO_2, LOW);
     digitalWrite(PO_3, LOW);
     digitalWrite(PO_4, LOW);
-    digitalWrite(PO_5, LOW);
-    digitalWrite(PO_6, LOW);
 }
 
 
@@ -139,10 +126,6 @@ void InitOutPin(int pin) {
 
 // the setup routine runs once when you press reset:
 void setup()  {
-    //Serial.begin(9600);
-    //delay(50);
-    //Serial.print("Init.");
-
     // Set up FAST PWM
     TCCR0A = 2 << COM0A0 | 2 << COM0B0 | 3 << WGM00; // Set control register A for Timer 0
     TCCR0B = 0 << WGM02 | 1 << CS00;                 // Set control register B for Timer 0
@@ -151,17 +134,14 @@ void setup()  {
     InitOutPin(PO_2);
     InitOutPin(PO_3);
     InitOutPin(PO_4);
-    InitOutPin(PO_5);
-    InitOutPin(PO_6);
 
     pinMode(PI_1, INPUT);
     pinMode(PI_2, INPUT);
     pinMode(PI_3, INPUT);
     pinMode(PI_4, INPUT);
-    pinMode(PI_5, INPUT);
-    pinMode(PI_6, INPUT);
 
     SetupWatchdog(5); // approximately 0.5 seconds sleep
+    //SetupWatchdog(6); // approximately 0.5 seconds sleep
 }
 
 
@@ -169,6 +149,7 @@ void setup()  {
 void loop()  {
     if (f_wdt == 1) {  // wait for timed out watchdog / flag is set when a watchdog timeout occurs
         f_wdt = 0;       // reset flag
+        //test(PO_4);
         WorkInputs();
         SystemSleep();  // Send the unit to sleep
     }
