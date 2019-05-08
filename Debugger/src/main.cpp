@@ -22,17 +22,10 @@
 //  4 (MOSI)  6 --|_|-- 5  (MISO) 5
 
 
-#define PI_1 3
-#define PI_2 2
-#define PI_3 1
-#define PI_4 0
-              
-#define PO_1 8
-#define PO_2 7
-#define PO_3 6
-#define PO_4 5
-
-static const uint8_t IMPULS_DEPTH = 10;
+#define PO_1 10
+#define PO_2 9
+#define PO_3 8
+#define PO_4 7
 
 // Routines to set and claer bits (used in the sleep code)
 #ifndef cbi
@@ -41,6 +34,9 @@ static const uint8_t IMPULS_DEPTH = 10;
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
+
+
+int __pins[] = { PO_1, PO_2, PO_3, PO_4 };
 
 
 #define INTERNAL2V56NC (6)  // We use the internal voltage reference
@@ -84,37 +80,22 @@ void SystemSleep() {
 }
 
 
-//void test(int pin) {
-//    digitalWrite(pin, HIGH);
-//    _delay_ms(100);
-//    digitalWrite(pin, LOW);
-//    //_delay_ms(100);
-//}
-
-
-void CheckPin(int in_pin, int out_pin, uint8_t mask) {
-    bool is_pin = (digitalRead(in_pin) == 1);
-    bool is_flag = f_flags & mask;
-    if (is_pin and not is_flag) {
+void CheckPin(int pin, uint8_t mask) {
+    if (f_flags & mask) {
         f_flags |= mask;
-        digitalWrite(out_pin, HIGH);
-    }
-    if (not is_pin and is_flag) {
+        digitalWrite(pin, HIGH);
+    } else {
         f_flags ^= mask;
+        digitalWrite(pin, LOW);
     }
+    delay(500);
 }
 
 
 void WorkInputs() {
-    CheckPin(PI_1, PO_1, 0b00000001);
-    CheckPin(PI_2, PO_2, 0b00000010);
-    CheckPin(PI_3, PO_3, 0b00000100);
-    CheckPin(PI_4, PO_4, 0b00001000);
-    _delay_ms(IMPULS_DEPTH);
-    digitalWrite(PO_1, LOW);
-    digitalWrite(PO_2, LOW);
-    digitalWrite(PO_3, LOW);
-    digitalWrite(PO_4, LOW);
+    randomSeed(analogRead(0));
+    int rnd_pin = random(4);
+    CheckPin(__pins[rnd_pin], 1 << rnd_pin);
 }
 
 
@@ -135,13 +116,8 @@ void setup()  {
     InitOutPin(PO_3);
     InitOutPin(PO_4);
 
-    pinMode(PI_1, INPUT);
-    pinMode(PI_2, INPUT);
-    pinMode(PI_3, INPUT);
-    pinMode(PI_4, INPUT);
-
-    SetupWatchdog(5); // approximately 0.5 seconds sleep
-    //SetupWatchdog(6); // approximately 0.5 seconds sleep
+    //SetupWatchdog(5); // approximately 0.5 seconds sleep
+    SetupWatchdog(6); // approximately 1 seconds sleep
 }
 
 
@@ -149,7 +125,6 @@ void setup()  {
 void loop()  {
     if (f_wdt == 1) {  // wait for timed out watchdog / flag is set when a watchdog timeout occurs
         f_wdt = 0;       // reset flag
-        //test(PO_4);
         WorkInputs();
         SystemSleep();  // Send the unit to sleep
     }
