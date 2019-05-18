@@ -246,6 +246,16 @@ function ShowDevice(json) {
     } else {
         ClearCencors();
     }
+    if (typeof json['user'] !== 'undefined') {
+        $('#device_user_label').text(json.user);
+    } else {
+        $('#device_user_label').text('empty');
+    }
+    if (typeof json['desc'] !== 'undefined') {
+        $('#device_description_label').text(json.desc);
+    } else {
+        $('#device_description_label').text('empty');
+    }
     $('#devices_list_container').hide();
     $('#settings_container').show();
     SetLogHeight();

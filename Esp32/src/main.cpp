@@ -43,9 +43,6 @@
 static const int ENABLE_MEASURE_PIN = 25;       ///< Пин включения измерения напряжения.
 static const int MEASURE_PIN = 27; //ADC2_CHANNEL_7;  ///< Пин измерения напряжения.
 
-static const double BATTARY_FULL_VALUE = 6.0;
-//static const double BATTARY_FULL_VALUE = 3.8;
-
 static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
 
 static const uint16_t MAX_ATTEMPS_CONNECTIONS = 200;
@@ -67,9 +64,38 @@ RTC_DATA_ATTR uint32_t __last_max_count = 0;
 RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 10;
 RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10000;
 
-RTC_DATA_ATTR uint64_t __device_id = 0;
+RTC_DATA_ATTR time_t __device_id = 0;
 RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+hw_timer_t * __timer = NULL;
+
+
+void IRAM_ATTR OnTimer() {
+    ESP.restart();
+}
+
+
+void InitTimerInterrupt(int mlss = 1000) {
+    #ifdef DEBUG
+    Serial.println("INIT timer interrupt to " + String(mlss, DEC) + ".");
+    #endif
+    __timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(__timer, &OnTimer, true);
+    int mkss = mlss * 1000;
+    timerAlarmWrite(__timer, mkss, true);
+    timerAlarmEnable(__timer);
+}
+
+
+void ResetTimerInterrupt() {
+    timerAlarmDisable(__timer);
+    #ifdef DEBUG
+    Serial.println("RESET timer interrupt.");
+    #endif
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void ResetCounters();
@@ -96,10 +122,11 @@ private:
     PCountersSender _cs;
     DeviceConfig _dev_conf;
     
+public:
     /**
      * \brief Метод выполняет чтение точного сетевого времени.
      */ 
-    time_t getInternetTime() {
+    static time_t getInternetTime() {
         WiFiUDP ntpUDP;
         NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
         timeClient.begin();
@@ -114,7 +141,7 @@ private:
     /**
      * \brief Метод выполняет считывание значений напряжения питания.
      */ 
-    double updateAdcLEvel() {
+    static double updateAdcLEvel() {
         pinMode(ENABLE_MEASURE_PIN, OUTPUT);
         digitalWrite(ENABLE_MEASURE_PIN, HIGH);
         delay(100);
@@ -148,9 +175,9 @@ public:
         __adc_level = updateAdcLEvel();
         /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
         auto nvs = Nvs::get();
-        __device_id = Nvs::get()->getId();
+        __device_id = nvs->getId();
         #ifdef DEBUG
-        Serial.println("UNIQUE DEVICE ID: [" + Nvs::idToStr(__device_id) + "]");
+        Serial.println("UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
         #endif
         _dev_conf.wc.ssid = nvs->getSsid();
         _dev_conf.wc.pswd = nvs->getPswd();
@@ -187,7 +214,7 @@ public:
                     __device_id = _now;
                     Nvs::get()->setId(__device_id);
                     #ifdef DEBUG
-                    Serial.println("CREATE UNIQUE DEVICE ID: [" + Nvs::idToStr(__device_id) + "]");
+                    Serial.println("CREATE UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
                     #endif
                 }
             } else {
@@ -218,7 +245,7 @@ public:
             auto service_url = nvs->getUrl();
             if (service_url.length()) {
                 String time = ctime(&_now);
-                String id = Nvs::idToStr(__device_id);
+                String id = String(__device_id, DEC);
                 std::array<uint32_t, 4> icounts({__count1, __count2, __count3, __count4});
                 auto user_name = nvs->getUser();
                 auto desc = nvs->getDescription();
@@ -255,9 +282,11 @@ public:
                 Serial.println("Send: " + data_sjson);
                 #endif
                 /// Отправить данные на сервер.
+                InitTimerInterrupt(3000);
                 Url U(service_url);
                 _cs.reset(new CountersSender(U.host, U.port, U.path, id, data_sjson));
                 _cs->execute();
+                ResetTimerInterrupt();
             } else {
                 ErrorLights::get()->error();
                 #ifdef DEBUG
@@ -385,8 +414,15 @@ void WakeupReason() {
                 #endif
                 auto cs = ConfigureServer::getPtr();
                 if (cs) {
-                    cs->execute(Nvs::idToStr(__device_id), __adc_level);
+                    /// Проверить уровень заряда аккумулятора.
+                    __adc_level = Esion::updateAdcLEvel();
+                    /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
+                    __device_id = Nvs::get()->getId();
+                    cs->execute(String(__device_id, DEC), __adc_level);
                     cs.reset();
+                    auto e = Esion::getPtr();
+                    e->sendValues();
+                    e.reset();
                 }
             } else if (wu_bit & GPIO_SEL_34) {
                 ++__count1;
@@ -451,10 +487,6 @@ void setup() {
         //ResetCounters();
         /// Прочитать счётчики после перезапуски контроллера.
         RestoreCounters();
-        ///// Отправить данные на сервер.
-        //auto e = Esion::getPtr();
-        //e->sendValues();
-        //e.reset();
     }
     /// Установить обработчики прерываний на обработку входных импульсов.
     esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34, ESP_EXT1_WAKEUP_ANY_HIGH);

@@ -57,6 +57,8 @@ public:
 
     static void handleSave();
 
+    static void handleCancel();
+
     static void handleNotFound();
 
     static bool parseSettings(const String &js, DeviceConfig& conf);

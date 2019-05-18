@@ -6,8 +6,11 @@
 #include <Arduino.h>
 #include <ArduinoNvs.h>
 
-static const char POWER_TYPE[] = "4AA [6V]"; ///< .
-//static const char POWER_TYPE[] = "Li-ion 18650 [3.8V]"; ///< .
+//static const char POWER_TYPE[] = "4AA [6V]"; ///< .
+//static const double BATTARY_FULL_VALUE = 6.0;
+static const char POWER_TYPE[] = "Li-ion 18650 [3.8V]"; ///< .
+static const double BATTARY_FULL_VALUE = 3.8;
+
 
 static const int NUM_COUNTERS = 4; 
 
@@ -224,6 +227,35 @@ struct Url {
 
 
 /**
+ * \brief Структура экранирует двойные кавычки в строке. 
+ */ 
+struct EscapeQuotes {
+private:
+    String _out;
+
+public:
+    EscapeQuotes(const String &in) {
+        int b = 0;
+        int pos = 0;
+        do {
+            pos = in.indexOf('"', pos);
+            if (pos not_eq -1) {
+                _out += in.substring(b, pos);
+                _out += "\\\"";
+                b = (++pos); 
+            } else {
+                _out += in.substring(b);
+            }
+        } while (pos not_eq -1);
+    }
+
+    operator String () {
+        return _out;
+    }
+};
+
+
+/**
  * \brief Структура описывает подключённый прибор учёта.
  */ 
 struct CounterConfig {
@@ -256,12 +288,12 @@ struct Nvs {
         return _nvs.get();
     }
 
-    /**
-     * \brief Метод выполняет преобразование числового идентификатора устройства в строковое представление.
-     */ 
-    static String idToStr(uint64_t did) {
-        return String((unsigned long)((did & 0xFFFF0000) >> 16 ), DEC) + String((unsigned long)((did & 0x0000FFFF)), DEC);
-    } 
+    ///**
+    // * \brief Метод выполняет преобразование числового идентификатора устройства в строковое представление.
+    // */ 
+    //static String idToStr(uint64_t did) {
+    //    return String((unsigned long)((did & 0xFFFF0000) >> 16 ), DEC) + String((unsigned long)((did & 0x0000FFFF)), DEC);
+    //} 
 
     /**
      * \brief Конструктор инициализирует доступ к постоянной памяти.

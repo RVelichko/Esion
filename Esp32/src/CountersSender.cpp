@@ -59,6 +59,9 @@ CountersSender::~CountersSender() {
 
 
 void CountersSender::execute() {
+    #ifdef DEBUG
+    Serial.println("Try connecting to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
+    #endif
     if (_wsocket.connect(_addr, _path, _port)) {
         #ifdef DEBUG
         Serial.println("Connected to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");

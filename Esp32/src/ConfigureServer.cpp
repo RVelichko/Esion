@@ -13,7 +13,29 @@ double ConfigureServer::_bat_level = 0.0;
 
 
 String ConfigureServer::getPage(const String& dev_id, const String& bat_level) {
-    return  
+    auto conf_srv = getPtr();
+    if (conf_srv) {
+        int count1 = 0;
+        int count2 = 0;
+        int count3 = 0;
+        int count4 = 0;
+        auto nvs = Nvs::get();
+        if (nvs) {
+            conf_srv->_dev_conf.wc.ssid = nvs->getSsid();
+            conf_srv->_dev_conf.wc.pswd = nvs->getPswd();
+            conf_srv->_dev_conf.service_url = nvs->getUrl();
+            conf_srv->_dev_conf.coll_name = nvs->getCollectionName();
+            conf_srv->_dev_conf.user_name = nvs->getUser();
+            conf_srv->_dev_conf.user_desc = nvs->getDescription();
+            for (uint8_t i = 0; i < conf_srv->_dev_conf.counts.size(); ++i) {
+                conf_srv->_dev_conf.counts[i] = nvs->getCounterConfig(i);
+            }
+            count1 = nvs->getCounter(0);
+            count2 = nvs->getCounter(1);
+            count3 = nvs->getCounter(2);
+            count4 = nvs->getCounter(3);
+        }
+        return  
     "<!DOCTYPE html>" \
     "<html>" \
         "<head>" \
@@ -40,6 +62,9 @@ String ConfigureServer::getPage(const String& dev_id, const String& bat_level) {
             ".col-xs-12{width:100%;}" \
             ".col-xs-2,.col-xs-4,.col-xs-6,.col-xs-10,.col-xs-12{position:relative;min-height:1px;padding-bottom:5px;padding-top:5px;padding-right:10px;padding-left:10px;float:left;}" \
             ".border{border:1px solid #1b9c1a;border-radius:3px;}" \
+            ".btn-cancel:hover{background-color:#4841ad;border-color:#4841ad;}" \
+            ".btn-cancel:checked{background-color:#4841ad;border-color:#4841ad;}" \
+            ".btn-cancel{color:#fff;background-color:#5172bf;border-color:#0026ea;}" \
             ".btn-primary:hover{background-color:#0d690c;border-color:#0d690c;}" \
             ".btn-primary:checked{background-color:#0d690c;border-color:#0d690c;}" \
             ".btn-primary{color:#fff;background-color:#1b9c1a;border-color:#0026ea;}" \
@@ -55,94 +80,98 @@ String ConfigureServer::getPage(const String& dev_id, const String& bat_level) {
                                 "<div id='edit_service'>" \
                                     "<div class='row col-xs-12'>" \
                                         "<div class='row col-xs-2'><label style='font-weight:bold'>WiFi SSID</label></div>" \
-                                        "<div class='row col-xs-10'><input id='server_ssid' class='col-xs-12' type='text' placeholder='Укажите wifi SSID.'></div>" \
+                                        "<div class='row col-xs-10'><input id='server_ssid' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.wc.ssid.length())?conf_srv->_dev_conf.wc.ssid:"Укажите wifi SSID.") + "'></div>" \
                                     "</div>" \
                                     "<div class='row col-xs-12'>" \
                                         "<div class='row col-xs-2'><label style='font-weight:bold'>WiFi PSWD</label></div>" \
-                                        "<div class='row col-xs-10'><input id='server_pswd' class='col-xs-12' type='text' placeholder='Укажите wifi PASSWORD.'></div>" \
+                                        "<div class='row col-xs-10'><input id='server_pswd' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.wc.pswd.length())?conf_srv->_dev_conf.wc.pswd:"Укажите wifi PASSWORD.") + "'></div>" \
                                     "</div>" \
                                     "<div class='row col-xs-12'>" \
                                         "<div class='row col-xs-2'><label style='font-weight:bold'>SRV URL</label></div>" \
-                                        "<div class='row col-xs-10'><input id='service_url' class='col-xs-12' type='text' placeholder='Укажите URL сервиса обслуживания.'></div>" \
+                                        "<div class='row col-xs-10'><input id='service_url' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.service_url.length())?conf_srv->_dev_conf.service_url:"Укажите URL сервиса обслуживания.") + "'></div>" \
                                     "</div>" \
                                     "<div class='row col-xs-12'>" \
                                         "<div class='row col-xs-2'><label style='font-weight:bold'>Коллекция</label></div>" \
-                                        "<div class='row col-xs-10'><input id='collection' class='col-xs-12' type='text' placeholder='Укажите имя коллекции для данного устройства.'></div>" \
+                                        "<div class='row col-xs-10'><input id='collection' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.coll_name.length())?conf_srv->_dev_conf.coll_name:"Укажите имя коллекции для данного устройства.") + "'></div>" \
                                     "</div>" \
                                     "<div class='row col-xs-12'>" \
                                         "<div class='row col-xs-2'><label style='font-weight:bold'>Пользователь</label></div>" \
-                                        "<div class='row col-xs-10'><input id='user_name' class='col-xs-12' type='text' placeholder='Укажите ФИО владельца.'></div>" \
+                                        "<div class='row col-xs-10'><input id='user_name' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.user_name.length())?conf_srv->_dev_conf.user_name:"Укажите ФИО владельца.") + "'></div>" \
                                     "</div>" \
                                     "<div class='row col-xs-12'>" \
                                         "<div class='row col-xs-2'><label style='font-weight:bold'>Описание</label></div>" \
-                                        "<div class='row col-xs-10'><input id='desc' class='col-xs-12' type='text' placeholder='Укажите адрес и/или подробности места установки.'></div>" \
+                                        "<div class='row col-xs-10'><input id='desc' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.user_desc.length())?conf_srv->_dev_conf.user_desc:"Укажите адрес и/или подробности места установки.") + "'></div>" \
                                     "</div>" \
                                     "<div class='col-xs-12'><hr></div>" \
                                     "<div class='col-xs-12'>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>№ 1. Тип:</label></div>" \
-                                            "<div class='col-xs-2'><input id='type_1' class='col-xs-12' type='text' placeholder='Тип счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='type_1' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[0].type.length())?conf_srv->_dev_conf.counts[0].type:"none.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_1' class='col-xs-12' type='text' placeholder='Единица измерения.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_1' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[0].unit.length())?conf_srv->_dev_conf.counts[0].unit:"Единица измерения.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит/Импл:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_impl_1' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_impl_1' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[0].unit_impl.length())?conf_srv->_dev_conf.counts[0].unit_impl:"Импульсов на юнит.") + "'></div>" \
                                         "</div>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Сер.Номер:</label></div>" \
-                                            "<div class='col-xs-2'><input id='serial_1' class='col-xs-12' type='text' placeholder='Номер счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='serial_1' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[0].serial.length())?conf_srv->_dev_conf.counts[0].serial:"Номер счетчика.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Описание:</label></div>" \
-                                            "<div class='col-xs-6'><input id='desc_1' class='col-xs-12' type='text' placeholder='Описание счетчика.'></div>" \
+                                            "<div class='col-xs-4'><input id='desc_1' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[0].desc.length())?conf_srv->_dev_conf.counts[0].desc:"Описание счетчика.") + "'></div>" \
+                                            "<div class='col-xs-2'><label style='font-weight:bold'>" + String(count1, DEC) + "</label></div>" \
                                         "</div>" \
                                     "</div>" \
                                     "<div class='col-xs-12'><hr></div>" \
                                     "<div class='col-xs-12'>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>№ 2. Тип:</label></div>" \
-                                            "<div class='col-xs-2'><input id='type_2' class='col-xs-12' type='text' placeholder='Тип счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='type_2' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[1].type.length())?conf_srv->_dev_conf.counts[1].type:"none.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_2' class='col-xs-12' type='text' placeholder='Единица измерения.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_2' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[1].unit.length())?conf_srv->_dev_conf.counts[1].unit:"Единица измерения.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит/Импл:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_impl_2' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_impl_2' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[1].unit_impl.length())?conf_srv->_dev_conf.counts[1].unit_impl:"Импульсов на юнит.") + "'></div>" \
                                         "</div>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Сер.Номер:</label></div>" \
-                                            "<div class='col-xs-2'><input id='serial_2' class='col-xs-12' type='text' placeholder='Номер счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='serial_2' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[1].serial.length())?conf_srv->_dev_conf.counts[1].serial:"Номер счетчика.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Описание:</label></div>" \
-                                            "<div class='col-xs-6'><input id='desc_2' class='col-xs-12' type='text' placeholder='Описание счетчика.'></div>" \
+                                            "<div class='col-xs-4'><input id='desc_2' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[1].desc.length())?conf_srv->_dev_conf.counts[1].desc:"Описание счетчика.") + "'></div>" \
+                                            "<div class='col-xs-2'><label style='font-weight:bold'>" + String(count2, DEC) + "</label></div>" \
                                         "</div>" \
                                     "</div>" \
                                     "<div class='col-xs-12'><hr></div>" \
                                     "<div class='col-xs-12'>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>№ 3. Тип:</label></div>" \
-                                            "<div class='col-xs-2'><input id='type_3' class='col-xs-12' type='text' placeholder='Тип счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='type_3' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[2].type.length())?conf_srv->_dev_conf.counts[2].type:"none.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_3' class='col-xs-12' type='text' placeholder='Единица измерения.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_3' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[2].unit.length())?conf_srv->_dev_conf.counts[2].unit:"Единица измерения.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит/Импл:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_impl_3' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_impl_3' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[2].unit_impl.length())?conf_srv->_dev_conf.counts[2].unit_impl:"Импульсов на юнит.") + "'></div>" \
                                         "</div>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Сер.Номер:</label></div>" \
-                                            "<div class='col-xs-2'><input id='serial_3' class='col-xs-12' type='text' placeholder='Номер счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='serial_3' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[2].serial.length())?conf_srv->_dev_conf.counts[2].serial:"Номер счетчика.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Описание:</label></div>" \
-                                            "<div class='col-xs-6'><input id='desc_3' class='col-xs-12' type='text' placeholder='Описание счетчика.'></div>" \
+                                            "<div class='col-xs-4'><input id='desc_3' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[2].desc.length())?conf_srv->_dev_conf.counts[2].desc:"Описание счетчика.") + "'></div>" \
+                                            "<div class='col-xs-2'><label style='font-weight:bold'>" + String(count3, DEC) + "</label></div>" \
                                         "</div>" \
                                     "</div>" \
                                     "<div class='col-xs-12'><hr></div>" \
                                     "<div class='col-xs-12'>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>№ 4. Тип:</label></div>" \
-                                            "<div class='col-xs-2'><input id='type_4' class='col-xs-12' type='text' placeholder='Тип счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='type_4' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[3].type.length())?conf_srv->_dev_conf.counts[3].type:"none.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_4' class='col-xs-12' type='text' placeholder='Единица измерения.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_4' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[3].unit.length())?conf_srv->_dev_conf.counts[3].unit:"Единица измерения.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Юнит/Импл:</label></div>" \
-                                            "<div class='col-xs-2'><input id='unit_impl_4' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'></div>" \
+                                            "<div class='col-xs-2'><input id='unit_impl_4' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[3].unit_impl.length())?conf_srv->_dev_conf.counts[3].unit_impl:"Импульсов на юнит.") + "'></div>" \
                                         "</div>" \
                                         "<div class='col-xs-12 row'>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Сер.Номер:</label></div>" \
-                                            "<div class='col-xs-2'><input id='serial_4' class='col-xs-12' type='text' placeholder='Номер счетчика.'></div>" \
+                                            "<div class='col-xs-2'><input id='serial_4' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[3].serial.length())?conf_srv->_dev_conf.counts[3].serial:"Номер счетчика.") + "'></div>" \
                                             "<div class='col-xs-2'><label style='font-weight:bold'>Описание:</label></div>" \
-                                            "<div class='col-xs-6'><input id='desc_4' class='col-xs-12' type='text' placeholder='Описание счетчика.'></div>" \
+                                            "<div class='col-xs-4'><input id='desc_4' class='col-xs-12' type='text' placeholder='" + String((conf_srv->_dev_conf.counts[3].desc.length())?conf_srv->_dev_conf.counts[3].desc:"Описание счетчика.") + "'></div>" \
+                                            "<div class='col-xs-2'><label style='font-weight:bold'>" + String(count4, DEC) + "</label></div>" \
                                         "</div>" \
                                     "</div>" \
                                     "<div class='col-xs-12'><hr></div>" \
@@ -154,9 +183,10 @@ String ConfigureServer::getPage(const String& dev_id, const String& bat_level) {
                                 "<div id='battery' class='col-xs-4 right'><label>Напряжение батареи: </label><label id='battery_label' style='font-weight:bold'>" + bat_level + "V</label></div>" \
                             "</div>" \
                             "<div class='row col-xs-12'>" \
-                                "<div class='row col-xs-4'></div>" \
+                                "<div class='row col-xs-2'></div>" \
                                 "<div class='row col-xs-4'><button id='bt_save' class='btn btn-primary col-xs-12' onclick='saveSettings()' style='font-size:130%'>Запомнить настройки</button></div>" \
-                                "<div class='row col-xs-4'></div>" \
+                                "<div class='row col-xs-4'><button id='bt_cancel' class='btn btn-cancel col-xs-12' onclick='cancelSettings()' style='font-size:130%'>Отменить</button></div>" \
+                                "<div class='row col-xs-2'></div>" \
                             "</div>" \
                         "</div>" \
                     "</div>" \
@@ -165,11 +195,16 @@ String ConfigureServer::getPage(const String& dev_id, const String& bat_level) {
             "</div>" \
         "</body>" \
         "<script>" \
+            "function cancelSettings(){" \
+                "var xhr=new XMLHttpRequest();" \
+                "xhr.open('POST','/cancel',true);" \
+                "xhr.setRequestHeader('Content-type','application/x-www-form-urlencoded');" \
+                "xhr.send('json='+JSON.stringify({cancel:'cancel'}));}" \
             "function saveSettings() {" \
-                "var xhr = new XMLHttpRequest();" \
-                "xhr.open('POST', '/save', true);" \
-                "xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');" \
-                "xhr.send('json=' + JSON.stringify({" \
+                "var xhr=new XMLHttpRequest();" \
+                "xhr.open('POST','/save',true);" \
+                "xhr.setRequestHeader('Content-type','application/x-www-form-urlencoded');" \
+                "xhr.send('json='+JSON.stringify({" \
                     "wifi:{" \
                         "ssid:document.getElementById('server_ssid').value," \
                         "pswd:document.getElementById('server_pswd').value}," \
@@ -200,6 +235,8 @@ String ConfigureServer::getPage(const String& dev_id, const String& bat_level) {
                             "desc:document.getElementById('desc_4').value}]}));}" \
         "</script>" \
     "</html>";
+    }
+    return "";
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -225,6 +262,20 @@ void ConfigureServer::handleRoot() {
         #ifdef DEBUG
         Serial.println("Send content");
         #endif
+    }
+}
+
+
+void ConfigureServer::handleCancel() {
+    #ifdef DEBUG
+    Serial.println("REST cancel.");
+    #endif
+    auto conf_srv = getPtr();
+    if (conf_srv) {
+        Blink<BLUE_PIN>::get()->on();
+        conf_srv->_is_complete = true;
+        delay(5);
+        Blink<BLUE_PIN>::get()->off();
     }
 }
 
@@ -302,14 +353,14 @@ bool ConfigureServer::parseSettings(const String &jstr, DeviceConfig& dev_conf) 
             if (not wifi.isNull()) {
                 String ssid =  wifi["ssid"].as<char*>();
                 if (ssid.length()) {
-                    dev_conf.wc.ssid = ssid;
+                    dev_conf.wc.ssid = EscapeQuotes(ssid);
                     #ifdef DEBUG    
                     Serial.println("Read wifi ssid: \"" + dev_conf.wc.ssid + "\"");
                     #endif
                 }
                 String pswd =  wifi["pswd"].as<char*>();
                 if (pswd.length()) {
-                    dev_conf.wc.pswd = pswd;
+                    dev_conf.wc.pswd = EscapeQuotes(pswd);
                     #ifdef DEBUG
                     Serial.println("Read wifi pswd: \"" + dev_conf.wc.pswd + "\"");
                     #endif
@@ -317,28 +368,28 @@ bool ConfigureServer::parseSettings(const String &jstr, DeviceConfig& dev_conf) 
             }
             String url = jbuf["url"].as<char*>();
             if (url.length()) {
-                dev_conf.service_url = url;
+                dev_conf.service_url = EscapeQuotes(url);
                 #ifdef DEBUG
                 Serial.println("Read URL: \"" + dev_conf.service_url + "\"");
                 #endif
             }
             String coll = jbuf["coll"].as<char*>();
             if (coll.length()) {
-                dev_conf.coll_name = coll;
+                dev_conf.coll_name = EscapeQuotes(coll);
                 #ifdef DEBUG
                 Serial.println("Collection: \"" + dev_conf.coll_name + "\"");
                 #endif
             }
             String user = jbuf["user"].as<char*>();
             if (user.length()) {
-                dev_conf.user_name = user;
+                dev_conf.user_name = EscapeQuotes(user);
                 #ifdef DEBUG
                 Serial.println("User name: \"" + dev_conf.user_name + "\"");
                 #endif
             }
             String desc = jbuf["desc"].as<char*>();
             if (desc.length()) {
-                dev_conf.user_desc = desc;
+                dev_conf.user_desc = EscapeQuotes(desc);
                 #ifdef DEBUG
                 Serial.println("Read DESC: \"" + dev_conf.user_desc + "\"");
                 #endif
@@ -349,34 +400,34 @@ bool ConfigureServer::parseSettings(const String &jstr, DeviceConfig& dev_conf) 
                     String si = String(i, DEC);
                     String type = counters[i]["type"].as<char*>();
                     if (type.length() and type not_eq "none") {
-                        dev_conf.counts[i].type = type;
+                        dev_conf.counts[i].type = EscapeQuotes(type);
                         #ifdef DEBUG
                         Serial.println("Read " + si + " type: \"" + type + "\"");
                         #endif
                         String unit = counters[i]["unit"].as<char*>();
                         if (unit.length()) {
-                            dev_conf.counts[i].unit = unit;
+                            dev_conf.counts[i].unit = EscapeQuotes(unit);
                             #ifdef DEBUG
                             Serial.println("Read " + si + " unit: \"" + unit + "\"");
                             #endif
                         }
                         String unit_impl = counters[i]["unit_impl"].as<char*>();
                         if (unit_impl.length()) {
-                            dev_conf.counts[i].unit_impl = unit_impl;
+                            dev_conf.counts[i].unit_impl = EscapeQuotes(unit_impl);
                             #ifdef DEBUG
                             Serial.println("Read " + si + " unit_impl: \"" + unit_impl + "\"");
                             #endif
                         }
                         String serial = counters[i]["serial"].as<char*>();
                         if (serial.length()) {
-                            dev_conf.counts[i].serial = serial;
+                            dev_conf.counts[i].serial = EscapeQuotes(serial);
                             #ifdef DEBUG
                             Serial.println("Read " + si + " serial: \"" + serial + "\"");
                             #endif
                         }
                         String desc = counters[i]["desc"].as<char*>();
                         if (desc.length()) {
-                            dev_conf.counts[i].desc = desc;
+                            dev_conf.counts[i].desc = EscapeQuotes(desc);
                             #ifdef DEBUG
                             Serial.println("Read " + si + " desc: \"" + desc + "\"");
                             #endif
@@ -413,6 +464,7 @@ ConfigureServer::ConfigureServer(const String& srv_ssid, const String& srv_pswd)
     delay(10);
     _server.on("/esion", handleRoot);
     _server.on("/save", HTTP_POST, handleSave);
+    _server.on("/cancel", HTTP_POST, handleCancel);
     _server.onNotFound(handleNotFound);
     _server.begin();
     _start_time = time(nullptr);
@@ -435,6 +487,9 @@ void ConfigureServer::execute(const String& dev_id, double bat_level) {
     _dev_id = dev_id;
     _bat_level = bat_level;
     bool is_timeout = false;
+    #ifdef DEBUG
+    Serial.println(String("Configure server [" + _dev_id + "]; bat = " + String(_bat_level, DEC) + "; is started."));
+    #endif
     while (not _is_complete and not is_timeout) {
         _server.handleClient();
         auto cur_time = time(nullptr); 

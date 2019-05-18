@@ -82,13 +82,13 @@ void SystemSleep() {
 
 void CheckPin(int pin, uint8_t mask) {
     if (f_flags & mask) {
-        f_flags |= mask;
-        digitalWrite(pin, HIGH);
-    } else {
         f_flags ^= mask;
         digitalWrite(pin, LOW);
+    } else {
+        f_flags |= mask;
+        digitalWrite(pin, HIGH);
     }
-    delay(500);
+    //delay(500);
 }
 
 
@@ -102,6 +102,7 @@ void WorkInputs() {
 void InitOutPin(int pin) {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
+    //digitalWrite(pin, HIGH);
 }
 
 
