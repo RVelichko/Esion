@@ -37,6 +37,7 @@
 //
 
 #include "Arduino.h"
+
 #undef SERIAL
 
 
@@ -165,10 +166,10 @@ void pulse(int pin, int times);
 
 #define SPI_MODE0 0x00
 
-class SPISettings {
+class MySPISettings {
   public:
     // clock is in Hz
-    SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode) : clock(clock) {
+    MySPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode) : clock(clock) {
       (void) bitOrder;
       (void) dataMode;
     };
@@ -189,7 +190,7 @@ class BitBangedSPI {
       pinMode(PIN_MISO, INPUT);
     }
 
-    void beginTransaction(SPISettings settings) {
+    void beginTransaction(MySPISettings settings) {
       pulseWidth = (500000 + settings.clock - 1) / settings.clock;
       if (pulseWidth == 0)
         pulseWidth = 1;
@@ -213,10 +214,72 @@ class BitBangedSPI {
     unsigned long pulseWidth; // in microseconds
 };
 
-static BitBangedSPI SPI;
+static BitBangedSPI BBSPI;
 
 #endif
 
+static const char DEFAULT_LOG_FILE[] = "prog.log";
+
+#include <FS.h>
+#include <SD.h>
+
+class SdLogger {
+    int _count;
+    bool _is_inited_sd;
+
+public:
+    SdLogger() : _count(0) {
+        if (SD.begin()) {
+            _is_inited_sd = true;
+        }
+    }
+
+    ~SdLogger() {
+        if (_is_inited_sd) {
+            SD.end();
+        }
+    }
+
+    /**
+     * \brief Метод выполняет чтение SD карты и получения файла с настройками.
+     */ 
+    void get() {
+        if (_is_inited_sd) {
+            File f = SD.open(String("/") + DEFAULT_LOG_FILE, FILE_READ);
+            if (f) {
+                size_t fsize = f.size();
+                String json_str;
+                while (f.available()) {
+                    char ch = f.read(); ///< Для строкового представления обязательно читать в чар переменную.
+                    json_str += ch;
+                }
+                f.close();
+                //parseSettings(json_str);
+            }
+        }
+    }
+
+    void print(const String &fn_name, const String &msg) {
+        ++_count;
+        File f = SD.open(String("/") + DEFAULT_LOG_FILE, FILE_APPEND);
+        if (f) {
+            String slog = String(_count, DEC) + ". [" + fn_name + "]: " + msg + '\n';
+            const uint8_t* p = reinterpret_cast<const uint8_t*>(slog.c_str());
+            size_t len = slog.length();
+            f.write(p, len);
+            f.close();
+        }
+    }
+};
+
+
+static void LOG(const String &fn_name, const String &msg) {
+  static SdLogger sd_logger;
+  sd_logger.print(fn_name, msg);
+}
+
+
+/// 
 void setup() {
   SERIAL.begin(BAUDRATE);
 
@@ -301,10 +364,14 @@ uint8_t getch() {
   while (!SERIAL.available());
   return SERIAL.read();
 }
+
 void fill(int n) {
+  String fll;
   for (int x = 0; x < n; x++) {
     buff[x] = getch();
+    fll += String(buff[x], HEX) + ".";
   }
+  LOG("FILL", fll);
 }
 
 #define PTIME 30
@@ -324,10 +391,11 @@ void prog_lamp(int state) {
 }
 
 uint8_t spi_transaction(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
-  SPI.transfer(a);
-  SPI.transfer(b);
-  SPI.transfer(c);
-  return SPI.transfer(d);
+  LOG("SPI_TRANS", String(a, HEX) + " " + String(b, HEX) + " " + String(c, HEX) + " " + String(d, HEX));
+  BBSPI.transfer(a);
+  BBSPI.transfer(b);
+  BBSPI.transfer(c);
+  return BBSPI.transfer(d);
 }
 
 void empty_reply() {
@@ -398,7 +466,7 @@ void set_parameters() {
 }
 
 void start_pmode() {
-
+  LOG("START_PRG", "");
   // Reset target before driving PIN_SCK or PIN_MOSI
 
   // SPI.begin() will configure SS as output, so SPI master mode is selected.
@@ -407,8 +475,8 @@ void start_pmode() {
   // (reset_target() first sets the correct level)
   reset_target(true);
   pinMode(RESET, OUTPUT);
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(SPI_CLOCK, MSBFIRST, SPI_MODE0));
+  BBSPI.begin();
+  BBSPI.beginTransaction(MySPISettings(SPI_CLOCK, MSBFIRST, SPI_MODE0));
 
   // See AVR datasheets, chapter "SERIAL_PRG Programming Algorithm":
 
@@ -428,13 +496,14 @@ void start_pmode() {
 }
 
 void end_pmode() {
-  SPI.end();
+  BBSPI.end();
   // We're about to take the target out of reset so configure SPI pins as input
   pinMode(PIN_MOSI, INPUT);
   pinMode(PIN_SCK, INPUT);
   reset_target(false);
   pinMode(RESET, INPUT);
   pmode = 0;
+  LOG("END_PRG", "");
 }
 
 void universal() {
@@ -446,12 +515,15 @@ void universal() {
 }
 
 void flash(uint8_t hilo, unsigned int addr, uint8_t data) {
+  LOG("FLASH", String(hilo, HEX) + ": [" + String(addr, HEX) + "] " + String(data, HEX));
   spi_transaction(0x40 + 8 * hilo,
                   addr >> 8 & 0xFF,
                   addr & 0xFF,
                   data);
 }
+
 void commit(unsigned int addr) {
+  LOG("COMMIT", "[" + String(addr, HEX) + "]");
   if (PROG_FLICKER) {
     prog_lamp(LOW);
   }
@@ -480,6 +552,7 @@ unsigned int current_page() {
 
 
 void write_flash(int length) {
+  LOG("WR_FLASH", "len: " + String(length, DEC));
   fill(length);
   if (CRC_EOP == getch()) {
     SERIAL.print((char) STK_INSYNC);
@@ -510,6 +583,7 @@ uint8_t write_flash_pages(int length) {
 
 #define EECHUNK (32)
 uint8_t write_eeprom(unsigned int length) {
+  LOG("WR_EEPROM", "len: " + String(length, DEC));
   // here is a word address, get the byte address
   unsigned int start = here * 2;
   unsigned int remaining = length;
@@ -525,6 +599,7 @@ uint8_t write_eeprom(unsigned int length) {
   write_eeprom_chunk(start, remaining);
   return STK_OK;
 }
+
 // write (length) bytes, (start) is a byte address
 uint8_t write_eeprom_chunk(unsigned int start, unsigned int length) {
   // this writes byte-by-byte, page writing may be faster (4 bytes at a time)
@@ -579,6 +654,7 @@ char flash_read_page(int length) {
     SERIAL.print((char) high);
     here++;
   }
+  LOG("F_RPAGE", "len: " + String(length, DEC));
   return STK_OK;
 }
 
@@ -590,6 +666,7 @@ char eeprom_read_page(int length) {
     uint8_t ee = spi_transaction(0xA0, (addr >> 8) & 0xFF, addr & 0xFF, 0xFF);
     SERIAL.print((char) ee);
   }
+  LOG("E_RPAGE", "len: " + String(length, DEC));
   return STK_OK;
 }
 
@@ -607,6 +684,7 @@ void read_page() {
   if (memtype == 'F') result = flash_read_page(length);
   if (memtype == 'E') result = eeprom_read_page(length);
   SERIAL.print(result);
+  LOG("RPAGE", "len: " + String(length, DEC) + "; mtype:" + memtype);
 }
 
 void read_signature() {
@@ -623,6 +701,7 @@ void read_signature() {
   uint8_t low = spi_transaction(0x30, 0x00, 0x02, 0x00);
   SERIAL.print((char) low);
   SERIAL.print((char) STK_OK);
+  LOG("SIGN", String(high, DEC) + " " + String(middle, DEC) + " " + String(low, DEC));
 }
 //////////////////////////////////////////
 //////////////////////////////////////////
@@ -634,11 +713,13 @@ void avrisp() {
   uint8_t ch = getch();
   switch (ch) {
     case '0': // signon
+      //LOG("AVRISP", "0");
       error = 0;
       empty_reply();
       break;
     case '1':
       if (getch() == CRC_EOP) {
+        //LOG("AVRISP", "1");
         SERIAL.print((char) STK_INSYNC);
         SERIAL.print("AVR ISP");
         SERIAL.print((char) STK_OK);
@@ -649,62 +730,76 @@ void avrisp() {
       }
       break;
     case 'A':
+      //LOG("AVRISP", "A");
       get_version(getch());
       break;
     case 'B':
+      LOG("AVRISP", "B");
       fill(20);
       set_parameters();
       empty_reply();
       break;
     case 'E': // extended parameters - ignore for now
+      LOG("AVRISP", "E");
       fill(5);
       empty_reply();
       break;
     case 'P':
-      if (!pmode)
+      if (!pmode) {
+        LOG("AVRISP", "P");
         start_pmode();
+      }
       empty_reply();
       break;
     case 'U': // set address (word)
+      LOG("AVRISP", "U");
       here = getch();
       here += 256 * getch();
       empty_reply();
       break;
 
     case 0x60: //STK_PROG_FLASH
+      LOG("AVRISP", "0x60");
       getch(); // low addr
       getch(); // high addr
       empty_reply();
       break;
     case 0x61: //STK_PROG_DATA
+      LOG("AVRISP", "0x61");
       getch(); // data
       empty_reply();
       break;
 
     case 0x64: //STK_PROG_PAGE
+      LOG("AVRISP", "0x64");
       program_page();
       break;
 
     case 0x74: //STK_READ_PAGE 't'
+      LOG("AVRISP", "0x74");
       read_page();
       break;
 
     case 'V': //0x56
+      LOG("AVRISP", "V");
       universal();
       break;
     case 'Q': //0x51
+      LOG("AVRISP", "Q");
       error = 0;
       end_pmode();
       empty_reply();
       break;
 
     case 0x75: //STK_READ_SIGN 'u'
+      LOG("AVRISP", "0x75");
       read_signature();
       break;
 
     // expecting a command, not CRC_EOP
     // this is how we can get back in sync
     case CRC_EOP:
+      LOG("AVRISP", "EOP");
       error++;
       SERIAL.print((char) STK_NOSYNC);
       break;
