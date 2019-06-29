@@ -106,7 +106,8 @@ function addDevice() {
                 name:"add_dev",
                 data: {
                     qstr: qstr,
-                    _id: _id
+                    _id: _id,
+                    token: window.token
                 }
             }
         };
@@ -122,14 +123,15 @@ function addDevice() {
 
 function findDevices() {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
-        var qstr = СhangeSetting('#id_add_dev');
+        var qstr = СhangeSetting('#id_find_devs');
         var jfind_devs = {
             cmd: {
                 name:"find_devs",
                 data: {
                     qstr: qstr,
-                    offest: 0,
-                    max: 100
+                    offset: 0,
+                    max: 100,
+                    token: window.token
                 }
             }
         };
@@ -154,7 +156,8 @@ function addEvent() {
                 name:"add_ev",
                 data: {
                     qstr: qstr,
-                    _id: _id
+                    _id: _id,
+                    token: window.token
                 }
             }
         };
@@ -170,14 +173,15 @@ function addEvent() {
 
 function findEvents() {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
-        var qstr = СhangeSetting('#id_add_dev');
+        var qstr = СhangeSetting('#id_find_evs');
         var jfind_evs = {
             cmd: {
                 name:"find_evs",
                 data: {
                     qstr: qstr,
                     offest: 0,
-                    max: 100
+                    max: 100,
+                    token: window.token
                 }
             }
         };
@@ -231,7 +235,7 @@ function HandleSettings() {
         console.log('recv: ' + e.data);
         var json = JSON.parse(e.data);
         if (json === null) {
-            AddLeftLog('Device is not connected yet.');
+            AddLeftLog('ERR: Responce is NULL.');
         } else if (typeof json['resp'] !== 'undefined') { ///< Обработка команд.
             var resp = json.resp;
             if (typeof resp["status"] !== 'undefined') {
@@ -239,7 +243,12 @@ function HandleSettings() {
                     if (typeof resp.name !== 'undefined') {
                         var cmd_name = resp.name;
                         if (cmd_name === 'auth') {
-                            AddRightLog('Connecting to Search Index server!');
+                            if (typeof resp['token'] !== 'undefined') {
+                                window.token = resp.token;
+                                AddRightLog('Connecting to Search Index server! Token is ' + resp.token);
+                            } else {
+                                AddRightLog('ERR: Reseave undeclared token!');
+                            }
                         }
                         if (cmd_name === 'add_dev') {
                             AddRightLog('Device is added to index!');
@@ -267,7 +276,12 @@ function HandleSettings() {
                         AddRightLog('ERR: Undeclared responce command name.');
                     }
                 } else if (typeof resp["desc"] !== 'undefined') {
-                    AddRightLog('ERR: ' + resp.desc);
+                    if (typeof resp.name !== 'undefined') {
+                        var cmd_name = resp.name;
+                        AddRightLog('ERR: cmd[' + cmd_name + ']: ' + resp.desc);
+                    } else {
+                        AddRightLog('ERR: [undefined cmd name]: ' + resp.desc);
+                    }
                 } else {
                     AddRightLog('ERR: Undefined "decs".');
                 }
@@ -282,17 +296,6 @@ function HandleSettings() {
         AddRightLog('WebSocket is Closed.');
         $("#connect").show();
     };
-
-    $('#next_bt').click(function(e) {
-        GetList(window.list_num, window.list_skip);
-    });
-
-    $('#show_all_bt').click(function(e) {
-        $('#devices_list_container').show();
-        $('#settings_container').hide();
-        SetLogHeight();
-        SetScrollLogHeight();
-    });
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

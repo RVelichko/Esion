@@ -6,20 +6,20 @@
 
 
 namespace bfs = boost::filesystem;
-//namespace fs = std::filesystem;
 
 using namespace sindex;
 using namespace server;
 
 
-bool IndexDbFacade::addIndex(Xapian::WritableDatabase *xdb, const std::string& db_id, const std::string& str) {
+bool IndexDbFacade::addIndex(Xapian::WritableDatabase *xdb, const std::string& db_id, const std::string& str) try {
     bool is_ok = false;
     if (xdb) {
         Xapian::Document doc;
         Xapian::TermGenerator term_gen;
         term_gen.set_stemmer(Xapian::Stem("ru"));
         term_gen.set_document(doc);
-        term_gen.index_text(str, 1, "S");
+        term_gen.index_text("address", 1, "S");
+        term_gen.index_text(str);
         doc.set_data(db_id);
         std::string id_term = "Q" + db_id;
         doc.add_boolean_term(id_term);
@@ -29,16 +29,19 @@ bool IndexDbFacade::addIndex(Xapian::WritableDatabase *xdb, const std::string& d
         LOG(FATAL) << "Xapian DB is`t inited!";
     }
     return is_ok;
+} catch (std::exception& e) {
+    LOG(ERROR) << "Can`t add index: \"" << e.what() << "\"";
+    return false;
 }
 
 
 std::vector<std::string> IndexDbFacade::findIndexes(Xapian::WritableDatabase *xdb, const std::string& qstr,
-                                                    size_t offset, size_t max_count) {
+                                                    size_t offset, size_t max_count) try {
     std::vector<std::string> ids;
     Xapian::QueryParser qparsr;
     qparsr.set_stemmer(Xapian::Stem("ru"));
     qparsr.set_stemming_strategy(qparsr.STEM_SOME);
-    qparsr.add_prefix("title", "S");
+    qparsr.add_prefix("address", "S");
     Xapian::Query query = qparsr.parse_query(qstr);
     Xapian::Enquire enquire(*xdb);
     enquire.set_query(query);
@@ -50,13 +53,22 @@ std::vector<std::string> IndexDbFacade::findIndexes(Xapian::WritableDatabase *xd
         ids.push_back(m.get_document().get_data());
     }
     return ids;
+} catch (std::exception& e) {
+    LOG(ERROR) << "Can`t find indexes: \"" << e.what() << "\"";
+    return std::vector<std::string>();
 }
 
 
-PXapianDatabase IndexDbFacade::initIndexes(const std::string &index_name, const std::string &coll_name) {
-    auto xdb = PXapianDatabase(new Xapian::WritableDatabase(_xdb_path + "_" + index_name, Xapian::DB_CREATE_OR_OPEN));
+PXapianDatabase IndexDbFacade::initIndexes(const std::string &index_name, const std::string &coll_name) try {
+    PXapianDatabase xdb;
+    auto path = bfs::path(_xdb_path + "_" + index_name);
+    if (bfs::exists(path)) {
+        xdb = PXapianDatabase(new Xapian::WritableDatabase(path.string(), Xapian::DB_CREATE_OR_OPEN));
+    } else {
+        LOG(FATAL) << "Can`t create or find path " << path << "";
+    }
     /// Сверить количество индексных записей с внешней БД.
-    if (_db) {
+    if (_db and xdb) {
         size_t db_length = _db->getCollectionCount("", coll_name);
         size_t xdb_length = xdb->get_doccount();
         if (xdb_length < db_length) {
@@ -91,6 +103,9 @@ PXapianDatabase IndexDbFacade::initIndexes(const std::string &index_name, const 
         LOG(FATAL) << "DB is NULL!";
     }
     return xdb;
+} catch (std::exception& e) {
+    LOG(FATAL) << "Can`t init index DB: \"" << e.what() << "\"";
+    return PXapianDatabase();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

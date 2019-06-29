@@ -24,8 +24,8 @@
 
 static const size_t DEFAULT_SERVER_PORT = 30000;
 static char DEFAULT_INDEX_POINT[] = "^/index?$";
-static char DEFAULT_INDEX_PATH[] = "~/index";
-static char DEFAULT_INDEX_DB_LOGIN[] = "Index";
+static char DEFAULT_INDEX_PATH[] = "index";
+static char DEFAULT_INDEX_DB_LOGIN[] = "index";
 static char DEFAULT_INDEX_DB_PSWD[] = "Vishen";
 
 static char DEFAULT_DB_ADDRESS[]  = "127.0.0.1";
@@ -148,8 +148,8 @@ int main(int argc_, char **argv_) {
         /// Объект синхронизации доступа к общим объектам.
         std::mutex mutex;
         /// Точка подключения для запросов индексов.
-        BaseCommand::_login = __global_args.index_db_login = optarg;
-        BaseCommand::_pswd = __global_args.index_db_pswd = optarg;
+        BaseCommand::_login = __global_args.index_db_login;
+        BaseCommand::_pswd = __global_args.index_db_pswd;
         PSearchIndexPeerWorker index_pw = std::make_shared<SearchIndexPeerWorker>(mutex, xdb);
         /// Конструирование сервера
         UniWsServer p2p(__global_args.port, "", "", std::make_pair(__global_args.index_point, index_pw));

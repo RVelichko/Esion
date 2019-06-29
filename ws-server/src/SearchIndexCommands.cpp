@@ -1,3 +1,4 @@
+#include "uuid.hpp"
 #include "Log.hpp"
 #include "SearchIndexCommands.hpp"
 
@@ -7,6 +8,7 @@ using namespace sindex;
 typedef std::lock_guard<std::mutex> LockQuard;
 
 std::mutex BaseCommand::_xdb_mutex;
+std::string BaseCommand::_token;
 
 std::string BaseCommand::_login;
 std::string BaseCommand::_pswd;
@@ -134,10 +136,12 @@ Json AuthorizeCommand::execute() {
             } else {
                 if (BaseCommand::_login == login and
                     BaseCommand::_pswd == pswd) {
+                    BaseCommand::_token = utils::GenerateHex();
                     jres = {
                         {"resp", {
                             {"name", _name},
-                            {"status", "ok"}
+                            {"status", "ok"},
+                            {"token", BaseCommand::_token}
                         }}
                     };
                 } else {
@@ -170,30 +174,35 @@ AddDeviceCommand::~AddDeviceCommand() {
 Json AddDeviceCommand::execute() {
     Json jres;
     if (_is_corrected) {
-        auto jqstr = _jdata.find("qstr");
-        auto j_id = _jdata.find("_id");
-        if (jqstr not_eq _jdata.end() and j_id not_eq _jdata.end()) {
-            bool is_ok = false;
-            _xdb_mutex.lock();
-            if (_xdb) {
-                is_ok = _xdb->addDeviceIndex(*j_id, *jqstr);
-                _xdb_mutex.unlock();
+        auto jtoken = _jdata.find("token");
+        if (jtoken not_eq _jdata.end() and *jtoken == BaseCommand::_token) {
+            auto jqstr = _jdata.find("qstr");
+            auto j_id = _jdata.find("_id");
+            if (jqstr not_eq _jdata.end() and j_id not_eq _jdata.end()) {
+                bool is_ok = false;
+                _xdb_mutex.lock();
+                if (_xdb) {
+                    is_ok = _xdb->addDeviceIndex(*j_id, *jqstr);
+                    _xdb_mutex.unlock();
+                } else {
+                    _xdb_mutex.unlock();
+                    LOG(FATAL) << "Index server ic NULL!";
+                }
+                if (is_ok) {
+                    jres = {
+                        {"resp", {
+                            {"name", "add_dev"},
+                            {"status", "ok"}
+                        }}
+                    };
+                } else {
+                    jres = getErrorResponce("Can`t add device.");
+                }
             } else {
-                _xdb_mutex.unlock();
-                LOG(FATAL) << "Index server ic NULL!";
-            }
-            if (is_ok) {
-                jres = {
-                    {"resp", {
-                        {"name", "add_dev"},
-                        {"status", "ok"}
-                    }}
-                };
-            } else {
-                jres = getErrorResponce("Can`t add device.");
+                jres = getErrorResponce("Incorrect command data format.");
             }
         } else {
-            jres = getErrorResponce("Incorrect command data format.");
+            jres = getErrorResponce("Incorrect auth token.");
         }
     }
     _snd_fn(jres.dump());
@@ -216,7 +225,45 @@ FindDevicesCommand::~FindDevicesCommand() {
 Json FindDevicesCommand::execute() {
     Json jres;
     if (_is_corrected) {
-        jres = getErrorResponce("Is`t implemented yet.");
+        auto jtoken = _jdata.find("token");
+        if (jtoken not_eq _jdata.end() and *jtoken == BaseCommand::_token) {
+            auto jqstr = _jdata.find("qstr");
+            auto joffset = _jdata.find("offset");
+            auto jmax = _jdata.find("max");
+            if (jqstr not_eq _jdata.end() and jqstr->is_string() and
+                joffset not_eq _jdata.end() and joffset->is_number() and
+                jmax not_eq _jdata.end() and jmax->is_number()) {
+                std::string qstr = *jqstr;
+                size_t offset = *joffset;
+                size_t max = *jmax;
+                BaseCommand::_xdb_mutex.lock();
+                if (_xdb) {
+                    auto indexes = _xdb->getDevicesIndexes(qstr, offset, max);
+                    BaseCommand::_xdb_mutex.unlock();
+                    Json jindexes;
+                    for (auto index : indexes) {
+                        jindexes.push_back(index);
+                    }
+                    jres = {
+                        {"resp", {
+                             {"name", "find_devs"},
+                             {"status", "ok"},
+                             {"indexes", jindexes}
+                         }}
+                    };
+                } else {
+                    BaseCommand::_xdb_mutex.unlock();
+                    LOG(FATAL) << "Xapian DB is NULL!";
+                    jres = getErrorResponce("Index DB is NULL.");
+                }
+            } else {
+                LOG(WARNING) << "Command forman is incorrect!";
+                jres = getErrorResponce("Command forman is incorrect.");
+            }
+        } else {
+            LOG(FATAL) << "Xapian DB is NULL!";
+            jres = getErrorResponce("Incorrect auth token.");
+        }
         _snd_fn(jres.dump());
     }
     return jres;
