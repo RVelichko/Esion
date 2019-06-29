@@ -69,7 +69,7 @@ link_directories("/usr/local/lib")
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(CURL REQUIRED)
-
+find_package(Xapian REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 include(${CMAKE_DIR}/TakeComponent.cmake)

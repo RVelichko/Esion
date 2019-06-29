@@ -20,6 +20,7 @@
 #include "SignalDispatcher.hpp"
 #include "WebSocketServer.hpp"
 #include "DbFacade.hpp"
+//#include "IndexDbFacade.hpp"
 #include "Log.hpp"
 
 
@@ -35,6 +36,8 @@ static char DEFAULT_DB_NAME[]     = "devices";
 static char DEFAULT_DB_LOGIN[]    = "esion";
 static char DEFAULT_DB_PASSWORD[] = "esionpassword";
 
+//static char DEFAULT_INDEX_PATH[] = "~/index";
+
 
 struct GlobalArgs {
     int port;           ///< параметр -p
@@ -48,9 +51,11 @@ struct GlobalArgs {
     char* db_name;      ///< параметр -n
     char* db_ligin;     ///< параметр -l
     char* db_pswd;      ///< параметр -s
+    //char* index_path;   ///< параметр -i
 } __global_args;
 
 
+//static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:i:h?";
 static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:h?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,6 +74,7 @@ void HelpMessage() {
               << "\t[-n]\t DB name. [" << DEFAULT_DB_NAME << "]\n"
               << "\t[-l]\t DB login. [" << DEFAULT_DB_LOGIN << "]\n"
               << "\t[-s]\t DB password. [" << DEFAULT_DB_PASSWORD << "]\n"
+              //<< "\t[-i]\t Index DB path. [" << DEFAULT_INDEX_PATH << "]\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
 }
@@ -81,9 +87,11 @@ typedef server::DbFacade DbFacade;
 typedef server::PDbFacade PDbFacade;
 typedef server::DevicePeerWorker DevicePeerWorker;
 typedef server::OperatorPeerWorker OperatorPeerWorker;
+//typedef sindex::IndexDbFacade IndexDbFacade;
+//typedef std::shared_ptr<IndexDbFacade> PIndexDbFacade;
 typedef std::shared_ptr<DevicePeerWorker> PDevicePeerWorker;
 typedef std::shared_ptr<OperatorPeerWorker> POperatorPeerWorker;
-typedef wsocket::WSServer WSServer;
+typedef wsocket::UniWsServer UniWsServer;
 
 
 int main(int argc_, char **argv_) {
@@ -147,13 +155,17 @@ int main(int argc_, char **argv_) {
     /// Доступ к БД.
     PDbFacade db(new DbFacade());
     if (db->connect(__global_args.db_addr, __global_args.db_name, __global_args.db_ligin, __global_args.db_pswd)) {
-        std::mutex mutex; ///< Объект синхронизации доступа к общим объектам.
-        /// Точка подключения робота - источника видеочений
+        ///// Доступ к индексной БД.
+        //PIndexDbFacade xdb = std::make_shared<IndexDbFacade>(db);
+        //xdb->init(__global_args.index_path);
+        /// Объект синхронизации доступа к общим объектам.
+        std::mutex mutex;
+        /// Точка подключения устройства.
         PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, db);
-        /// Точка подключения оператора - потребителя видео
+        /// Точка подключения операторской страницы.
         POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db);
         /// Конструирование сервера
-        WSServer p2p(__global_args.port, 
+        UniWsServer p2p(__global_args.port,
                      __global_args.ssl_crt, 
                      __global_args.ssl_key,
                      std::make_pair(__global_args.device_point, device_pw),

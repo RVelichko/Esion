@@ -1,29 +1,23 @@
+#include <functional>
+
 #include "Log.hpp"
+#include "OperatorCommands.hpp"
 #include "OperatorPeerWorker.hpp"
 
 using namespace server;
+namespace ph = std::placeholders;
 
 typedef std::lock_guard<std::mutex> LockQuard;
 
 
-std::string GetVerify(const std::string& login, const std::string& pswd) {
-    return login + "." + pswd;
-}
-
-
 bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
+    static std::mutex m;
     Json json;
     { ///< LOCK Розобрать полученную строку в json.
-        LockQuard l(_mutex);
+        LockQuard l(m);
         json = Json::parse(msg);
     };
-    std::string login = json.value("login", "");
-    std::string pswd = json.value("pswd", "");
-    std::string coll = json.value("coll", "");
-    if (not coll.empty()) {
-        _db->setCollection(coll);
-    }
-    fn(GetVerify(login, pswd), json);
+    fn(json);
     return true;
 } catch(std::exception &e) {
     LOG(ERROR) << "Can`t parse recieved json: " << e.what();
@@ -34,19 +28,20 @@ bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &
 PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const std::string &msg) {
     LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
     PConnectionValue con_val;
-    parseMessage(msg, [&](const std::string &verify, const Json &json) {
+    parseMessage(msg, [&](const Json &json) {
         con_val = std::make_shared<ConnectionValue>();
-        /// Если оператор уже подключён - оправить ему команду на отключение
-        size_t old_operator_id = BaseWorker::getOperatorConnectionId();
-        if (old_operator_id) {
-            LOG(DEBUG) << "send to OLD operator: " << old_operator_id << "; \"CLOSE\"";
-            Json j  = {{"cmd", "close_old"}};
-            _msg_fn(old_operator_id, j.dump(), WS_STRING_MESSAGE);
+        auto jcmd = json.value("cmd", Json());
+        if (not jcmd.empty() and jcmd.is_object()) {
+            auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
+            auto auth = AuthorizeCommand(connection_id, jcmd, _mutex, _db, snd_fn);
+            if (auth) {
+                auth.execute();
+            } else {
+                LOG(ERROR) << "First command is`t \"auth\"!";
+            }
+        } else {
+            LOG(ERROR) << "First message is`t command! Must by \"auth\" command!";
         }
-        BaseWorker::setOperatorConnectionId(connection_id);
-        Json j  = {{"msg", "connected"}};
-        _msg_fn(connection_id, j.dump(), WS_STRING_MESSAGE);
-        LOG(DEBUG) << "send to operator: " << connection_id << ", " << j.dump();
     });
     return con_val;
 }
@@ -54,45 +49,26 @@ PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const st
 
 bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std::string &msg) {
     size_t connection_id = iter->first;
-    size_t cur_operator_id = BaseWorker::getOperatorConnectionId();
-    if (connection_id == cur_operator_id) {
-        LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
-        parseMessage(msg, [=](const std::string &verify, const Json &json) {
-            /// Обработка запроса проверки подключения.
-            auto ping = json.value("ping", "");
-            if (not ping.empty()) {
-                Json jsnd = {{"pong", "pong"}};
-                _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
-                LOG(DEBUG) << jsnd;
-            }
+    LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
+    parseMessage(msg, [=](const Json &json) {
+        /// Обработка запроса проверки подключения.
+        auto ping = json.find("ping");
+        if (ping not_eq json.end()) {
+            Json jsnd = {{"pong", "pong"}};
+            _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
+            LOG(DEBUG) << jsnd;
+        } else {
             auto jcmd = json.value("cmd", Json());
             if (not jcmd.empty() and jcmd.is_object()) {
-                /// Обработка команды запроса списка устройств из базы.
-                auto jget_list = jcmd.value("get_list", Json());
-                if (not jget_list.empty() and jget_list.is_object()) {
-                    auto jnum = jget_list.value("num", Json());
-                    auto jskip = jget_list.value("skip", Json());
-                    if (not jnum.empty() and not jskip.empty()) {
-                        uint8_t num = static_cast<uint8_t>(jget_list.value("num", 10));
-                        uint8_t skip = static_cast<uint8_t>(jget_list.value("skip", 0));
-                        LockQuard l(_mutex);
-                        if (_db) {
-                            auto devs = _db->getDevices(num, skip);
-                            Json jsnd = {{"devs", devs}};
-                            _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
-                            LOG(DEBUG) << jsnd;
-                        } else {
-                            LOG(FATAL) << "DB is NULL!";
-                        }
-                    } else {
-                        LOG(WARNING) << "Incorrect cmd: [get_list] \"" << jget_list.dump() << "\"";
-                    }
+                auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
+                if (not BaseCommand::executeByName(connection_id, jcmd, _mutex, _db, snd_fn)) {
+                    LOG(ERROR) << "Command is`t exequted!";
                 }
             }
-        });
-        return false;
-    }
-    return true; ///< Завершить работу данного оператора.
+        }
+    });
+    return false;
+    //return true; ///< Завершить работу данного оператора.
 }
 
 

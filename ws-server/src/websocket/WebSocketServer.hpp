@@ -174,8 +174,8 @@ public:
  * Шаблонный Класс, реализующий полный функционал обслуживания соединений для переданных воркеров
  * в качестве варьируемого списка шаблонных аргументов
  */
-class WSServer
-    : public std::enable_shared_from_this<WSServer>
+class UniWsServer
+    : public std::enable_shared_from_this<UniWsServer>
     , private boost::noncopyable {
     typedef std::shared_ptr<WebSocketServer> PWebSocketServer;
     typedef std::pair<std::string, PWorker> WorkerPoint;
@@ -189,7 +189,7 @@ public:
      * \param tworkers Переменная варьируемого списка шаблонных аргументов
      */
     template<class ... TWorkers>
-    WSServer(int port, const std::string &srvcrt, const std::string &srvkey, const TWorkers&... tworkers) {
+    UniWsServer(int port, const std::string &srvcrt, const std::string &srvkey, const TWorkers&... tworkers) {
         /// Инициализация web сервера
         PWebSocketServer server;
         if (not srvcrt.empty() and not srvkey.empty()) {

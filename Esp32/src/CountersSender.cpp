@@ -5,7 +5,7 @@
 #include "utils.hpp"
 
 
-static const uint16_t DEFAULT_RECONNECT_TIMEOUT = 1000; /// mlsecs
+static const uint16_t DEFAULT_RECONNECT_TIMEOUT = 10000; /// mlsecs
 
 
 typedef StaticJsonDocument<500> JsonBufferType;

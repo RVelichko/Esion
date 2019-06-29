@@ -38,6 +38,7 @@
 #include "ConfigureServer.hpp"
 #include "SdController.hpp"
 #include "CountersSender.hpp"
+#include "Programmer.hpp"
 
 
 static const int ENABLE_MEASURE_PIN = 25;       ///< Пин включения измерения напряжения.
@@ -173,7 +174,6 @@ public:
     Esion() {
         /// Проверить уровень заряда аккумулятора.
         __adc_level = updateAdcLEvel();
-        /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
         auto nvs = Nvs::get();
         __device_id = nvs->getId();
         #ifdef DEBUG
@@ -416,7 +416,6 @@ void WakeupReason() {
                 if (cs) {
                     /// Проверить уровень заряда аккумулятора.
                     __adc_level = Esion::updateAdcLEvel();
-                    /// Прочитать файл настроек и установить базовые параметры отправки данных на сервер.
                     __device_id = Nvs::get()->getId();
                     cs->execute(String(__device_id, DEC), __adc_level);
                     cs.reset();
@@ -474,9 +473,25 @@ void setup() {
     #ifdef DEBUG
     Serial.begin(DEFAULT_SERIAL_SPEED);
     #endif
+
     if (__is_run) {
         WakeupReason();
     } else {
+        /// Выполнить прошивку входного контроллера при первом запуске прошивки.
+        Nvs *nvs = Nvs::get();
+        uint32_t is_tiny_flashed = nvs->getFlag("flashed");
+        if (not is_tiny_flashed) {
+            #ifdef DEBUG
+            Serial.println("INIT Programmer.");
+            #endif
+            Programmer prg;
+            Serial.println("Start load.");
+            prg.load(CODE, sizeof(CODE));
+            delay(300);
+            Serial.println("Flash is compette.");
+            nvs->setFlag("flashed", ATTINY84_ID);
+            delay(100);
+        }
         Blink<BLUE_PIN>::get()->on();
         delay(100);
         #ifdef DEBUG

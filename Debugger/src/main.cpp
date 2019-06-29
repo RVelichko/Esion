@@ -40,11 +40,20 @@ int __pins[] = { PO_1, PO_2, PO_3, PO_4 };
 
 
 #define INTERNAL2V56NC (6)  // We use the internal voltage reference
+#define CORRECTING_DELTA 3
 
 
 // Variables for the Sleep/power down modes:
 volatile boolean f_wdt = 1;
 volatile byte f_flags = 0x00;
+volatile int f_relax_count = -1;
+
+volatile uint32_t f_ctrl_counts = 0;
+
+union Counters {
+    uint32_t i;
+    uint8_t arr[4];
+};
 
 
 // 0 = 16ms, 1 = 32ms, 2 = 64ms, 3 = 128ms, 4 = 250ms, 5 = 500ms
@@ -88,14 +97,61 @@ void CheckPin(int pin, uint8_t mask) {
         f_flags |= mask;
         digitalWrite(pin, HIGH);
     }
-    //delay(500);
+}
+
+
+int GetCorreectedPinId(int pin_id) {
+    Counters c;
+    c.i = f_ctrl_counts;
+    auto reset_fn = [&](uint8_t val) {
+        for (uint8_t i = 0; i < sizeof(c.arr); ++i) {
+            if (c.arr[i] < val) {
+                c.arr[i] = val - c.arr[i];
+            } else {
+                c.arr[i] = c.arr[i] - val;
+            }
+        }
+    };
+    int cnt = c.arr[pin_id] + 1;
+    for (uint8_t i = 0; i < sizeof(c.arr); ++i) {
+        if (c.arr[i] < cnt and CORRECTING_DELTA <= (cnt - c.arr[i])) {
+            reset_fn(cnt);
+            pin_id = i;
+            break;
+        } else if (c.arr[i] == 255) {
+            reset_fn(c.arr[i]);
+            break;
+        }
+    }
+    ++c.arr[pin_id];
+    f_ctrl_counts = c.i;
+    return pin_id;
 }
 
 
 void WorkInputs() {
     randomSeed(analogRead(0));
-    int rnd_pin = random(4);
-    CheckPin(__pins[rnd_pin], 1 << rnd_pin);
+    if (random(100) < 72) {
+        randomSeed(analogRead(1));
+        //int rnd_pin = random(4);
+        int rnd_pin = 0;
+        int p = random(100);
+        if (p < 25) {
+            rnd_pin = 3;
+        } else if (p < 50) {
+            rnd_pin = 2;
+        } else if (p < 75) {
+            rnd_pin = 1;
+        }
+        int npin = GetCorreectedPinId(rnd_pin);
+        CheckPin(__pins[npin], 1 << rnd_pin);
+    } else  if (f_flags) {
+        f_flags = 0x00;
+        digitalWrite(PO_1, LOW);
+        digitalWrite(PO_2, LOW);
+        digitalWrite(PO_3, LOW);
+        digitalWrite(PO_4, LOW);
+    }
 }
 
 

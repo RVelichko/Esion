@@ -71,7 +71,7 @@ void Worker::onMessage(size_t connection_id, const std::string &msg) {
         connection_values.erase(iter);
     }
     /// Обновить массив описателей
-    std::lock_guard<std::mutex> lock(_mutex);
+    LockQuard lock(_mutex);
     _connection_values = connection_values;
 }
 

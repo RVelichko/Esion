@@ -26,10 +26,8 @@ typedef wsocket::ConnectionValuesIter ConnectionValuesIter;
  * Базовый клас, предоставляющий обобщённый набор функций
  */
 class BaseWorker : public Worker {
-    static size_t _operator_connection_id;
-
 protected:
-    typedef std::function<void(const std::string&, const Json&)> ConcreteFn;
+    typedef std::function<void(const Json&)> ConcreteFn;
     
     PDbFacade _db; ///< Объект доступа к БД.
 
@@ -39,11 +37,11 @@ protected:
     virtual void onError(size_t connection_id, const boost::system::error_code &ec);
     virtual void onClose(size_t connection_id, int status, const std::string &reason);
 
-    void setOperatorConnectionId(size_t connection_id);
-    size_t getOperatorConnectionId();
+    //void setOperatorConnectionId(size_t connection_id);
+    //size_t getOperatorConnectionId();
 
 public:
-    BaseWorker(std::mutex &mutex, const PDbFacade& db);
+    explicit BaseWorker(std::mutex &mutex, const PDbFacade& db);
     virtual ~BaseWorker();
 };
 } /// server

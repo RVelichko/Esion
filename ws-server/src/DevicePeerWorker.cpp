@@ -20,12 +20,8 @@ bool DevicePeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn
         json = Json::parse(msg);
     };
     std::string dev_id = json.value("id", "");
-    std::string coll = json.value("coll", "");
-    if (not coll.empty()) {
-        _db->setCollection(coll);
-    }
     if (not dev_id.empty()) {
-        fn(dev_id, json);
+        fn(json);
     } else {
         LOG(ERROR) << "Can`t find value \"id\".";
         return false;
@@ -40,10 +36,10 @@ bool DevicePeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn
 PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std::string &msg) {
     LOG(DEBUG) << "con_id = " << connection_id << "; " << msg;
     PDeviceConnectionValue con_val;
-    bool res = parseMessage(msg, [&](const std::string &dev_id, const Json &json) {
+    bool res = parseMessage(msg, [&](const Json &json) {
         /// Сохранить параметры комнаты
         con_val = std::make_shared<DeviceConnectionValue>();
-        con_val->dev_id = dev_id;
+        con_val->dev_id = json.value("id", "");
         /// Загрузить данные в БД.
         Json jcounts = json.value("counters", Json());
         Json status = {{"status", "ok"}};
@@ -57,12 +53,12 @@ PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std:
                     LOG(FATAL) << "DB is NULL!";
                 }
             }
-            /// Если оператор уже подключён - оправить ему данные устройства.
-            size_t operator_id = BaseWorker::getOperatorConnectionId();
-            if (operator_id) {
-                LOG(DEBUG) << "send to operator: " << operator_id << "; \"" <<  jcounts.dump() << "\"";
-                _msg_fn(operator_id, json.dump(), WS_STRING_MESSAGE);
-            }
+            ///// Если оператор уже подключён - оправить ему данные устройства.
+            //size_t operator_id = BaseWorker::getOperatorConnectionId();
+            //if (operator_id) {
+            //    LOG(DEBUG) << "send to operator: " << operator_id << "; \"" <<  jcounts.dump() << "\"";
+            //    _msg_fn(operator_id, json.dump(), WS_STRING_MESSAGE);
+            //}
         } else {
             LOG(WARNING) << "Empty counters. \"" <<  jcounts.dump() << "\"";
             status = {{"status", "Empty counters"}};

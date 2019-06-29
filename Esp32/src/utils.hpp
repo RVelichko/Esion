@@ -6,10 +6,10 @@
 #include <Arduino.h>
 #include <ArduinoNvs.h>
 
-//static const char POWER_TYPE[] = "4AA [6V]"; ///< .
-//static const double BATTARY_FULL_VALUE = 6.0;
-static const char POWER_TYPE[] = "Li-ion 18650 [3.8V]"; ///< .
-static const double BATTARY_FULL_VALUE = 3.8;
+static const char POWER_TYPE[] = "4AA [6V]"; ///< .
+static const double BATTARY_FULL_VALUE = 6.0;
+//static const char POWER_TYPE[] = "Li-ion 18650 [3.8V]"; ///< .
+//static const double BATTARY_FULL_VALUE = 3.8;
 
 
 static const int NUM_COUNTERS = 4; 
@@ -288,12 +288,12 @@ struct Nvs {
         return _nvs.get();
     }
 
-    ///**
-    // * \brief Метод выполняет преобразование числового идентификатора устройства в строковое представление.
-    // */ 
-    //static String idToStr(uint64_t did) {
-    //    return String((unsigned long)((did & 0xFFFF0000) >> 16 ), DEC) + String((unsigned long)((did & 0x0000FFFF)), DEC);
-    //} 
+    /**
+     * \brief Метод выполняет преобразование числового идентификатора устройства в строковое представление.
+     */ 
+    static String idToStr(uint64_t did) {
+        return String((unsigned long)((did & 0xFFFF0000) >> 16 ), DEC) + String((unsigned long)((did & 0x0000FFFF)), DEC);
+    } 
 
     /**
      * \brief Конструктор инициализирует доступ к постоянной памяти.
@@ -304,6 +304,20 @@ struct Nvs {
 
     ~Nvs() {
         NVS.close();
+    }
+
+    /**
+     * \brief Метод выполняет установку флага.
+     */ 
+    void setFlag(const String &name, uint32_t flag) {
+        NVS.setInt(name, flag);
+    }
+
+    /**
+     * \brief Метод выполняет возврат флага.
+     */ 
+    uint32_t getFlag(const String &name) {
+        return NVS.getInt(name);
     }
 
     /**

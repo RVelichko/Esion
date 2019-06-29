@@ -432,6 +432,11 @@ bool ConfigureServer::parseSettings(const String &jstr, DeviceConfig& dev_conf) 
                             Serial.println("Read " + si + " desc: \"" + desc + "\"");
                             #endif
                         }
+                    } else {
+                        dev_conf.counts[i].type = "none";
+                        #ifdef DEBUG
+                        Serial.println("Read " + si + " type: \"none\"");
+                        #endif
                     }
                 }
             }

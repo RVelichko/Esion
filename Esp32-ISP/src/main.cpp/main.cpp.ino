@@ -369,7 +369,7 @@ void fill(int n) {
   String fll;
   for (int x = 0; x < n; x++) {
     buff[x] = getch();
-    fll += String(buff[x], HEX) + ".";
+    fll += ((buff[x] < 0x10) ? "0x0" : "0x") + String(buff[x], HEX) + ",";
   }
   LOG("FILL", fll);
 }
@@ -515,7 +515,6 @@ void universal() {
 }
 
 void flash(uint8_t hilo, unsigned int addr, uint8_t data) {
-  LOG("FLASH", String(hilo, HEX) + ": [" + String(addr, HEX) + "] " + String(data, HEX));
   spi_transaction(0x40 + 8 * hilo,
                   addr >> 8 & 0xFF,
                   addr & 0xFF,
@@ -564,6 +563,7 @@ void write_flash(int length) {
 }
 
 uint8_t write_flash_pages(int length) {
+  String res;
   int x = 0;
   unsigned int page = current_page();
   while (x < length) {
@@ -571,11 +571,14 @@ uint8_t write_flash_pages(int length) {
       commit(page);
       page = current_page();
     }
+    res += (buff[x] < 0x10 ? "0x0":"0x") + String(buff[x], HEX) + ",";
     flash(LOW, here, buff[x++]);
+    res += (buff[x] < 0x10 ? "0x0":"0x") + String(buff[x], HEX) + ",";
     flash(HIGH, here, buff[x++]);
     here++;
   }
 
+  LOG("WRITE", res);
   commit(page);
 
   return STK_OK;
@@ -701,7 +704,7 @@ void read_signature() {
   uint8_t low = spi_transaction(0x30, 0x00, 0x02, 0x00);
   SERIAL.print((char) low);
   SERIAL.print((char) STK_OK);
-  LOG("SIGN", String(high, DEC) + " " + String(middle, DEC) + " " + String(low, DEC));
+  LOG("SIGN", String(high, HEX) + " " + String(middle, HEX) + " " + String(low, HEX));
 }
 //////////////////////////////////////////
 //////////////////////////////////////////
