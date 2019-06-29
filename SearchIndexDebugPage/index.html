@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ESION Index debugger</title>
+        <meta charset='utf-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+        <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css'>
+        <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js'></script>
+        <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js'></script>
+    </head>
+    <style>
+        body{min-width:1000px;font-family:'Roboto',Times,serif;overflow-x: hidden;}
+        input{margin-bottom:3px;margin-top:0px;}
+        label{margin-left:3px;margin-right:3px;font-size:12pt;}
+        .clear{clear:both;}
+        .row{margin-right:-5px;margin-left:-5px;}
+        .row:before,.row:after{display:table;content:' ';}
+        .row:after{clear: both;}
+        .col-xs-1,.col-xs-2,.col-xs-3,.col-xs-4,.col-xs-5,.col-xs-6,.col-xs-7,.col-xs-8,.col-xs-9,.col-xs-10,.col-xs-11,.col-xs-12{position:relative;min-height:1px;padding-bottom:5px;padding-top:5px;padding-right:10px;padding-left:10px;float:left;}
+        .border{border:1px solid rgb(0,200,0);border-radius:3px;}
+        .chart,.msg{width:95%;margin:3px 0;padding:10px;font-size:14px;line-height:16px;text-align:left;color:#333333;border-radius:3px;}
+        .msg,.time{display:block;float:right;font-size:10px;line-height:17px;}
+        .msg-left{float:left;background:#e8e8e8;}
+        .msg-right{float:right;background:#c5eee1;}
+        //.btn{color:green; font-size:150%; border-color:rgb(0,200,0); background-color:transparent;}
+        //.btn:hover{color:rgb(0,100,0); font-size:150%; border-color:rgb(0,150,0); background-color:transparent; border-width:1px;}
+        //.btn:checked{color:rgb(0,100,0); font-size:150%; border-color:rgb(0,150,0); background-color:transparent; border-width:1px;}
+        hr{color:green; display:block; margin-top:0.5em; margin-bottom:0.5em; margin-left:auto; margin-right:auto; border-style:inset; border-width:1px;}
+        .vcenter{display:inline-block;vertical-align:middle;}
+    </style>
+    <body>
+        <div class='col-xs-12'>
+            <div id='esion_container' class='border col-xs-12'>
+                <div class='row col-xs-12'>
+                    <div id='esion_label' class='col-xs-10'>
+                        <h2 style='color: green;'>ESION Index debugger</h2>
+                    </div>
+                    <div id='esion_version' class='col-xs-2' style='text-align: right;'>
+                        <h3>V 1.0</h3>
+                    </div>
+                </div>
+                <div id='container'class='col-xs-12' >
+                    <div class='border col-xs-12'>
+                        <div class='col-xs-12'>
+                            <div id='index_service'>
+                                <div class='row col-xs-12'>
+                                    <div class='row col-xs-1'>
+                                        <label style='color: green;'>add_dev</label>
+                                    </div>
+                                    <div class='row col-xs-2'>
+                                        <input id='id_add_dev_id' class='col-xs-12' type='text' placeholder='_id из основной базы.'>
+                                    </div>
+                                    <div class='row col-xs-8'>
+                                        <input id='id_add_dev' class='col-xs-12' type='text' placeholder='Строка для индексации.'>
+                                    </div>
+                                    <div class='row col-xs-1' style='text-align: right;'>
+                                        <button id='bt_add_dev' class='btn btn-primary col-xs-12' onclick='addDevice()' style='font-size:130%'>snd</button>
+                                    </div>
+                                </div>
+                                <div class='row col-xs-12'>
+                                    <div class='row col-xs-1 vcenter'>
+                                        <label style='color: green;'>find_devs</label>
+                                    </div>
+                                    <div class='row col-xs-10 vcenter style='text-align: right;'>
+                                        <input id='id_find_devs' class='col-xs-12' type='text' placeholder='Строка поискового запроса.'>
+                                    </div>
+                                    <div class='row col-xs-1' style='text-align: right;'>
+                                        <button id='bt_find_dev' class='btn btn-primary col-xs-12' onclick='findDevices()' style='font-size:130%'>snd</button>
+                                    </div>
+                                </div>
+                                <div class='row col-xs-12'>
+                                    <div class='row col-xs-1 vcenter'>
+                                        <label style='color: green;'>add_ev</label>
+                                    </div>
+                                    <div class='row col-xs-2'>
+                                        <input id='id_add_ev_id' class='col-xs-12' type='text' placeholder='_id из основной базы.'>
+                                    </div>
+                                    <div class='row col-xs-8'>
+                                        <input id='id_add_ev' class='col-xs-12' type='text' placeholder='Строка для индексации.'>
+                                    </div>
+                                    <div class='row col-xs-1' style='text-align: right;'>
+                                        <button id='bt_add_ev' class='btn btn-primary col-xs-12' onclick='addEvent()' style='font-size:130%'>snd</button>
+                                    </div>
+                                </div>
+                                <div class='row col-xs-12'>
+                                    <div class='row col-xs-1 vcenter'>
+                                        <label style='color: green;'>find_evs</label>
+                                    </div>
+                                    <div class='row col-xs-10 vcenter style='text-align: right;'>
+                                        <input id='id_find_evs' class='col-xs-12' type='text' placeholder='Строка поискового запроса'>
+                                    </div>
+                                    <div class='row col-xs-1' style='text-align: right;'>
+                                        <button id='bt_find_ev' class='btn btn-primary col-xs-12' onclick='findEvents()' style='font-size:130%'>snd</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class='col-xs-12'><hr></div>
+                    <div id='log_container' class='border col-xs-12'>
+                        <div id='log_label' style='text-align: center;'>
+                            <h3 style="color: green;">LOG:</h3>
+                        </div>
+                        <div id='esion_log' style='overflow-y: auto;'>
+                            <div id='log' class='chart'></div>
+                            <div class='clear'></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="text/javascript" src="js/main.js"></script>
+</html>
