@@ -6,9 +6,15 @@
 
 #pragma once
 
+#include "GeoRequester.hpp"
+#include "DbFacade.hpp"
 #include "BaseWorker.hpp"
 
 namespace server {
+
+typedef server::DbFacade DbFacade;
+typedef std::shared_ptr<DbFacade> PDbFacade;
+typedef std::unique_ptr<GeoRequester> PGeoRequester;
 
 
 /**
@@ -54,8 +60,11 @@ class DevicePeerWorker : public BaseWorker {
     virtual bool lastMessage(const ConnectionValuesIter &iter, const std::string &msg);
     virtual void sendClose(size_t connection_id);
 
+    PDbFacade _db; ///< Объект доступа к БД.
+    PGeoRequester _geo_req;
+
 public:
-    DevicePeerWorker(std::mutex &mutex, const PDbFacade& db);
+    DevicePeerWorker(std::mutex &mutex, const PDbFacade& db, const std::string& ymap_api_key);
     virtual ~DevicePeerWorker();
 };
 } /// server

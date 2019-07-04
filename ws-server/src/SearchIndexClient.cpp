@@ -5,10 +5,24 @@
 using namespace sindex;
 
 
-SearchIndexClient::SearchIndexClient(const ClientWorker &cw, const std::string &srv_url)
-    : _cw(cw) {
+SearchIndexClient::SearchIndexClient(const ClientWorker &cw, const std::string &srv_url,
+                                     const std::string &login, const std::string &pswd)
+    : _srv_url(srv_url)
+    , _cw(cw)
+    , _si_login(login)
+    , _si_pswd(pswd) {
     LOG(DEBUG);
-    _client = PWsClient(new WsClient(srv_url));
+}
+
+
+SearchIndexClient::~SearchIndexClient() {
+    LOG(DEBUG);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void SearchIndexClient::start() {
+    _client = PWsClient(new WsClient(_srv_url));
     _client->onmessage = [&,this](PMessage message) {
         if (_cw.on_msg_fn) {
             _cw.on_msg_fn(message->string());
@@ -38,11 +52,13 @@ SearchIndexClient::SearchIndexClient(const ClientWorker &cw, const std::string &
 }
 
 
-SearchIndexClient::~SearchIndexClient() {
+void SearchIndexClient::stop() {
     if (_client) {
         _client->send_close(1000);
     }
-    LOG(DEBUG);
+    if (_thread) {
+        _thread.reset();
+    }
 }
 
 

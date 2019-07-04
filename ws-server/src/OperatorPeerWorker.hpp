@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "OperatorCommands.hpp"
 #include "BaseWorker.hpp"
 
 namespace server {
@@ -20,7 +21,7 @@ class OperatorPeerWorker : public BaseWorker {
     virtual void sendClose(size_t connection_id);
 
 public:
-    OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db);
+    OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb);
     virtual ~OperatorPeerWorker();
 };
 } /// server

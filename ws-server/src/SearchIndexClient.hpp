@@ -34,6 +34,15 @@ struct ClientWorker {
 };
 
 
+class OnMessage {
+    std::string _msg;
+
+public:
+    OnMessage();
+    void set(const std::string& msg);
+    const std::string& get();
+};
+
 
 class SearchIndexClient {
     typedef std::shared_ptr<WsClient> PWsClient;
@@ -43,15 +52,21 @@ class SearchIndexClient {
     typedef std::thread Thread;
     typedef std::unique_ptr<Thread, std::function<void(Thread*)>> PThread;
 
+    std::string _srv_url;
+    std::string _si_login;
+    std::string _si_pswd;
     PConnection _connection;
     PWsClient _client;
     PThread _thread;
     ClientWorker _cw;
 
 public:
-    SearchIndexClient(const ClientWorker &cw,  const std::string &srv_url);
+    SearchIndexClient(const ClientWorker &cw, const std::string &srv_url, const std::string &login, const std::string &pswd);
     virtual ~SearchIndexClient();
 
-    void send(const std::string &msg);
+    void start();
+    void stop();
+
+    void send(const std::string &msg, );
 };
 } /// sindex

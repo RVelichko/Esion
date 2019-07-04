@@ -40,9 +40,8 @@ void BaseWorker::onClose(size_t connection_id, int status, const std::string &re
 }
 
 
-BaseWorker::BaseWorker(std::mutex &mutex, const PDbFacade& db)
+BaseWorker::BaseWorker(std::mutex &mutex)
     : Worker(mutex)
-    , _db(db)
 {}
 
 

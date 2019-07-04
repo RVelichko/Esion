@@ -2,16 +2,18 @@
 set(LIB_BASE_UTILS base_utils)
 add_library(${LIB_BASE_UTILS} STATIC
     DbFacade.cpp
+    IndexDbFacade.cpp
     BaseWorker.cpp
     )
 
 set(LIB_ESION_SERVER esion_server)
 add_library(${LIB_ESION_SERVER} STATIC
+    GeoRequester.cpp
     DevicePeerWorker.cpp
     OperatorCommands.cpp
     OperatorPeerWorker.cpp
-    SearchIndex.cpp
-    SearchIndexClient.cpp
+    #SearchIndex.cpp
+    #SearchIndexClient.cpp
     )
 target_link_libraries(${LIB_ESION_SERVER}
     ${LIB_BASE_UTILS}
@@ -28,15 +30,17 @@ target_link_libraries(${APP_ESION_SERVER}
     websocket_server
     ssl
     crypto
+    ${CURL_LIBRARIES}
+    ${XAPIAN_LIBRARIES}
     ${MongoClient_LIBRARIES}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_REGEX_LIBRARY}
+    ${Boost_FILESYSTEM_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     )
 
 set(LIB_INDEX_SERVER index_server)
 add_library(${LIB_INDEX_SERVER} STATIC
-    IndexDbFacade.cpp
     SearchIndexCommands.cpp
     SearchIndexPeerWorker.cpp
     )

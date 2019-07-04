@@ -23,6 +23,7 @@ typedef std::vector<Json> Jsons;
 typedef std::unique_ptr<Xapian::WritableDatabase> PXapianDatabase;
 typedef server::DbFacade DbFacade;
 typedef std::shared_ptr<DbFacade> PDbFacade;
+typedef std::vector<std::string> IndexIds;
 
 
 static const char DEVICES_INDEX_DB_NAME[] = "devices";
@@ -52,8 +53,8 @@ class IndexDbFacade {
      * \param max_count  Максимальное количество результатов в ответе.
      * \return  Возвращает массив строк с индексами из основной БД, соответствующей запросу.
      */
-    std::vector<std::string> findIndexes(Xapian::WritableDatabase *xdb, const std::string& qstr,
-                                         size_t offset = 0, size_t max_count = ENQUERY_COUNT);
+    IndexIds findIndexes(Xapian::WritableDatabase *xdb, const std::string& qstr,
+                         size_t offset = 0, size_t max_count = ENQUERY_COUNT);
 
     /**
      * \brief Метод выполняет инициалзизацию поисковых индексов.
@@ -92,7 +93,7 @@ public:
      * \param offset  Смещение по списку найденных символов.
      * \param max_count  Максимальное количество результатов в ответе.
      */
-    std::vector<std::string> getDevicesIndexes(const std::string& str, size_t offset = 0, size_t max_count = ENQUERY_COUNT);
+    IndexIds getDevicesIndexes(const std::string& str, size_t offset = 0, size_t max_count = ENQUERY_COUNT);
 
     /**
      * \brief Метод выполняет поиск индексов для событий.
@@ -100,6 +101,6 @@ public:
      * \param offset  Смещение по списку найденных символов.
      * \param max_count  Максимальное количество результатов в ответе.
      */
-    std::vector<std::string> getEventsIndexes(const std::string& str, size_t offset = 0, size_t max_count = ENQUERY_COUNT);
+    IndexIds getEventsIndexes(const std::string& str, size_t offset = 0, size_t max_count = ENQUERY_COUNT);
 };
 } /// sindex

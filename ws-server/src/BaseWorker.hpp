@@ -9,13 +9,10 @@
 
 #include "json.hpp"
 #include "WebSocketServer.hpp"
-#include "DbFacade.hpp"
 
 namespace server {
 
 typedef nlohmann::json Json;
-typedef server::DbFacade DbFacade;
-typedef std::shared_ptr<DbFacade> PDbFacade;
 
 typedef wsocket::Worker Worker; ///< Класс реализующий необходимые функции обработки данным сервером.
 typedef wsocket::ConnectionValue ConnectionValue;
@@ -29,8 +26,6 @@ class BaseWorker : public Worker {
 protected:
     typedef std::function<void(const Json&)> ConcreteFn;
     
-    PDbFacade _db; ///< Объект доступа к БД.
-
     virtual bool parseMessage(const std::string &msg, const ConcreteFn &func) = 0;
     virtual void sendClose(size_t connection_id) = 0;
 
@@ -41,7 +36,7 @@ protected:
     //size_t getOperatorConnectionId();
 
 public:
-    explicit BaseWorker(std::mutex &mutex, const PDbFacade& db);
+    explicit BaseWorker(std::mutex &mutex);
     virtual ~BaseWorker();
 };
 } /// server

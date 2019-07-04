@@ -1,13 +1,13 @@
 #include <functional>
 
 #include "Log.hpp"
-#include "OperatorCommands.hpp"
 #include "OperatorPeerWorker.hpp"
 
 using namespace server;
 namespace ph = std::placeholders;
 
 typedef std::lock_guard<std::mutex> LockQuard;
+//typedef sindex::SearchIndexClient SearchIndexClient;
 
 
 bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
@@ -33,7 +33,7 @@ PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const st
         auto jcmd = json.value("cmd", Json());
         if (not jcmd.empty() and jcmd.is_object()) {
             auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-            auto auth = AuthorizeCommand(connection_id, jcmd, _mutex, _db, snd_fn);
+            auto auth = AuthorizeCommand(connection_id, jcmd, _mutex, snd_fn);
             if (auth) {
                 auth.execute();
             } else {
@@ -61,7 +61,7 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
             auto jcmd = json.value("cmd", Json());
             if (not jcmd.empty() and jcmd.is_object()) {
                 auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-                if (not BaseCommand::executeByName(connection_id, jcmd, _mutex, _db, snd_fn)) {
+                if (not BaseCommand::executeByName(connection_id, jcmd, _mutex, snd_fn)) {
                     LOG(ERROR) << "Command is`t exequted!";
                 }
             }
@@ -78,9 +78,11 @@ void OperatorPeerWorker::sendClose(size_t connection_id) {
 }
 
 
-OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db)
-    : BaseWorker(mutex, db)
-{}
+OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb)
+    : BaseWorker(mutex) {
+    BaseCommand::_db = db;
+    BaseCommand::_xdb = xdb;
+}
 
 
 OperatorPeerWorker::~OperatorPeerWorker() 

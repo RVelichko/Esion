@@ -35,9 +35,9 @@ bool IndexDbFacade::addIndex(Xapian::WritableDatabase *xdb, const std::string& d
 }
 
 
-std::vector<std::string> IndexDbFacade::findIndexes(Xapian::WritableDatabase *xdb, const std::string& qstr,
+IndexIds IndexDbFacade::findIndexes(Xapian::WritableDatabase *xdb, const std::string& qstr,
                                                     size_t offset, size_t max_count) try {
-    std::vector<std::string> ids;
+    IndexIds ids;
     Xapian::QueryParser qparsr;
     qparsr.set_stemmer(Xapian::Stem("ru"));
     qparsr.set_stemming_strategy(qparsr.STEM_SOME);
@@ -62,11 +62,11 @@ std::vector<std::string> IndexDbFacade::findIndexes(Xapian::WritableDatabase *xd
 PXapianDatabase IndexDbFacade::initIndexes(const std::string &index_name, const std::string &coll_name) try {
     PXapianDatabase xdb;
     auto path = bfs::path(_xdb_path + "_" + index_name);
-    if (bfs::exists(path)) {
+    //if (bfs::exists(path)) {
         xdb = PXapianDatabase(new Xapian::WritableDatabase(path.string(), Xapian::DB_CREATE_OR_OPEN));
-    } else {
-        LOG(FATAL) << "Can`t create or find path " << path << "";
-    }
+    //} else {
+    //    LOG(FATAL) << "Can`t create or find path " << path << "";
+    //}
     /// Сверить количество индексных записей с внешней БД.
     if (_db and xdb) {
         size_t db_length = _db->getCollectionCount("", coll_name);
@@ -76,12 +76,15 @@ PXapianDatabase IndexDbFacade::initIndexes(const std::string &index_name, const 
                 auto add_index_fn = [&](const std::string &coll_name, const Json &jarr) {
                     if (not jarr.empty() and jarr.is_array()) {
                         for (auto jval : jarr) {
-                            auto db_id = jval.value("_id", "");
-                            auto dev_id = jval.value("dev_id", "");
-                            auto coll  = jval.value("coll", "");
-                            auto user  = jval.value("user", "");
-                            if (not db_id.empty() and not coll.empty()) {
-                                addIndex(xdb.get(), db_id, dev_id + " " + coll + " " + user);
+                            auto jdb_id = jval.find("_id");
+                            auto jcoll  = jval.find("coll");
+                            if (jdb_id not_eq jval.end() and jdb_id->is_object() and jcoll not_eq jval.end()) {
+                                std::string db_id = jdb_id->value("$oid", "");
+                                std::string str =
+                                        jval.value("dev_id", "") + " " +
+                                        jval.value("coll", "") + " " +
+                                        jval.value("user", "");
+                                addIndex(xdb.get(), db_id, str);
                             }
                         }
                     } else {
@@ -130,20 +133,32 @@ void IndexDbFacade::init(const std::string& xdb_path) {
 
 
 bool IndexDbFacade::addDeviceIndex(const std::string& db_id, const std::string& str) {
-    return addIndex(_xdb_devs.get(), db_id, str);
+    if (_xdb_devs) {
+        return addIndex(_xdb_devs.get(), db_id, str);
+    }
+    return false;
 }
 
 
 bool IndexDbFacade::addEventIndex(const std::string& db_id, const std::string& str) {
-    return addIndex(_xdb_evs.get(), db_id, str);
+    if (_xdb_devs) {
+        return addIndex(_xdb_evs.get(), db_id, str);
+    }
+    return false;
 }
 
 
-std::vector<std::string> IndexDbFacade::getDevicesIndexes(const std::string& str, size_t offset, size_t max_count) {
-    return findIndexes(_xdb_devs.get(), str, offset, max_count);
+IndexIds IndexDbFacade::getDevicesIndexes(const std::string& str, size_t offset, size_t max_count) {
+    if (_xdb_devs) {
+        return findIndexes(_xdb_devs.get(), str, offset, max_count);
+    }
+    return IndexIds();
 }
 
 
-std::vector<std::string> IndexDbFacade::getEventsIndexes(const std::string& str, size_t offset, size_t max_count) {
-    return findIndexes(_xdb_evs.get(), str, offset, max_count);
+IndexIds IndexDbFacade::getEventsIndexes(const std::string& str, size_t offset, size_t max_count) {
+    if (_xdb_devs) {
+        return findIndexes(_xdb_evs.get(), str, offset, max_count);
+    }
+    return IndexIds();
 }

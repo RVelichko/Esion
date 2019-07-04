@@ -36,40 +36,39 @@ bool DevicePeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn
 PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std::string &msg) {
     LOG(DEBUG) << "con_id = " << connection_id << "; " << msg;
     PDeviceConnectionValue con_val;
+    Json jstatus = {{"status", "ok"}};
     bool res = parseMessage(msg, [&](const Json &json) {
         /// Сохранить параметры комнаты
         con_val = std::make_shared<DeviceConnectionValue>();
         con_val->dev_id = json.value("id", "");
         /// Загрузить данные в БД.
-        Json jcounts = json.value("counters", Json());
-        Json status = {{"status", "ok"}};
-        if (not jcounts.empty() and jcounts.is_array()) {
-            { /// LOCK
-                LockQuard l(_mutex);
-                if (_db) {
-                    _db->insertDevice(json);
-                } else {
-                    status = {{"status", "DB is NULL"}};
-                    LOG(FATAL) << "DB is NULL!";
-                }
+        auto jcounts = json.find("counters");
+        auto jcoll = json.find("coll");
+        if (jcounts not_eq json.end() and jcounts->is_array() and
+            jcoll not_eq json.end() and jcoll->is_string()) {
+            Json jdev = json;
+            auto jgeo = _geo_req->request(*jcoll);
+            jdev["geo"] = jgeo["point"];
+            _mutex.lock();
+            if (_db) {
+                _db->insertDevice(jdev);
+                _mutex.unlock();
+            } else {
+                _mutex.unlock();
+                jstatus = {{"status", "DB is NULL"}};
+                LOG(FATAL) << "DB is NULL!";
             }
-            ///// Если оператор уже подключён - оправить ему данные устройства.
-            //size_t operator_id = BaseWorker::getOperatorConnectionId();
-            //if (operator_id) {
-            //    LOG(DEBUG) << "send to operator: " << operator_id << "; \"" <<  jcounts.dump() << "\"";
-            //    _msg_fn(operator_id, json.dump(), WS_STRING_MESSAGE);
-            //}
         } else {
-            LOG(WARNING) << "Empty counters. \"" <<  jcounts.dump() << "\"";
-            status = {{"status", "Empty counters"}};
+            LOG(WARNING) << "Empty counters. \"" <<  jcounts->dump() << "\"";
+            jstatus = {{"status", "Empty counters"}};
         }
         /// Отправить Status устройству.
-        LOG(DEBUG) << "send to device: " << connection_id << "; \"" <<  status.dump() << "\"";
-        _msg_fn(connection_id, status.dump(), WS_STRING_MESSAGE);
+        LOG(DEBUG) << "send to device: " << connection_id << "; \"" <<  jstatus.dump() << "\"";
+        _msg_fn(connection_id, jstatus.dump(), WS_STRING_MESSAGE);
     });
     if (not res) {
-        Json status = {{"status", "error"}};
-        _msg_fn(connection_id, status.dump(), WS_STRING_MESSAGE);
+        jstatus = {{"status", "error"}};
+        _msg_fn(connection_id, jstatus.dump(), WS_STRING_MESSAGE);
     }
     return con_val;
 }
@@ -84,10 +83,15 @@ void DevicePeerWorker::sendClose(size_t connection_id)
 {}
 
 
-DevicePeerWorker::DevicePeerWorker(std::mutex &mutex, const PDbFacade& db)
-    : BaseWorker(mutex, db)
-{}
+DevicePeerWorker::DevicePeerWorker(std::mutex &mutex, const PDbFacade& db, const std::string& ymap_api_key)
+    : BaseWorker(mutex)
+    , _db(db)
+    , _geo_req(new GeoRequester(ymap_api_key)) {
+    LOG(DEBUG);
+    //_geo_req->request("Санкт-Петербург ул.Русановская, д.1");
+}
 
 
-DevicePeerWorker::~DevicePeerWorker() 
-{}
+DevicePeerWorker::~DevicePeerWorker() {
+    LOG(DEBUG);
+}

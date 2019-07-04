@@ -7,8 +7,10 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 
 #include "JsonCommand.hpp"
+#include "IndexDbFacade.hpp"
 #include "DbFacade.hpp"
 
 namespace server {
@@ -17,8 +19,10 @@ typedef utils::Json Json;
 typedef utils::JsonCommand JsonCommand;
 typedef server::DbFacade DbFacade;
 typedef std::shared_ptr<DbFacade> PDbFacade;
+typedef sindex::IndexDbFacade IndexDbFacade;
+typedef std::shared_ptr<IndexDbFacade> PIndexDbFacade;
 typedef std::function<void(const std::string&)> SendFn;
-typedef std::function<bool(size_t, const Json&, std::mutex&, const PDbFacade&, const SendFn&)> ExecuteFn;
+typedef std::function<bool(size_t, const Json&, std::mutex&, const SendFn&)> ExecuteFn;
 typedef std::map<std::string, ExecuteFn> CommandsExecuters;
 
 
@@ -26,7 +30,6 @@ class BaseCommand : public JsonCommand {
 protected:
     size_t _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
     std::mutex& _mutex;
-    PDbFacade _db;
     SendFn _snd_fn;
 
     /*!
@@ -43,10 +46,16 @@ protected:
     void eraseMongoId(Json& js);
 
 public:
-    static bool executeByName(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    //static std::string _si_url;
+    //static std::string _si_login;
+    //static std::string _si_pswd;
 
-    BaseCommand(size_t token, const std::string& name, const Json& js,
-                std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    static PDbFacade _db;
+    static PIndexDbFacade _xdb;
+
+    static bool executeByName(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+
+    BaseCommand(size_t token, const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 };
 
 
@@ -56,7 +65,7 @@ public:
  *           "cmd": {
  *             "name":"auth",
  *             "data": {
- *               "user":"<user name>", ///< debug для теста.
+ *               "login":"<user name>", ///< debug для теста.
  *               "pswd":"<password>"   ///< debug для теста.
  *             }
  *           }
@@ -73,7 +82,7 @@ public:
  */
 class AuthorizeCommand : public BaseCommand {
 public:
-    AuthorizeCommand(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    AuthorizeCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~AuthorizeCommand();
 
     /**
@@ -85,7 +94,7 @@ public:
 
 
 /*! \brief  Запрос списка устройств:
- *          Rquest: {
+ *          Rquest 1: {
  *            "cmd": {
  *              "name":"get_devs",
  *              "data": {
@@ -93,6 +102,19 @@ public:
  *                "skip":"<количество пропускаемых записей в списке найденных устройств>",
  *                "num":"<количество возвращаемых устройств>",
  *                "filter":"<любая строка, которой могут соответствовать строки в БД>"
+ *              }
+ *            }
+ *          }
+ *
+ *          Rquest 2: {
+ *            "cmd": {
+ *              "name":"get_devs",
+ *              "data": {
+ *                "token":"< идентификатор пользователя сервиса >",
+ *                "skip":"<количество пропускаемых записей в списке найденных устройств>",
+ *                "num":"<количество возвращаемых устройств>",
+ *                "geo":[ <longitude>, <latitude> ],
+ *                "radius": <радиус поиска>
  *              }
  *            }
  *          }
@@ -110,7 +132,7 @@ public:
  *            "dev_id":"<идентификатор устройства, (уникален) >",
  *            "coll":"<адрес расположения устройства — более подробный чем для объекта>",
  *            "user":"<владелец устройства>",
- *            "geo":"<геопозиция (пустая, если не указана) >",
+ *            "geo":[ <longitude>, <latitude> ],
  *            "update_time":"<время последнего подключения к серверу>",
  *            "power_type":"<тип питания устройства>",
  *            "voltage":"<текущее напряжение батареи автономного питания>",
@@ -133,37 +155,8 @@ public:
  */
 class GetDevicesListCommand : public BaseCommand {
 public:
-    GetDevicesListCommand(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    GetDevicesListCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetDevicesListCommand();
-    virtual Json execute();
-};
-
-
-/*!
- * \brief  Отправка геопозиции для устройства:
- *         Rquest: {
- *           "cmd": {
- *             "name":"set_dev_geo",
- *             "data": {
- *               "token":"< идентификатор пользователя сервиса >",
- *               "dev_id":"<идентификатор устройства, (уникален) >",
- *               "geo":"<строка геолокации>"
- *             }
- *           }
- *         }
- *
- *         Responce: {
- *           "resp": {
- *             "name":"set_dev_geo",
- *             "status":"< ok | err >",
- *             "desc":"<описание, при ок этого поля не будет>"
- *           }
- *         }
- */
-class DeviceGeopositionCommand : public BaseCommand {
-public:
-    DeviceGeopositionCommand(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
-    virtual ~DeviceGeopositionCommand();
     virtual Json execute();
 };
 
@@ -191,7 +184,7 @@ public:
  */
 class ActivateDeviceCommands : public BaseCommand {
 public:
-    ActivateDeviceCommands(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    ActivateDeviceCommands(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~ActivateDeviceCommands();
     virtual Json execute();
 };
@@ -234,37 +227,8 @@ public:
  */
 class GetEventsListCommand : public BaseCommand {
 public:
-    GetEventsListCommand(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    GetEventsListCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetEventsListCommand();
-    virtual Json execute();
-};
-
-
-/*!
- * \brief  Отправка геопозиции для события:
- *         Rquest: {
- *           "cmd": {
- *             "name":"set_event_geo",
- *             "data": {
- *               "token":"< идентификатор пользователя сервиса >",
- *               "ev_id":"<идентификатор события, (уникален) >",
- *               "geo":"<строка геолокации>"
- *             }
- *           }
- *         }
- *
- *         Responce: {
- *           "resp": {
- *             "name":"set_event_geo",
- *             "status":"< ok | err >",
- *             "desc":"<описание, при ок этого поля не будет>"
- *           }
- *         }
- */
-class EventGeopositionCommand : public BaseCommand {
-public:
-    EventGeopositionCommand(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
-    virtual ~EventGeopositionCommand();
     virtual Json execute();
 };
 
@@ -291,8 +255,66 @@ public:
  */
 class CreateReportCommand : public BaseCommand {
 public:
-    CreateReportCommand(size_t token, const Json& js, std::mutex& mutex, const PDbFacade& db, const SendFn& snd_fn);
+    CreateReportCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~CreateReportCommand();
     virtual Json execute();
 };
+
+
+///*!
+// * \brief  Отправка геопозиции для устройства:
+// *         Rquest: {
+// *           "cmd": {
+// *             "name":"set_dev_geo",
+// *             "data": {
+// *               "token":"< идентификатор пользователя сервиса >",
+// *               "dev_id":"<идентификатор устройства, (уникален) >",
+// *               "geo":[ <longitude>, <latitude> ]
+// *             }
+// *           }
+// *         }
+// *
+// *         Responce: {
+// *           "resp": {
+// *             "name":"set_dev_geo",
+// *             "status":"< ok | err >",
+// *             "desc":"<описание, при ок этого поля не будет>"
+// *           }
+// *         }
+// */
+//
+//
+//class DeviceGeopositionCommand : public BaseCommand {
+//public:
+//    DeviceGeopositionCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+//    virtual ~DeviceGeopositionCommand();
+//    virtual Json execute();
+//};
+///*!
+// * \brief  Отправка геопозиции для события:
+// *         Rquest: {
+// *           "cmd": {
+// *             "name":"set_event_geo",
+// *             "data": {
+// *               "token":"< идентификатор пользователя сервиса >",
+// *               "ev_id":"<идентификатор события, (уникален) >",
+// *               "geo":[ <longitude>, <latitude> ]
+// *             }
+// *           }
+// *         }
+// *
+// *         Responce: {
+// *           "resp": {
+// *             "name":"set_event_geo",
+// *             "status":"< ok | err >",
+// *             "desc":"<описание, при ок этого поля не будет>"
+// *           }
+// *         }
+// */
+//class EventGeopositionCommand : public BaseCommand {
+//public:
+//    EventGeopositionCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+//    virtual ~EventGeopositionCommand();
+//    virtual Json execute();
+//};
 } /// server

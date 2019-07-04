@@ -14,7 +14,9 @@
 
 using namespace server;
 
-typedef mongo::BSONObjBuilder BsonObjBuilder;
+typedef mongo::BSONObjBuilder BObjBuilder;
+typedef mongo::BSONArrayBuilder BArrBuilder;
+typedef mongo::Query DbQuery;
 typedef std::vector<BsonObj> BsonObjs;
 
 
@@ -87,7 +89,7 @@ public:
         std::string geo = extractGeoposition(f);
         std::string coll = extractCollection(f);
         if (not coll.empty() and not geo.empty() and not update_time.empty() and not status.empty()) {
-            BsonObjBuilder q;
+            BObjBuilder q;
             if (not coll.empty()) {
                 q.append("coll", coll);
             }
@@ -196,7 +198,7 @@ void DbFacade::disconnect() try {
 
 
 Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
-    BsonObj q = BsonObjBuilder().append("name", user).append("pswd", pswd).obj();
+    BsonObj q = BObjBuilder().append("name", user).append("pswd", pswd).obj();
     BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
@@ -208,7 +210,7 @@ Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
 
 Json DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
     BsonObjs found_devs;
-    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), BsonObjBuilder().obj(), num_objs,  skip_objs);
+    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), BObjBuilder().obj(), num_objs,  skip_objs);
     Json jdevs;
     size_t i = 0; 
     for (auto bdev : found_devs) {
@@ -218,13 +220,77 @@ Json DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
     return jdevs;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t get [" << num_objs << " `" << skip_objs << "] devices from DB: " << e.what();
-    return Jsons();
+    return Json();
+}
+
+
+Json DbFacade::getDevicesByStatus(const std::string& status) try {
+    Json jdevs;
+    return jdevs;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << status << "] devices from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getDevicesByTimeUpdate(time_t time) try {
+    Json jdevs;
+    return jdevs;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << time << "] devices from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getDevicesByGeo(double longitude, double latitude, double radius, size_t skip, size_t num) try {
+    BsonObjs found_devs;
+    Json jq = {
+        {"geo", {
+             {"$geoWithin", {
+                  {"$centerSphere", {{longitude, latitude}, radius}}
+             }}
+        }}
+    };
+    DbQuery q(jq.dump());
+    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, num, skip);
+    size_t i = 0;
+    Json jdevs;
+    for (auto bdev : found_devs) {
+        jdevs[i] = (DbFacade::toJson(bdev));
+        ++i;
+    }
+    return jdevs;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << longitude << " `" << latitude << "] devices from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getDevicesByIds(std::vector<std::string> ids) try {
+    BsonObjs found_devs;
+    BArrBuilder bids;
+    for (auto id : ids) {
+        bids.append(mongo::OID(id));
+    }
+    auto bq = BObjBuilder().append("_id", BObjBuilder().append("$in", bids.arr()).obj()).obj();
+    DbQuery q(bq);
+    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, ids.size());
+    size_t i = 0;
+    Json jdevs;
+    for (auto bdev : found_devs) {
+        jdevs[i] = (DbFacade::toJson(bdev));
+        ++i;
+    }
+    return jdevs;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get devices from DB by isd: " << e.what();
+    return Json();
 }
 
 
 Json DbFacade::getEvents(uint8_t num_objs, uint8_t skip_objs) try {
     BsonObjs found_evs;
-    _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), BsonObjBuilder().obj(), num_objs,  skip_objs);
+    _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), BObjBuilder().obj(), num_objs,  skip_objs);
     Json jevs;
     size_t i = 0;
     for (auto bev : found_evs) {
@@ -234,30 +300,13 @@ Json DbFacade::getEvents(uint8_t num_objs, uint8_t skip_objs) try {
     return jevs;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t get [" << num_objs << " `" << skip_objs << "] events from DB: " << e.what();
-    return Jsons();
-}
-
-
-Json DbFacade::findDevices(const std::string& filter, uint8_t num_objs, uint8_t skip_objs) try {
-    BsonObjs found_devs;
-    BsonObj q = FindDevicesQuery(filter);
-    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, num_objs,  skip_objs);
-    Json jdevs;
-    size_t i = 0;
-    for (auto bdev : found_devs) {
-        jdevs[i] = (DbFacade::toJson(bdev));
-        ++i;
-    }
-    return jdevs;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t find [\"" << filter << "\", " << num_objs << "] devices in DB: " << e.what();
-    return Jsons();
+    return Json();
 }
 
 
 bool DbFacade::insertDevice(const Json& dev) try {
     std::string dev_id = dev["id"];
-    auto q = BsonObjBuilder().append("id", dev_id).obj();
+    auto q = BObjBuilder().append("id", dev_id).obj();
     auto found_dev = _dbc->findOne(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
     if (found_dev.isEmpty()) {
         _dbc->insert(getMdbNs(CONTROOLERS_COLLECTION_NAME), DbFacade::toBson(dev));
@@ -267,7 +316,7 @@ bool DbFacade::insertDevice(const Json& dev) try {
         _dbc->update(getMdbNs(CONTROOLERS_COLLECTION_NAME), q, DbFacade::toBson(dev));
         LOG(INFO) << "Update device [" << dev_id << "] in DB";
         return true;
-    } 
+    }
     return false;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t add new device to DB: " << e.what();
@@ -276,7 +325,7 @@ bool DbFacade::insertDevice(const Json& dev) try {
 
 
 bool DbFacade::removeDevice(const std::string& dev_id) try {
-    auto q = BsonObjBuilder().append("id", dev_id).obj();
+    auto q = BObjBuilder().append("id", dev_id).obj();
     auto found_dev = _dbc->findOne(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
     if (not found_dev.isEmpty()) {
         _dbc->remove(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
@@ -292,7 +341,7 @@ bool DbFacade::removeDevice(const std::string& dev_id) try {
 
 
 Json DbFacade::getDevice(const std::string& dev_id) try {
-    auto q = BsonObjBuilder().append("id", dev_id).obj();
+    auto q = BObjBuilder().append("id", dev_id).obj();
     auto found_dev = _dbc->findOne(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
     if (not found_dev.isEmpty()) {
         return DbFacade::toJson(found_dev);
