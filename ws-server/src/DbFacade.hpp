@@ -81,19 +81,68 @@ public:
     Json findUser(const std::string& user, const std::string& pswd);
 
     /**
+     * \brief Метод возвращает первого найденного пользователя.
+     * \param token  Токен авторизации пользователя.
+     */
+    Json findUser(const std::string& token);
+
+    /**
+     * \brief Метод возвращает первого найденного пользователя.
+     * \param jusr  JSON с описание пользователя.
+     */
+    bool insertUser(const Json& jusr);
+
+    /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param num_objs  Количество запрашиваемых устройств.
      * \param skip_objs Количество пропускаемых в запросе устройств.
      */ 
     Json getDevices(uint8_t num_objs = 10, uint8_t skip_objs = 0);
 
-    Json getDevicesByStatus(const std::string& status);
-
-    Json getDevicesByTimeUpdate(time_t time);
-
+    /**
+     * \brief Метод возвращает N имеющихся устройств по точке и радиусу геолокации.
+     * \param longitude  Долгота.
+     * \param latitude  Широта.
+     * \param radius  Радиус в геокоординатах.
+     * \param num_objs  Количество запрашиваемых устройств.
+     * \param skip_objs Количество пропускаемых в запросе устройств.
+     */
     Json getDevicesByGeo(double longitude, double latitude, double radius, size_t skip, size_t num);
 
+    /**
+     * \brief Метод возвращает N имеющихся устройств по полигону геолокации.
+     * \param x  Долгота лево.
+     * \param y  Широта низ.
+     * \param w  Долгота право.
+     * \param h  Широта верх.
+     * \param num_objs  Количество запрашиваемых устройств.
+     * \param skip_objs Количество пропускаемых в запросе устройств.
+     */
+    Json getDevicesByGeo(double x, double y, double w, double h, size_t skip, size_t num);
+
+    /**
+     * \brief Метод возвращает N имеющихся устройств по идентификаторам БД.
+     * \param ids  Массив строк с идентификаторами из БД.
+     */
     Json getDevicesByIds(std::vector<std::string> ids);
+
+    /**
+     * \brief Метод доавляет новое устройство или обновляет существующее.
+     * \param dev Json с описание нового устройства.
+     */
+    bool insertDevice(const Json& dev);
+
+    /**
+     * \brief Метод удаляет информацию об устройстве.
+     * \param dev_id Идентификатор удаляемого устройства.
+     */
+    bool removeDevice(const std::string& dev_id);
+
+    /**
+     * \brief Метод возвращает информацию об устройстве.
+     * \param dev_id Идентификатор требуемого устройства.
+     */
+    Json getDevice(const std::string& dev_id);
 
     /**
      * \brief Метод возвращает N имеющихся событий.
@@ -103,21 +152,56 @@ public:
     Json getEvents(uint8_t num_objs = 10, uint8_t skip_objs = 0);
 
     /**
-     * \brief Метод доавляет новое устройство или обновляет существующее.
-     * \param dev Json с описание нового устройства.
-     */ 
-    bool insertDevice(const Json& dev);
+     * \brief Метод возвращает N имеющихся событий по идентификатору устройства.
+     * \param dev_id  Идентификатор устройства.
+     * \param num_objs  Количество запрашиваемых устройств.
+     * \param skip_objs Количество пропускаемых в запросе устройств.
+     */
+    Json getEventsByDevId(const std::string& dev_id, size_t skip, size_t num);
 
     /**
-     * \brief Метод обновляет информацию устройства.
-     * \param dev_id Идентификатор удаляемого устройства.
-     */ 
-    bool removeDevice(const std::string& dev_id);  
+     * \brief Метод возвращает N имеющихся событий по точке и радиусу геолокации.
+     * \param longitude  Долгота.
+     * \param latitude  Широта.
+     * \param radius  Радиус в геокоординатах.
+     * \param num_objs  Количество запрашиваемых событий.
+     * \param skip_objs Количество пропускаемых в запросе событий.
+     */
+    Json getEventsByGeo(double longitude, double latitude, double radius, size_t skip, size_t num);
 
     /**
-     * \brief Метод возвращает информацию об устройстве.
-     * \param dev_id Идентификатор требуемого устройства.
-     */ 
-    Json getDevice(const std::string& dev_id);
+     * \brief Метод возвращает N имеющихся событий по полигону геолокации.
+     * \param x  Долгота лево.
+     * \param y  Широта низ.
+     * \param w  Долгота право.
+     * \param h  Широта верх.
+     * \param num_objs  Количество запрашиваемых событий.
+     * \param skip_objs Количество пропускаемых в запросе событий.
+     */
+    Json getEventsByGeo(double x, double y, double w, double h, size_t skip, size_t num);
+
+    /**
+     * \brief Метод возвращает N имеющихся событий по идентификаторам БД.
+     * \param ids  Массив строк с идентификаторами из БД.
+     */
+    Json getEventsByIds(std::vector<std::string> ids);
+
+    /**
+     * \brief Метод доавляет новое событие или обновляет существующее.
+     * \param ev Json с описание нового событие.
+     */
+    bool insertEvent(const Json& ev);
+
+    /**
+     * \brief Метод удаляет информация о событие.
+     * \param ev_id Идентификатор удаляемого события.
+     */
+    bool removeEvent(const std::string& ev_id);
+
+    /**
+     * \brief Метод возвращает информацию о событии.
+     * \param ev_id Идентификатор требуемого события.
+     */
+    Json getEvent(const std::string& ev_id);
 };
 } /// server

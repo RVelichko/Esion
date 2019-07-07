@@ -10,6 +10,7 @@ set(LIB_ESION_SERVER esion_server)
 add_library(${LIB_ESION_SERVER} STATIC
     GeoRequester.cpp
     DevicePeerWorker.cpp
+    ReportGenerator.cpp
     OperatorCommands.cpp
     OperatorPeerWorker.cpp
     #SearchIndex.cpp

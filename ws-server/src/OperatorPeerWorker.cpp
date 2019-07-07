@@ -1,6 +1,7 @@
 #include <functional>
 
 #include "Log.hpp"
+#include "uuid.hpp"
 #include "OperatorPeerWorker.hpp"
 
 using namespace server;
@@ -32,12 +33,10 @@ PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const st
         con_val = std::make_shared<ConnectionValue>();
         auto jcmd = json.value("cmd", Json());
         if (not jcmd.empty() and jcmd.is_object()) {
+            _token = utils::GenerateHex(16);
             auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-            auto auth = AuthorizeCommand(connection_id, jcmd, _mutex, snd_fn);
-            if (auth) {
-                auth.execute();
-            } else {
-                LOG(ERROR) << "First command is`t \"auth\"!";
+            if (not BaseCommand::executeByName(_token, jcmd, _mutex, snd_fn)) {
+                LOG(ERROR) << "Command is`t exequted!";
             }
         } else {
             LOG(ERROR) << "First message is`t command! Must by \"auth\" command!";
@@ -61,7 +60,7 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
             auto jcmd = json.value("cmd", Json());
             if (not jcmd.empty() and jcmd.is_object()) {
                 auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-                if (not BaseCommand::executeByName(connection_id, jcmd, _mutex, snd_fn)) {
+                if (not BaseCommand::executeByName(_token, jcmd, _mutex, snd_fn)) {
                     LOG(ERROR) << "Command is`t exequted!";
                 }
             }
@@ -78,10 +77,12 @@ void OperatorPeerWorker::sendClose(size_t connection_id) {
 }
 
 
-OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb)
+OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb,
+                                       const std::string& reports_path)
     : BaseWorker(mutex) {
     BaseCommand::_db = db;
     BaseCommand::_xdb = xdb;
+    BaseCommand::_reports_path = reports_path;
 }
 
 

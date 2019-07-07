@@ -22,13 +22,16 @@ typedef std::shared_ptr<DbFacade> PDbFacade;
 typedef sindex::IndexDbFacade IndexDbFacade;
 typedef std::shared_ptr<IndexDbFacade> PIndexDbFacade;
 typedef std::function<void(const std::string&)> SendFn;
-typedef std::function<bool(size_t, const Json&, std::mutex&, const SendFn&)> ExecuteFn;
+typedef std::function<bool(const std::string&, const Json&, std::mutex&, const SendFn&)> ExecuteFn;
 typedef std::map<std::string, ExecuteFn> CommandsExecuters;
 
 
+
+static const size_t MAX_NUMBER_DEVICES_FOR_REPORT = 10000;
+
 class BaseCommand : public JsonCommand {
 protected:
-    size_t _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
+    std::string _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
     std::mutex& _mutex;
     SendFn _snd_fn;
 
@@ -45,28 +48,40 @@ protected:
      */
     void eraseMongoId(Json& js);
 
-public:
-    //static std::string _si_url;
-    //static std::string _si_login;
-    //static std::string _si_pswd;
+    /*!
+     * \brief Метод заполняет тег data в ответе.
+     * \param js  Передаваемый JSON.
+     */
+    Json fillResponceData(const Json& js);
 
+public:
     static PDbFacade _db;
     static PIndexDbFacade _xdb;
+    static std::string _reports_path;
 
-    static bool executeByName(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    static bool executeByName(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 
-    BaseCommand(size_t token, const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    BaseCommand(const std::string& token, const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 };
 
 
 /*!
  * \brief  Авторизация:
- *         Rquest: {
+ *         Rquest 1: {
  *           "cmd": {
  *             "name":"auth",
  *             "data": {
- *               "login":"<user name>", ///< debug для теста.
- *               "pswd":"<password>"   ///< debug для теста.
+ *               "login":"<user name>", ///< Debug для теста.
+ *               "pswd":"<password>"   ///< Debug для теста.
+ *             }
+ *           }
+ *         }
+ *
+ *         Rquest 2: {
+ *           "cmd": {
+ *             "name":"auth",
+ *             "data": {
+ *               "token": "<Токен пользователя, полученный при авторизации.>"
  *             }
  *           }
  *         }
@@ -76,19 +91,47 @@ public:
  *             "name":"auth",
  *             "status":"< ok | err >",
  *             "token":"< идентификатор пользователя сервиса >",
+ *             "user_info": {
+ *                  "person" : < Имя Фамилия и т.д. >
+ *                  "desc" : < Информация о пользователе сервиса >
+ *             },
  *             "desc":"<описание, при ок — этого поля не будет>"
  *           }
  *         }
  */
 class AuthorizeCommand : public BaseCommand {
 public:
-    AuthorizeCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    AuthorizeCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~AuthorizeCommand();
 
     /**
      * Перегруженный метод выполнения команды.
      * \return  TRUE - в случае успешного выполнения, FALSE - в случае ошибки.
      */
+    virtual Json execute();
+};
+
+
+/*!
+ * \brief  Выход из сервиса:
+ *         Rquest 1: {
+ *           "cmd": {
+ *             "name":"logout"
+ *           }
+ *         }
+ *
+ *         Responce: {
+ *           "resp": {
+ *             "name":"auth",
+ *             "status":"< ok | err >",
+ *             "desc":"<описание, при ок — этого поля не будет>"
+ *           }
+ *         }
+ */
+class LogoutCommand : public BaseCommand {
+public:
+    LogoutCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    virtual ~LogoutCommand();
     virtual Json execute();
 };
 
@@ -119,10 +162,23 @@ public:
  *            }
  *          }
  *
+ *          Rquest 3: {
+ *            "cmd": {
+ *              "name":"get_devs",
+ *              "data": {
+ *                "token":"< идентификатор пользователя сервиса >",
+ *                "skip":"<количество пропускаемых записей в списке найденных устройств>",
+ *                "num":"<количество возвращаемых устройств>",
+ *                "geo_poly":[ x, y, w, h ],
+ *              }
+ *            }
+ *          }
+ *
  *          Responce: {
  *            "resp": {
  *              "name":"get_devs",
  *              "status":"< ok | err >",
+ *              "count":< общее количество записей в таблице устройств >
  *              "data":"[{<json устройства >}, … ]", /// при err — этого поля не будет.
  *              "desc":"<описание, при ок этого поля не будет>"
  *            }
@@ -155,7 +211,7 @@ public:
  */
 class GetDevicesListCommand : public BaseCommand {
 public:
-    GetDevicesListCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    GetDevicesListCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetDevicesListCommand();
     virtual Json execute();
 };
@@ -184,7 +240,7 @@ public:
  */
 class ActivateDeviceCommands : public BaseCommand {
 public:
-    ActivateDeviceCommands(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    ActivateDeviceCommands(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~ActivateDeviceCommands();
     virtual Json execute();
 };
@@ -208,6 +264,7 @@ public:
  *           "resp": {
  *             "name":"get_events",
  *             "status":"< ok | err >",
+ *             "count":<общее количество записей в таблице событий>
  *             "data":"[{<json события >}, … ]", /// при err — этого поля не будет.
  *             "desc":"<описание, при ок этого поля не будет>"
  *           }
@@ -227,7 +284,7 @@ public:
  */
 class GetEventsListCommand : public BaseCommand {
 public:
-    GetEventsListCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    GetEventsListCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetEventsListCommand();
     virtual Json execute();
 };
@@ -255,66 +312,8 @@ public:
  */
 class CreateReportCommand : public BaseCommand {
 public:
-    CreateReportCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    CreateReportCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~CreateReportCommand();
     virtual Json execute();
 };
-
-
-///*!
-// * \brief  Отправка геопозиции для устройства:
-// *         Rquest: {
-// *           "cmd": {
-// *             "name":"set_dev_geo",
-// *             "data": {
-// *               "token":"< идентификатор пользователя сервиса >",
-// *               "dev_id":"<идентификатор устройства, (уникален) >",
-// *               "geo":[ <longitude>, <latitude> ]
-// *             }
-// *           }
-// *         }
-// *
-// *         Responce: {
-// *           "resp": {
-// *             "name":"set_dev_geo",
-// *             "status":"< ok | err >",
-// *             "desc":"<описание, при ок этого поля не будет>"
-// *           }
-// *         }
-// */
-//
-//
-//class DeviceGeopositionCommand : public BaseCommand {
-//public:
-//    DeviceGeopositionCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
-//    virtual ~DeviceGeopositionCommand();
-//    virtual Json execute();
-//};
-///*!
-// * \brief  Отправка геопозиции для события:
-// *         Rquest: {
-// *           "cmd": {
-// *             "name":"set_event_geo",
-// *             "data": {
-// *               "token":"< идентификатор пользователя сервиса >",
-// *               "ev_id":"<идентификатор события, (уникален) >",
-// *               "geo":[ <longitude>, <latitude> ]
-// *             }
-// *           }
-// *         }
-// *
-// *         Responce: {
-// *           "resp": {
-// *             "name":"set_event_geo",
-// *             "status":"< ok | err >",
-// *             "desc":"<описание, при ок этого поля не будет>"
-// *           }
-// *         }
-// */
-//class EventGeopositionCommand : public BaseCommand {
-//public:
-//    EventGeopositionCommand(size_t token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
-//    virtual ~EventGeopositionCommand();
-//    virtual Json execute();
-//};
 } /// server

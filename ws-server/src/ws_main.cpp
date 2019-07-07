@@ -45,6 +45,8 @@ static char DEFAULT_YMAP_API_KEY[] = "ad12ff63-587b-42c7-b1e1-e8b8b0913cda";
 
 static char DEFAULT_INDEX_PATH[] = "index";
 
+static char DEFAULT_REPORTS_PATH[] = "reports";
+
 
 struct GlobalArgs {
     int port;             ///< параметр -p
@@ -62,11 +64,12 @@ struct GlobalArgs {
     char* index_url;      ///< параметр -u
     char* index_db_login; ///< параметр -m
     char* index_db_pswd;  ///< параметр -t
-    char* index_path;   ///< параметр -i
+    char* index_path;     ///< параметр -i
+    char* reports_path;   ///< параметр -o
 } __global_args;
 
 
-static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:y:u:m:t:i:h?";
+static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:y:u:m:t:i:o:h?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -89,6 +92,7 @@ void HelpMessage() {
               << "\t[-m]\t Index DB login. [" << DEFAULT_INDEX_DB_LOGIN << "]\n"
               << "\t[-t]\t Index DB pswd. [" << DEFAULT_INDEX_DB_PSWD << "]\n"
               << "\t[-i]\t Index DB path. [" << DEFAULT_INDEX_PATH << "]\n"
+              << "\t[-o]\t Report path. [" << DEFAULT_REPORTS_PATH << "]\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
 }
@@ -125,6 +129,7 @@ int main(int argc_, char **argv_) {
     __global_args.index_db_login = DEFAULT_INDEX_DB_LOGIN;
     __global_args.index_db_pswd  = DEFAULT_INDEX_DB_PSWD;
     __global_args.index_path     = DEFAULT_INDEX_PATH;
+    __global_args.reports_path   = DEFAULT_REPORTS_PATH;
 
     /// Обработка входных опций.
     int opt = getopt(argc_, argv_, __opt_string);
@@ -176,6 +181,9 @@ int main(int argc_, char **argv_) {
             case 'i':
                 __global_args.index_path = optarg;
                 break;
+            case 'o':
+                __global_args.reports_path = optarg;
+                break;
 
             case 'h':
             case '?':
@@ -198,8 +206,7 @@ int main(int argc_, char **argv_) {
         /// Точка подключения устройства.
         PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, db, __global_args.yamap_api_key);
         /// Точка подключения операторской страницы.
-        //BaseCommand::_si_url = __global_args.index_url;
-        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db, xdb);
+        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db, xdb, __global_args.reports_path);
         /// Конструирование сервера
         UniWsServer p2p(__global_args.port,
                      __global_args.ssl_crt, 

@@ -1,5 +1,5 @@
 /**
- * \brief  Простой websocket обработчик подключения оператора к комнате 1x1 связи контроллера с веб страницей состояний счётчиков.
+ * \brief  websocket обработчик подключения оператора к комнате 1x1 связи контроллера с веб страницей состояний счётчиков.
  * \author R.N.Velichko rostislav.vel@gmail.com
  * \date   17.09.2018
  */
@@ -20,8 +20,10 @@ class OperatorPeerWorker : public BaseWorker {
     virtual bool lastMessage(const ConnectionValuesIter &iter, const std::string &msg);
     virtual void sendClose(size_t connection_id);
 
+    std::string _token;
+
 public:
-    OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb);
+    OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb, const std::string& reports_path);
     virtual ~OperatorPeerWorker();
 };
 } /// server

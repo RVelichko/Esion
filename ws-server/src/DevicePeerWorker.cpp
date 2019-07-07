@@ -88,7 +88,6 @@ DevicePeerWorker::DevicePeerWorker(std::mutex &mutex, const PDbFacade& db, const
     , _db(db)
     , _geo_req(new GeoRequester(ymap_api_key)) {
     LOG(DEBUG);
-    //_geo_req->request("Санкт-Петербург ул.Русановская, д.1");
 }
 
 
