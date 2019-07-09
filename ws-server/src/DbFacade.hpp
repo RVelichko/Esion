@@ -97,7 +97,7 @@ public:
      * \param num_objs  Количество запрашиваемых устройств.
      * \param skip_objs Количество пропускаемых в запросе устройств.
      */ 
-    Json getDevices(uint8_t num_objs = 10, uint8_t skip_objs = 0);
+    Json getDevices(size_t num_objs = 10, size_t skip_objs = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по точке и радиусу геолокации.
@@ -149,7 +149,7 @@ public:
      * \param num_objs  Количество запрашиваемых устройств.
      * \param skip_objs Количество пропускаемых в запросе устройств.
      */
-    Json getEvents(uint8_t num_objs = 10, uint8_t skip_objs = 0);
+    Json getEvents(size_t num_objs = 10, size_t skip_objs = 0);
 
     /**
      * \brief Метод возвращает N имеющихся событий по идентификатору устройства.

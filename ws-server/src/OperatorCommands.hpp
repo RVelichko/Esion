@@ -57,7 +57,6 @@ protected:
 public:
     static PDbFacade _db;
     static PIndexDbFacade _xdb;
-    static std::string _reports_path;
 
     static bool executeByName(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 
@@ -278,7 +277,6 @@ public:
  *           "geo":"<геопозиция (пустая, если не указана) >",
  *           "time":"<время события>",
  *           "priority":"<тип питания устройства>",
- *           "status":"<active | not_active>"
  *           "desc":"<описание события>"
  *         }
  */

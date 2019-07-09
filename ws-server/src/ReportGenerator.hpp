@@ -19,7 +19,7 @@ class ReportGenerator {
     std::string _result_path;
 
 public:
-    static std::string _report_path;
+    static std::string _reports_path;
 
     ReportGenerator(const Json& jdevs);
     virtual ~ReportGenerator();

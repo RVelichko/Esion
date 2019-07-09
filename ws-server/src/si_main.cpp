@@ -54,15 +54,15 @@ static const char *__opt_string = "p:i:x:m:t:a:n:l:s:h?";
 void HelpMessage() {
     std::cout << "  Use:\n\t#si-server -p " << DEFAULT_SERVER_PORT << "\n"
               << "  Args:\n"
-              << "\t[-p]\t Web socket server port. [" << DEFAULT_SERVER_PORT << "\n"
-              << "\t[-i]\t Index connection point. [" << DEFAULT_INDEX_POINT << "]\n"
-              << "\t[-m]\t Index DB path. [" << DEFAULT_INDEX_PATH << "]\n"
-              << "\t[-t]\t Index DB login. [" << DEFAULT_INDEX_DB_LOGIN << "]\n"
-              << "\t[-x]\t Index DB pswd. [" << DEFAULT_INDEX_DB_PSWD << "]\n"
-              << "\t[-a]\t DB address. [" << DEFAULT_DB_ADDRESS << "]\n"
-              << "\t[-n]\t DB name. [" << DEFAULT_DB_NAME << "]\n"
-              << "\t[-l]\t DB login. [" << DEFAULT_DB_LOGIN << "]\n"
-              << "\t[-s]\t DB password. [" << DEFAULT_DB_PSWD << "]\n"
+              << "\t[-p]\t Web socket server port.\t[" << DEFAULT_SERVER_PORT << "]\n"
+              << "\t[-i]\t Index connection point.\t[" << DEFAULT_INDEX_POINT << "]\n"
+              << "\t[-m]\t Index DB path.\t[" << DEFAULT_INDEX_PATH << "]\n"
+              << "\t[-t]\t Index DB login.\t[" << DEFAULT_INDEX_DB_LOGIN << "]\n"
+              << "\t[-x]\t Index DB pswd.\t[" << DEFAULT_INDEX_DB_PSWD << "]\n"
+              << "\t[-a]\t DB address.\t[" << DEFAULT_DB_ADDRESS << "]\n"
+              << "\t[-n]\t DB name.\t[" << DEFAULT_DB_NAME << "]\n"
+              << "\t[-l]\t DB login.\t[" << DEFAULT_DB_LOGIN << "]\n"
+              << "\t[-s]\t DB password.\t[" << DEFAULT_DB_PSWD << "]\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
 }

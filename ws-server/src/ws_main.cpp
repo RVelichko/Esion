@@ -37,13 +37,9 @@ static char DEFAULT_DB_NAME[]     = "devices";
 static char DEFAULT_DB_LOGIN[]    = "esion";
 static char DEFAULT_DB_PASSWORD[] = "esionpassword";
 
-static char DEFAULT_INDEX_SERVER_URL[] = "127.0.0.1:3000/index";
-static char DEFAULT_INDEX_DB_LOGIN[] = "index";
-static char DEFAULT_INDEX_DB_PSWD[] = "Vishen";
+static char DEFAULT_INDEX_PATH[] = "index";
 
 static char DEFAULT_YMAP_API_KEY[] = "ad12ff63-587b-42c7-b1e1-e8b8b0913cda";
-
-static char DEFAULT_INDEX_PATH[] = "index";
 
 static char DEFAULT_REPORTS_PATH[] = "reports";
 
@@ -61,38 +57,34 @@ struct GlobalArgs {
     char* db_ligin;       ///< параметр -l
     char* db_pswd;        ///< параметр -s
     char* yamap_api_key;  ///< параметр -y
-    char* index_url;      ///< параметр -u
-    char* index_db_login; ///< параметр -m
-    char* index_db_pswd;  ///< параметр -t
     char* index_path;     ///< параметр -i
     char* reports_path;   ///< параметр -o
+    bool is_vebose;       ///< параметр -v
 } __global_args;
 
 
-static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:y:u:m:t:i:o:h?";
+static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:y:i:o:vh?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void HelpMessage() {
     std::cout << "  Use:\n\t#ws-server -p " << DEFAULT_SERVER_PORT << "\n"
               << "  Args:\n"
-              << "\t[-p]\t Web socket server port. [" << DEFAULT_SERVER_PORT << "\n"
+              << "\t[-p]\t Web socket server port.\t[" << DEFAULT_SERVER_PORT << "]\n"
               << "\t[-c]\t SSL sertificate path.\n"
               << "\t[-k]\t SSL key path.\n"
-              << "\t[-q]\t Server operator Login.[" << DEFAULT_SRV_OPERATOR_LOGIN << "]\n"
-              << "\t[-r]\t Server operator Password.[" << DEFAULT_SRV_OPERATOR_PSWD << "]\n"
-              << "\t[-e]\t Device connection point. [" << DEFAULT_DEVICE_POINT << "]\n"
-              << "\t[-w]\t Web page connection point. [" << DEFAULT_PAGE_POINT << "]\n"
-              << "\t[-a]\t DB address. [" << DEFAULT_DB_ADDRESS << "]\n"
-              << "\t[-n]\t DB name. [" << DEFAULT_DB_NAME << "]\n"
-              << "\t[-l]\t DB login. [" << DEFAULT_DB_LOGIN << "]\n"
-              << "\t[-s]\t DB password. [" << DEFAULT_DB_PASSWORD << "]\n"
-              << "\t[-y]\t Yandex map API key. [" << DEFAULT_YMAP_API_KEY << "]\n"
-              << "\t[-u]\t Index server URL. [" << DEFAULT_INDEX_SERVER_URL << "]\n"
-              << "\t[-m]\t Index DB login. [" << DEFAULT_INDEX_DB_LOGIN << "]\n"
-              << "\t[-t]\t Index DB pswd. [" << DEFAULT_INDEX_DB_PSWD << "]\n"
-              << "\t[-i]\t Index DB path. [" << DEFAULT_INDEX_PATH << "]\n"
-              << "\t[-o]\t Report path. [" << DEFAULT_REPORTS_PATH << "]\n"
+              << "\t[-q]\t Server operator Login.\t[" << DEFAULT_SRV_OPERATOR_LOGIN << "]\n"
+              << "\t[-r]\t Server operator Password.\t[" << DEFAULT_SRV_OPERATOR_PSWD << "]\n"
+              << "\t[-e]\t Device connection point.\t[" << DEFAULT_DEVICE_POINT << "]\n"
+              << "\t[-w]\t Web page connection point.\t[" << DEFAULT_PAGE_POINT << "]\n"
+              << "\t[-a]\t DB address.\t[" << DEFAULT_DB_ADDRESS << "]\n"
+              << "\t[-n]\t DB name.\t[" << DEFAULT_DB_NAME << "]\n"
+              << "\t[-l]\t DB login.\t[" << DEFAULT_DB_LOGIN << "]\n"
+              << "\t[-s]\t DB password.\t[" << DEFAULT_DB_PASSWORD << "]\n"
+              << "\t[-y]\t Yandex map API key.\t[" << DEFAULT_YMAP_API_KEY << "]\n"
+              << "\t[-i]\t Index DB path.\t[" << DEFAULT_INDEX_PATH << "]\n"
+              << "\t[-o]\t Report path.\t[" << DEFAULT_REPORTS_PATH << "]\n"
+              << "\t[-v]\t Verbose logging.\tDefault FALSE\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
 }
@@ -125,11 +117,9 @@ int main(int argc_, char **argv_) {
     __global_args.db_ligin       = DEFAULT_DB_LOGIN;
     __global_args.db_pswd        = DEFAULT_DB_PASSWORD;
     __global_args.yamap_api_key  = DEFAULT_YMAP_API_KEY;
-    __global_args.index_url      = DEFAULT_INDEX_SERVER_URL;
-    __global_args.index_db_login = DEFAULT_INDEX_DB_LOGIN;
-    __global_args.index_db_pswd  = DEFAULT_INDEX_DB_PSWD;
     __global_args.index_path     = DEFAULT_INDEX_PATH;
     __global_args.reports_path   = DEFAULT_REPORTS_PATH;
+    __global_args.is_vebose      = false;
 
     /// Обработка входных опций.
     int opt = getopt(argc_, argv_, __opt_string);
@@ -169,20 +159,14 @@ int main(int argc_, char **argv_) {
             case 'y':
                 __global_args.yamap_api_key = optarg;
                 break;
-            case 'u':
-                __global_args.index_url = optarg;
-                break;
-            case 'm':
-                __global_args.index_db_login = optarg;
-                break;
-            case 't':
-                __global_args.index_db_pswd = optarg;
-                break;
             case 'i':
                 __global_args.index_path = optarg;
                 break;
             case 'o':
                 __global_args.reports_path = optarg;
+                break;
+            case 'v':
+                __global_args.is_vebose = true;
                 break;
 
             case 'h':
@@ -194,7 +178,17 @@ int main(int argc_, char **argv_) {
         }
         opt = getopt(argc_, argv_, __opt_string);
     }
-    LOG_TO_STDOUT;
+
+    if (__global_args.is_vebose) {
+        LOG_TO_STDOUT;
+        LOG(INFO) << "Run in VERBOSE mode.";
+    } else {
+        LOG(INFO) << "Run in SILENT mode.";
+        LOG_TOGGLE(INFO, false);
+        LOG_TOGGLE(TEST, false);
+        LOG_TOGGLE(DEBUG, false);
+        LOG_TOGGLE(TRACE, false);
+    }
     /// Доступ к БД.
     PDbFacade db(new DbFacade());
     if (db->connect(__global_args.db_addr, __global_args.db_name, __global_args.db_ligin, __global_args.db_pswd)) {

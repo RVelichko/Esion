@@ -18,13 +18,15 @@ bool IndexDbFacade::addIndex(Xapian::WritableDatabase *xdb, const std::string& d
         Xapian::TermGenerator term_gen;
         term_gen.set_stemmer(Xapian::Stem("ru"));
         term_gen.set_document(doc);
-        term_gen.index_text("address", 1, "S");
+        term_gen.index_text("addr", 1, "S");
         term_gen.index_text(str);
         doc.set_data(db_id);
         std::string id_term = "Q" + db_id;
         doc.add_boolean_term(id_term);
+        //xdb->add_document(doc);
         xdb->replace_document(id_term, doc);
         is_ok = true;
+        LOG(TRACE) << "[" << db_id << "] " << str;
     } else {
         LOG(FATAL) << "Xapian DB is`t inited!";
     }
@@ -41,7 +43,7 @@ IndexIds IndexDbFacade::findIndexes(Xapian::WritableDatabase *xdb, const std::st
     Xapian::QueryParser qparsr;
     qparsr.set_stemmer(Xapian::Stem("ru"));
     qparsr.set_stemming_strategy(qparsr.STEM_SOME);
-    qparsr.add_prefix("address", "S");
+    qparsr.add_prefix("addr", "S");
     Xapian::Query query = qparsr.parse_query(qstr);
     Xapian::Enquire enquire(*xdb);
     enquire.set_query(query);
@@ -49,7 +51,7 @@ IndexIds IndexDbFacade::findIndexes(Xapian::WritableDatabase *xdb, const std::st
     LOG(DEBUG) << "'" << qstr << "'[" << offset << ":" << offset + max_count << "] =";
     for (Xapian::MSetIterator m = mset.begin(); m not_eq mset.end(); ++m) {
         Xapian::docid did = *m;
-        LOG(DEBUG) << m.get_rank() + 1 << ": #" << did;
+        LOG(DEBUG) << m.get_rank() + 1 << ": #" << m.get_document().get_data();
         ids.push_back(m.get_document().get_data());
     }
     return ids;
@@ -62,40 +64,53 @@ IndexIds IndexDbFacade::findIndexes(Xapian::WritableDatabase *xdb, const std::st
 PXapianDatabase IndexDbFacade::initIndexes(const std::string &index_name, const std::string &coll_name) try {
     PXapianDatabase xdb;
     auto path = bfs::path(_xdb_path + "_" + index_name);
-    //if (bfs::exists(path)) {
-        xdb = PXapianDatabase(new Xapian::WritableDatabase(path.string(), Xapian::DB_CREATE_OR_OPEN));
-    //} else {
-    //    LOG(FATAL) << "Can`t create or find path " << path << "";
-    //}
+    xdb = PXapianDatabase(new Xapian::WritableDatabase(path.string(), Xapian::DB_CREATE_OR_OPEN));
     /// Сверить количество индексных записей с внешней БД.
     if (_db and xdb) {
         size_t db_length = _db->getCollectionCount("", coll_name);
         size_t xdb_length = xdb->get_doccount();
         if (xdb_length < db_length) {
-            for (size_t i = xdb_length; i < db_length; i += INDEXATE_COUNT) {
-                auto add_index_fn = [&](const std::string &coll_name, const Json &jarr) {
-                    if (not jarr.empty() and jarr.is_array()) {
-                        for (auto jval : jarr) {
-                            auto jdb_id = jval.find("_id");
-                            auto jcoll  = jval.find("coll");
-                            if (jdb_id not_eq jval.end() and jdb_id->is_object() and jcoll not_eq jval.end()) {
-                                std::string db_id = jdb_id->value("$oid", "");
+            auto add_index_fn = [&](const std::string &coll_name, const Json &jarr) {
+                if (not jarr.empty() and jarr.is_array()) {
+                    for (auto jval : jarr) {
+                        auto jdb_id = jval.find("_id");
+                        auto jcoll  = jval.find("coll");
+                        std::string db_id;
+                        if (jdb_id not_eq jval.end() and jdb_id->is_object() and
+                            jcoll not_eq jval.end() and jcoll->is_string()) {
+                            db_id = jdb_id->value("$oid", "");
+                            if (not db_id.empty()) {
                                 std::string str =
                                         jval.value("dev_id", "") + " " +
                                         jval.value("coll", "") + " " +
                                         jval.value("user", "");
                                 addIndex(xdb.get(), db_id, str);
+                            } else {
+                                LOG(ERROR) << "id is empty!";
                             }
+                        } else {
+                            LOG(ERROR) << "Can`t indexate unit " << db_id << " !";
                         }
-                    } else {
-                        LOG(WARNING) << coll_name << " collection is empty!";
                     }
-                };
+                } else {
+                    LOG(WARNING) << coll_name << " collection is empty!";
+                }
+            };
+            for (size_t i = xdb_length; i <= db_length; ) {
                 if (coll_name == CONTROOLERS_COLLECTION_NAME) {
-                    add_index_fn(CONTROOLERS_COLLECTION_NAME, _db->getDevices(INDEXATE_COUNT, i));
+                    auto jdevs = _db->getDevices(INDEXATE_COUNT, i);
+                    add_index_fn(CONTROOLERS_COLLECTION_NAME, jdevs);
                 }
                 if (coll_name == EVENTS_COLLECTION_NAME) {
-                    add_index_fn(EVENTS_COLLECTION_NAME, _db->getEvents(INDEXATE_COUNT, i));
+                    auto jevs = _db->getEvents(INDEXATE_COUNT, i);
+                    add_index_fn(EVENTS_COLLECTION_NAME, jevs);
+                }
+                if (i + INDEXATE_COUNT < db_length) {
+                    i += INDEXATE_COUNT;
+                } else if (i not_eq db_length) {
+                    i += db_length - i;
+                } else {
+                    break;
                 }
             }
             xdb->commit();

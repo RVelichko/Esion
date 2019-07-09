@@ -2,13 +2,14 @@
 
 #include "Log.hpp"
 #include "uuid.hpp"
+#include "ReportGenerator.hpp"
 #include "OperatorPeerWorker.hpp"
+
 
 using namespace server;
 namespace ph = std::placeholders;
 
 typedef std::lock_guard<std::mutex> LockQuard;
-//typedef sindex::SearchIndexClient SearchIndexClient;
 
 
 bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
@@ -82,7 +83,7 @@ OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, c
     : BaseWorker(mutex) {
     BaseCommand::_db = db;
     BaseCommand::_xdb = xdb;
-    BaseCommand::_reports_path = reports_path;
+    ReportGenerator::_reports_path = reports_path;
 }
 
 

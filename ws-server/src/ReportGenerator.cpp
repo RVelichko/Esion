@@ -8,74 +8,83 @@
 
 
 using namespace server;
+namespace bfs = boost::filesystem;
 
 
-std::string ReportGenerator::_report_path;
+std::string ReportGenerator::_reports_path;
+
+
+std::string TimeToStr(time_t rawtime) {
+    struct tm* tm_info = localtime(&rawtime);
+    char buf[TIME_STRING_BUFFER_LEN] = {0};
+    strftime(buf, TIME_STRING_BUFFER_LEN, "%d.%m.%Y-%H:%M:%S", tm_info);
+    return std::string(buf);
+}
 
 
 ReportGenerator::ReportGenerator(const Json& jdevs) try {
     LOG(DEBUG);
     if (not jdevs.empty() and jdevs.is_array()) {
-        /// Создать имя файла отчёта.
-        time_t rawtime;
-        time(&rawtime);
-        struct tm* tm_info = localtime(&rawtime);
-        char buf[TIME_STRING_BUFFER_LEN] = {0};
-        strftime(buf, TIME_STRING_BUFFER_LEN, "%d.%m.%Y-%H:%M:%S", tm_info);
-        _result_path = _report_path + "/" + buf + REPORT_FILE_EXTENTION;
-        /// Записать отчёт в файл.
-        std::ofstream ofs(_result_path.c_str());
-        ofs << "Id;dev_id;coll;user;geo;update_time;power_type;voltage;desc;status;";
-        for (size_t i = 0; i < 4; ++i) {
-            ofs << "type_" << i << ";count_" << i << ";unit_" << i << ";unit_type_" << i << ";"
-                << "unit_count_" << i << ";serial_" << i << ";verify_date_" << i << ";desc_" << i << ";";
-        }
-        ofs << "\n";
-        size_t line_num = 0;
-        for (auto jdev : jdevs) {
-            auto dev_id = jdev.value("dev_id", "");
-            auto coll   = jdev.value("coll", "");
-            auto user   = jdev.value("user", "");
-            double lo = 0.0;
-            double la = 0.0;
-            auto jgeo = jdev.value("geo", Json());
-            if (jgeo.is_array() and jgeo.size() == 2) {
-                lo = jgeo[0];
-                la = jgeo[1];
+        if (not _reports_path.empty()) {
+            /// Создать имя файла отчёта.
+            auto bpath = bfs::absolute(bfs::path(_reports_path));
+            if (not bfs::exists(bpath)) {
+                bfs::create_directory(bpath);
             }
-            auto update_time = jdev.value("update_time", "");
-            auto power_type  = jdev.value("power_type", "");
-            auto voltage     = jdev.value("voltage", "");
-            auto desc        = jdev.value("desc", "");
-            auto status      = jdev.value("status", "");
-            auto jcounters    = jdev.value("counters", Json());
-            ofs << line_num << ";" << dev_id << ";" << coll << ";" << user << ";" << lo << " " << la << ";"
-                << update_time << ";" << power_type << ";" << voltage << ";" << desc << ";" << status << ";";
-            for (size_t i = 0; i < 4; ++i) {
-                std::string type;
-                std::string count;
-                std::string unit;
-                std::string unit_type;
-                std::string unit_count;
-                std::string serial;
-                std::string verify_date;
-                std::string desc;
-                if (jcounters.is_array() and jcounters.size() == 4) {
-                    type        = jcounters[i].value("type", "");
-                    count       = jcounters[i].value("count", "");
-                    unit        = jcounters[i].value("unit", "");
-                    unit_type   = jcounters[i].value("unit_type", "");
-                    unit_count  = jcounters[i].value("unit_count", "");
-                    serial      = jcounters[i].value("serial", "");
-                    verify_date = jcounters[i].value("verify_date", "");
-                    desc        = jcounters[i].value("desc", "");
-                }
-                ofs << type << ";" << count << ";" << unit << ";" << unit_type << ";" << unit_count << ";"
-                    << serial << ";" << verify_date << ";" << desc << ";";
+            time_t rawtime;
+            time(&rawtime);
+            std::string file_name = TimeToStr(rawtime) + REPORT_FILE_EXTENTION;
+            std::string path = bpath.string() + "/" + file_name;
+            /// Записать отчёт в файл.
+            std::ofstream ofs(path.c_str());
+            ofs << "Id,dev_id,coll,user,geo,update_time,power_type,voltage,desc,status,";
+            for (size_t i = 1; i <= 4; ++i) {
+                ofs << "type_" << i << ",count_" << i << ",unit_" << i << ",unit_type_" << i << ","
+                    << "unit_count_" << i << ",serial_" << i << ",verify_date_" << i << ",desc_" << i << ",";
             }
             ofs << "\n";
+            size_t line_num = 0;
+            for (auto jdev : jdevs) {
+                double lo = 0.0;
+                double la = 0.0;
+                auto jgeo = jdev.find("geo");
+                if (jgeo not_eq jdev.end() and jgeo->is_array() and jgeo->size() == 2) {
+                    lo = (*jgeo)[0];
+                    la = (*jgeo)[1];
+                } else {
+                    LOG(ERROR) << "Incorrect geo.";
+                }
+                ofs << ++line_num << ","
+                    << jdev["dev_id"] << ","
+                    << jdev["coll"] << ","
+                    << jdev["user"] << ","
+                    << lo << " " << la << ","
+                    << TimeToStr(jdev["update_time"]) << ","
+                    << jdev["power_type"] << ","
+                    << jdev["voltage"] << ","
+                    << jdev["desc"] << ","
+                    << jdev["status"] << ",";
+                auto jcounts = jdev.find("counters");
+                if (jcounts not_eq jdev.end() and
+                    jcounts->is_array() and jcounts->size() == 4) {
+                    for (size_t i = 0; i < 4; ++i) {
+                        ofs << (*jcounts)[i]["type"] << ","
+                            << (*jcounts)[i]["count"] << ","
+                            << (*jcounts)[i]["unit"] << ","
+                            << (*jcounts)[i]["unit_type"] << ","
+                            << (*jcounts)[i]["unit_count"] << ","
+                            << (*jcounts)[i]["serial"] << ","
+                            << (*jcounts)[i]["verify_date"] << ","
+                            << (*jcounts)[i]["desc"] << ",";
+                    }
+                }
+                ofs << "\n";
+            }
+            _result_path = file_name;
+            LOG(DEBUG) << "Create report file: \"" << _result_path << "\"";
+        } else {
+            LOG(ERROR) << "Reports path is not set!";
         }
-        LOG(DEBUG) << "Create report file: \"" << _result_path << "\"";
     }
 } catch (const std::exception& e) {
     LOG(ERROR) << "Can`t create report. Bad JSON format.";

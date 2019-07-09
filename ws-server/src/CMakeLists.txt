@@ -13,8 +13,6 @@ add_library(${LIB_ESION_SERVER} STATIC
     ReportGenerator.cpp
     OperatorCommands.cpp
     OperatorPeerWorker.cpp
-    #SearchIndex.cpp
-    #SearchIndexClient.cpp
     )
 target_link_libraries(${LIB_ESION_SERVER}
     ${LIB_BASE_UTILS}
@@ -64,4 +62,21 @@ target_link_libraries(${APP_INDEX_SERVER}
     ${Boost_REGEX_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
+    )
+
+
+set(APP_DB_DATA_GEN db-data-generator)
+add_executable(${APP_DB_DATA_GEN}
+    GeoRequester.cpp
+    gen_main.cpp
+    )
+target_link_libraries(${APP_DB_DATA_GEN}
+    ${LIB_BASE_UTILS}
+    log
+    ${MongoClient_LIBRARIES}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_REGEX_LIBRARY}
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${CMAKE_THREAD_LIBS_INIT}
+    ${CURL_LIBRARIES}
     )

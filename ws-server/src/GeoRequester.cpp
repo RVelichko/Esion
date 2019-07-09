@@ -56,7 +56,7 @@ Json GeoRequester::request(const std::string& coll) {
             LOG(ERROR) << curl_easy_strerror(res);
         } else {
             //LOG(DEBUG) << "HEADER[" << header_buf.size() << "]: \n" << header_buf.c_str() << "\n";
-            LOG(DEBUG) << "BODY[" << body_buf.size() << "]: \n" << body_buf.c_str() << "\n";
+            //LOG(DEBUG) << "BODY[" << body_buf.size() << "]: \n" << body_buf.c_str() << "\n";
             try {
                 auto jres = Json::parse(body_buf);
                 auto jresp = jres.find("response");

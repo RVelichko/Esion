@@ -12,7 +12,6 @@ typedef sindex::IndexIds DevicesIds;
 
 PDbFacade BaseCommand::_db;
 PIndexDbFacade BaseCommand::_xdb;
-std::string BaseCommand::_reports_path;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -44,12 +43,12 @@ public:
 bool BaseCommand::executeByName(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn) {
     /// Инициализация локальных статических массивов с обработчиками команд.
     static CommandsExecuters cmd_execs = {
-        ExecuteCmd<LogoutCommand>("auth").value(),
+        ExecuteCmd<AuthorizeCommand>("auth").value(),
         ExecuteCmd<LogoutCommand>("logout").value(),
-        ExecuteCmd<LogoutCommand>("get_devs").value(),
-        ExecuteCmd<LogoutCommand>("set_dev_status").value(),
-        ExecuteCmd<LogoutCommand>("get_events").value(),
-        ExecuteCmd<LogoutCommand>("get_report").value(),
+        ExecuteCmd<GetDevicesListCommand>("get_devs").value(),
+        ExecuteCmd<ActivateDeviceCommands>("set_dev_status").value(),
+        ExecuteCmd<GetEventsListCommand>("get_events").value(),
+        ExecuteCmd<CreateReportCommand>("get_report").value(),
     };
     static std::mutex cmd_execs_mutex;
     /// Выполнить обработку команды.
@@ -66,7 +65,7 @@ bool BaseCommand::executeByName(const std::string& token, const Json& js, std::m
         if (exec_fn) {
             return exec_fn(token, js, mutex, snd_fn);
         } else {
-            LOG(WARNING) << "Can`t find command name \"" << *jname << "\"!";
+            LOG(WARNING) << "Can`t find command name " << *jname << "!";
         }
     } else {
         LOG(WARNING) << "Command is not correct! Can`t find \"name\".";
@@ -292,7 +291,7 @@ Json GetDevicesListCommand::execute() {
                 auto jgeo      = _jdata.find("geo");
                 auto jradius   = _jdata.find("radius");
                 auto jfilter   = _jdata.find("filter");
-                if (jgeo_poly not_eq _jdata.end() and jgeo->is_array() and jgeo->size() == 4) {
+                if (jgeo_poly not_eq _jdata.end() and jgeo_poly->is_array() and jgeo_poly->size() == 4) {
                     double x = (*jgeo_poly)[0];
                     double y = (*jgeo_poly)[1];
                     double w = (*jgeo_poly)[2];
@@ -354,10 +353,25 @@ Json GetDevicesListCommand::execute() {
                     }
                     eraseMongoId(jdevs);
                     jres = fillResponceData(jdevs);
-                } else {
-                    LOG(WARNING) << "Incorrect cmd: [" << _name << "] \"" << _jdata.dump() << "\"";
-                    jres = getErrorResponce("Incorrect command.");
+                } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
+                           jradius == _jdata.end() and jfilter == _jdata.end()) {
+                    Json jdevs;
+                    _mutex.lock();
+                    if (_db) {
+                        jdevs = _db->getDevices(num, skip);
+                        num_devices = _db->getCollectionCount("", CONTROOLERS_COLLECTION_NAME);
+                        _mutex.unlock();
+                    } else {
+                        _mutex.unlock();
+                        LOG(FATAL) << "DB is NULL!";
+                        jres = getErrorResponce("Internal DB error.");
+                    }
+                    eraseMongoId(jdevs);
+                    jres = fillResponceData(jdevs);
                 }
+            } else {
+                LOG(WARNING) << "Incorrect cmd: [" << _name << "] \"" << _jdata.dump() << "\"";
+                jres = getErrorResponce("Incorrect command.");
             }
         } else {
             LOG(FATAL) << "Auth error!";
@@ -457,7 +471,7 @@ Json GetEventsListCommand::execute() {
                 auto jgeo      = _jdata.find("geo");
                 auto jradius   = _jdata.find("radius");
                 auto jfilter   = _jdata.find("filter");
-                if (jgeo_poly not_eq _jdata.end() and jgeo->is_array() and jgeo->size() == 4) {
+                if (jgeo_poly not_eq _jdata.end() and jgeo_poly->is_array() and jgeo_poly->size() == 4) {
                     double x = (*jgeo_poly)[0];
                     double y = (*jgeo_poly)[1];
                     double w = (*jgeo_poly)[2];
@@ -519,10 +533,25 @@ Json GetEventsListCommand::execute() {
                     }
                     eraseMongoId(jevs);
                     jres = fillResponceData(jevs);
-                } else {
-                    LOG(WARNING) << "Incorrect cmd: [" << _name << "] \"" << _jdata.dump() << "\"";
-                    jres = getErrorResponce("Incorrect command.");
+                } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
+                           jradius == _jdata.end() and jfilter == _jdata.end()) {
+                    Json jdevs;
+                    _mutex.lock();
+                    if (_db) {
+                        jdevs = _db->getEvents(num, skip);
+                        num_events = _db->getCollectionCount("", EVENTS_COLLECTION_NAME);
+                        _mutex.unlock();
+                    } else {
+                        _mutex.unlock();
+                        LOG(FATAL) << "DB is NULL!";
+                        jres = getErrorResponce("Internal DB error.");
+                    }
+                    eraseMongoId(jdevs);
+                    jres = fillResponceData(jdevs);
                 }
+            } else {
+                LOG(WARNING) << "Incorrect cmd: [" << _name << "] \"" << _jdata.dump() << "\"";
+                jres = getErrorResponce("Incorrect command.");
             }
         } else {
             LOG(FATAL) << "Auth error!";

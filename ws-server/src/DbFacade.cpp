@@ -157,7 +157,7 @@ bool DbFacade::connect(const std::string& addr,
     _db_name = db_name;
     bool is_ok = true;
     _dbc.reset(new DbConnection());
-    LOG(ERROR) << "Connecting to DB [" << addr << ":" << db_name << "," << login << "," << pswd << "]";
+    LOG(INFO) << "Connecting to DB [" << addr << ":" << db_name << "," << login << "," << pswd << "]";
     std::string err_msg;
     if (not _dbc->connect(addr, err_msg)) {
         LOG(ERROR) << "Can`t connect to DB: " << err_msg;
@@ -240,7 +240,7 @@ bool DbFacade::insertUser(const Json& jusr) try {
 }
 
 
-Json DbFacade::getDevices(uint8_t num_objs, uint8_t skip_objs) try {
+Json DbFacade::getDevices(size_t num_objs, size_t skip_objs) try {
     BsonObjs found_devs;
     _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), BObjBuilder().obj(), num_objs,  skip_objs);
     Json jdevs;
@@ -377,7 +377,7 @@ Json DbFacade::getDevice(const std::string& dev_id) try {
 }
 
 
-Json DbFacade::getEvents(uint8_t num_objs, uint8_t skip_objs) try {
+Json DbFacade::getEvents(size_t num_objs, size_t skip_objs) try {
     BsonObjs found_evs;
     _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), BObjBuilder().obj(), num_objs,  skip_objs);
     Json jevs;

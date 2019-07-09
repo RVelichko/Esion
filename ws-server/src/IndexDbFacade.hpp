@@ -28,8 +28,8 @@ typedef std::vector<std::string> IndexIds;
 
 static const char DEVICES_INDEX_DB_NAME[] = "devices";
 static const char EVENTS_INDEX_DB_NAME[] = "events";
-static const uint16_t INDEXATE_COUNT = 100;
-static const uint16_t ENQUERY_COUNT = 100;
+static const size_t INDEXATE_COUNT = 1000;
+static const size_t ENQUERY_COUNT = 1000;
 
 
 class IndexDbFacade {

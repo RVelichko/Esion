@@ -40,27 +40,49 @@ PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std:
     bool res = parseMessage(msg, [&](const Json &json) {
         /// Сохранить параметры комнаты
         con_val = std::make_shared<DeviceConnectionValue>();
-        con_val->dev_id = json.value("id", "");
-        /// Загрузить данные в БД.
-        auto jcounts = json.find("counters");
-        auto jcoll = json.find("coll");
-        if (jcounts not_eq json.end() and jcounts->is_array() and
-            jcoll not_eq json.end() and jcoll->is_string()) {
-            Json jdev = json;
-            auto jgeo = _geo_req->request(*jcoll);
-            jdev["geo"] = jgeo["point"];
-            _mutex.lock();
-            if (_db) {
-                _db->insertDevice(jdev);
-                _mutex.unlock();
+        auto jdev_id = json.find("id");
+        if (jdev_id not_eq json.end() and jdev_id->is_string()) {
+            con_val->dev_id = *jdev_id;
+            /// Загрузить данные в БД.
+            auto jcounts = json.find("counters");
+            auto jcoll = json.find("coll");
+            if (jcounts not_eq json.end() and jcounts->is_array() and
+                jcoll not_eq json.end() and jcoll->is_string()) {
+                Json jdev;
+                _mutex.lock();
+                if (_db) {
+                    jdev = _db->getDevice(*jdev_id);
+                    _mutex.unlock();
+                    if (jdev.empty()) {
+                        jdev = json;
+                        auto jgeo = _geo_req->request(*jcoll);
+                        jdev["geo"] = jgeo["point"];
+                        jdev["status"] = "not_active";
+                    } else {
+                        auto jgeo = jdev["geo"];
+                        auto jstatus =  jdev["status"];
+                        jdev = json;
+                        jdev["geo"] = jgeo;
+                        jdev["status"] = jstatus;
+                    }
+                    /// Зафиксировать время последнего обновления.
+                    time_t rawtime;
+                    time(&rawtime);
+                    jdev["update_time"] = rawtime;
+                    LockQuard l(_mutex);
+                    _db->insertDevice(jdev);
+                } else {
+                    _mutex.unlock();
+                    jstatus = {{"status", "DB is NULL"}};
+                    LOG(FATAL) << "DB is NULL!";
+                }
             } else {
-                _mutex.unlock();
-                jstatus = {{"status", "DB is NULL"}};
-                LOG(FATAL) << "DB is NULL!";
+                LOG(WARNING) << "Empty counters. \"" <<  jcounts->dump() << "\"";
+                jstatus = {{"status", "Empty counters"}};
             }
         } else {
-            LOG(WARNING) << "Empty counters. \"" <<  jcounts->dump() << "\"";
-            jstatus = {{"status", "Empty counters"}};
+            LOG(ERROR) << "Can`t find device id in receaved data!";
+            jstatus = {{"status", "Empty dev_id"}};
         }
         /// Отправить Status устройству.
         LOG(DEBUG) << "send to device: " << connection_id << "; \"" <<  jstatus.dump() << "\"";

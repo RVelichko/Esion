@@ -6,7 +6,7 @@ After=nginx.service
 
 [Service]
 Type=forking
-PIDFile=/work/www/myunit/shared/tmp/pids/esion-srv.pid
+PIDFile=/sys/fs/cgroup/pids/esion-srv.pid
 WorkingDirectory=/home/rostislav/bin
 RemainAfterExit=no
 Restart=on-failure
