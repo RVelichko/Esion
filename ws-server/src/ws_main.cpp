@@ -21,7 +21,6 @@
 #include "WebSocketServer.hpp"
 #include "DbFacade.hpp"
 #include "OperatorCommands.hpp"
-#include "IndexDbFacade.hpp"
 #include "Log.hpp"
 
 
@@ -36,8 +35,6 @@ static char DEFAULT_DB_ADDRESS[]  = "127.0.0.1";
 static char DEFAULT_DB_NAME[]     = "devices";
 static char DEFAULT_DB_LOGIN[]    = "esion";
 static char DEFAULT_DB_PASSWORD[] = "esionpassword";
-
-static char DEFAULT_INDEX_PATH[] = "index";
 
 static char DEFAULT_YMAP_API_KEY[] = "ad12ff63-587b-42c7-b1e1-e8b8b0913cda";
 
@@ -57,8 +54,8 @@ struct GlobalArgs {
     char* db_ligin;       ///< параметр -l
     char* db_pswd;        ///< параметр -s
     char* yamap_api_key;  ///< параметр -y
-    char* index_path;     ///< параметр -i
     char* reports_path;   ///< параметр -o
+    size_t garb_timeout;  ///< параметр -g
     bool is_vebose;       ///< параметр -v
 } __global_args;
 
@@ -82,8 +79,8 @@ void HelpMessage() {
               << "\t[-l]\t DB login.\t[" << DEFAULT_DB_LOGIN << "]\n"
               << "\t[-s]\t DB password.\t[" << DEFAULT_DB_PASSWORD << "]\n"
               << "\t[-y]\t Yandex map API key.\t[" << DEFAULT_YMAP_API_KEY << "]\n"
-              << "\t[-i]\t Index DB path.\t[" << DEFAULT_INDEX_PATH << "]\n"
               << "\t[-o]\t Report path.\t[" << DEFAULT_REPORTS_PATH << "]\n"
+              << "\t[-g]\t Garbage cleaner timeout.\t[" << DEFAULT_GARBAGE_TIMEOUT << "]\n"
               << "\t[-v]\t Verbose logging.\tDefault FALSE\n"
               << "__________________________________________________________________\n\n";
     exit(EXIT_FAILURE);
@@ -97,8 +94,6 @@ typedef server::DbFacade DbFacade;
 typedef server::PDbFacade PDbFacade;
 typedef server::DevicePeerWorker DevicePeerWorker;
 typedef server::OperatorPeerWorker OperatorPeerWorker;
-typedef sindex::IndexDbFacade IndexDbFacade;
-typedef std::shared_ptr<IndexDbFacade> PIndexDbFacade;
 typedef std::shared_ptr<DevicePeerWorker> PDevicePeerWorker;
 typedef std::shared_ptr<OperatorPeerWorker> POperatorPeerWorker;
 typedef server::BaseCommand BaseCommand;
@@ -117,8 +112,8 @@ int main(int argc_, char **argv_) {
     __global_args.db_ligin       = DEFAULT_DB_LOGIN;
     __global_args.db_pswd        = DEFAULT_DB_PASSWORD;
     __global_args.yamap_api_key  = DEFAULT_YMAP_API_KEY;
-    __global_args.index_path     = DEFAULT_INDEX_PATH;
     __global_args.reports_path   = DEFAULT_REPORTS_PATH;
+    __global_args.garb_timeout   = DEFAULT_GARBAGE_TIMEOUT;
     __global_args.is_vebose      = false;
 
     /// Обработка входных опций.
@@ -159,12 +154,16 @@ int main(int argc_, char **argv_) {
             case 'y':
                 __global_args.yamap_api_key = optarg;
                 break;
-            case 'i':
-                __global_args.index_path = optarg;
-                break;
             case 'o':
                 __global_args.reports_path = optarg;
                 break;
+            case 'g':{
+                    size_t value = strtol(optarg, (char**)nullptr, 10);
+                    if (value <= DEFAULT_GARBAGE_TIMEOUT) {
+                        HelpMessage();
+                    }
+                    __global_args.garb_timeout = value;
+                } break;
             case 'v':
                 __global_args.is_vebose = true;
                 break;
@@ -192,15 +191,14 @@ int main(int argc_, char **argv_) {
     /// Доступ к БД.
     PDbFacade db(new DbFacade());
     if (db->connect(__global_args.db_addr, __global_args.db_name, __global_args.db_ligin, __global_args.db_pswd)) {
-        ///// Доступ к индексной БД.
-        PIndexDbFacade xdb = std::make_shared<IndexDbFacade>(db);
-        xdb->init(__global_args.index_path);
         /// Объект синхронизации доступа к общим объектам.
         std::mutex mutex;
         /// Точка подключения устройства.
         PDevicePeerWorker device_pw = std::make_shared<DevicePeerWorker>(mutex, db, __global_args.yamap_api_key);
         /// Точка подключения операторской страницы.
-        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db, xdb, __global_args.reports_path);
+        POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db,
+                                                                           __global_args.reports_path,
+                                                                           __global_args.garb_timeout);
         /// Конструирование сервера
         UniWsServer p2p(__global_args.port,
                      __global_args.ssl_crt, 

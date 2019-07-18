@@ -99,23 +99,46 @@ function СhangeSetting(id) {
 
 function getDevices(is_filter) {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
-        var skip = СhangeSetting('#id_get_devs_skip');
-        var num = СhangeSetting('#id_get_devs_num');
+        var jget_devs;
         if (is_filter) {
             var filter = СhangeSetting('#id_get_devs_filter');
-            var jget_devs = {
-                cmd: {
-                    name:"get_devs",
-                    data: {
-                        filter: filter,
-                        skip: Number.parseInt(skip),
-                        num: Number.parseInt(num),
-                        token: window.token
+            var skip = СhangeSetting('#id_get_devs_f_skip');
+            var num = СhangeSetting('#id_get_devs_f_num');
+            var field = СhangeSetting('#id_get_devs_field');
+            var direct = СhangeSetting('#id_get_devs_direct');
+            if (typeof field !== 'undefined' && typeof direct !== 'undefined') {
+                jget_devs = {
+                    cmd: {
+                        name:"get_devs",
+                        data: {
+                            filter: filter,
+                            skip: Number.parseInt(skip),
+                            num: Number.parseInt(num),
+                            sort: {
+                                field: field,
+                                direction: direct
+                            },
+                            token: window.token
+                        }
                     }
-                }
-            };
+                };
+            } else {
+                jget_devs = {
+                    cmd: {
+                        name:"get_devs",
+                        data: {
+                            filter: filter,
+                            skip: Number.parseInt(skip),
+                            num: Number.parseInt(num),
+                            token: window.token
+                        }
+                    }
+                };
+            }
         } else {
-            var jget_devs = {
+            var skip = СhangeSetting('#id_get_devs_skip');
+            var num = СhangeSetting('#id_get_devs_num');
+            jget_devs = {
                 cmd: {
                     name:"get_devs",
                     data: {
@@ -244,23 +267,46 @@ function getReport() {
 
 function getEvents(is_filter) {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
-        var skip = СhangeSetting('#id_get_evs_skip');
-        var num = СhangeSetting('#id_get_evs_num');
+        var jget_evs;
         if (is_filter) {
             var filter = СhangeSetting('#id_get_evs_filter');
-            var jget_evs = {
-                cmd: {
-                    name:"get_events",
-                    data: {
-                        filter: filter,
-                        skip: Number.parseInt(skip),
-                        num: Number.parseInt(num),
-                        token: window.token
+            var skip = СhangeSetting('#id_get_evs_f_skip');
+            var num = СhangeSetting('#id_get_evs_f_num');
+            var field = СhangeSetting('#id_get_evs_field');
+            var direct = СhangeSetting('#id_get_evs_direct');
+            if (typeof field !== 'undefined' && typeof direct !== 'undefined') {
+                jget_evs = {
+                    cmd: {
+                        name:"get_events",
+                        data: {
+                            filter: filter,
+                            skip: Number.parseInt(skip),
+                            num: Number.parseInt(num),
+                            sort: {
+                                field: field,
+                                direction: direct
+                            },
+                            token: window.token
+                        }
                     }
-                }
-            };
+                };
+            } else {
+                jget_evs = {
+                    cmd: {
+                        name:"get_events",
+                        data: {
+                            filter: filter,
+                            skip: Number.parseInt(skip),
+                            num: Number.parseInt(num),
+                            token: window.token
+                        }
+                    }
+                };
+            }
         } else {
-            var jget_evs = {
+            var skip = СhangeSetting('#id_get_evs_skip');
+            var num = СhangeSetting('#id_get_evs_num');
+            jget_evs = {
                 cmd: {
                     name:"get_events",
                     data: {
@@ -305,11 +351,31 @@ function setDevStatus() {
 }
 
 
+function getUniqueAddresses() {
+    var filter = $('#id_get_uniq_addrs_filter').val();
+    var jget_uniq_addrs = {
+        cmd: {
+            name: "get_uniq_addrs",
+            data: {
+                filter: filter,
+                token: token
+            }
+        }
+    };
+    var jstr = JSON.stringify(jget_uniq_addrs);
+    window.websock.send(jstr);
+    AddLeftLog('Send to server: ' + jstr);
+    console.log('Send to server: ' + jstr);
+}
+
+
 function logout() {
-    var now = new Date();
     var auth = {
         cmd: {
-            name: "logout"
+            name: "logout",
+            data: {
+                token: window.token
+            }
         }
     };
     var jstr = JSON.stringify(auth);
@@ -320,16 +386,28 @@ function logout() {
 
 
 function login() {
-    var now = new Date();
-    var auth = {
-        cmd: {
-            name: "auth",
-            data: {
-                login: window.config.service.login,
-                pswd: window.config.service.pswd
+    var auth;
+    if (typeof window.token !== 'undefined' && window.token.length !== 0) {
+        auth = {
+            cmd: {
+                name: "auth",
+                data: {
+                    token: window.token
+                }
             }
-        }
-    };
+        };
+
+    } else  {
+        auth = {
+            cmd: {
+                name: "auth",
+                data: {
+                    login: window.config.service.login,
+                    pswd: window.config.service.pswd
+                }
+            }
+        };
+    }
     var jstr = JSON.stringify(auth);
     window.websock.send(jstr);
     AddLeftLog('Send to server: ' + jstr);
@@ -389,18 +467,42 @@ function HandleSettings() {
                             $('#bt_log').text('login');
                             AddRightLog('Logout complette!');
                         }
+                        if (cmd_name === 'get_uniq_addrs') {
+                            if (typeof resp['uniq_addrs'] !== 'unefined') {
+                                var uniq_addrs = JSON.stringify(resp.uniq_addrs);
+                                AddRightLog('Addresses: ' + uniq_addrs);
+                            } else {
+                                AddRightLog('ERR: uniq_addrs tag is undeclared!');
+                            }
+                        }
                         if (cmd_name === 'get_devs') {
                             if (typeof resp['data'] !== 'unefined') {
-                                var data = JSON.stringify(resp.data);
-                                AddRightLog('Devices: ' + data);
+                                var data = resp['data'];
+                                if (data.length !== 0) {
+                                    for (var i = 0; i < data.length; ++i) {
+                                        var val = JSON.stringify(data[i]);
+                                        AddRightLog('Devices [' + i + ']: ' + val);
+                                    }
+                                } else {
+                                    data = JSON.stringify(resp['data']);
+                                    AddRightLog('Devices: ' + data);
+                                }
                             } else {
                                 AddRightLog('ERR: Data tag is undeclared!');
                             }
                         }
                         if (cmd_name === 'get_events') {
                             if (typeof resp['data'] !== 'unefined') {
-                                var data = JSON.stringify(resp.data);
-                                AddRightLog('Events: ' + data);
+                                var data = resp['data'];
+                                if (data.length !== 0) {
+                                    for (var i = 0; i < data.length; ++i) {
+                                        var val = JSON.stringify(data[i]);
+                                        AddRightLog('Event [' + i + ']: ' + val);
+                                    }
+                                } else {
+                                    data = JSON.stringify(resp['data']);
+                                    AddRightLog('Events: ' + data);
+                                }
                             } else {
                                 AddRightLog('ERR: Data tag is undeclared!');
                             }

@@ -15,15 +15,17 @@
 #include "json.hpp"
 
 
+static const char AUTH_COLLECTION_NAME[] = "users";
+static const char CONTROOLERS_COLLECTION_NAME[] = "counters";
+static const char EVENTS_COLLECTION_NAME[] = "events";
+static const size_t DEFAULT_NUMBER_REQUESTED = 100;
+
+
 namespace server {
 
 typedef nlohmann::json Json;
 typedef mongo::BSONObj BsonObj;
 
-
-static const char AUTH_COLLECTION_NAME[] = "users";
-static const char CONTROOLERS_COLLECTION_NAME[] = "counters";
-static const char EVENTS_COLLECTION_NAME[] = "events";
 
 class DbFacade {
     typedef mongo::DBClientConnection DbConnection;
@@ -73,6 +75,13 @@ public:
      */ 
     void disconnect();
     
+
+    /**
+     * \brief Метод возвращает первого найденного пользователя.
+     * \param timeout  Таймаут для удаления устаревших токенов.
+     */
+    void eraseOldTokens(size_t timeout);
+
     /**
      * \brief Метод возвращает первого найденного пользователя.
      * \param user  Имя пользователя.
@@ -93,114 +102,119 @@ public:
     bool insertUser(const Json& jusr);
 
     /**
+     * \brief Метод возвращает список уникальных адресов из базы.
+     * \param filter  Строка с фильтром адреса.
+     */
+    Json getUniqueAddresses(const std::string& filter);
+
+    /**
      * \brief Метод возвращает N имеющихся устройств.
-     * \param num_objs  Количество запрашиваемых устройств.
-     * \param skip_objs Количество пропускаемых в запросе устройств.
+     * \param [OUT] total_num  Общее количество устройств.
+     * \param db_coll  Имя коллекции с записями.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
      */ 
-    Json getDevices(size_t num_objs = 10, size_t skip_objs = 0);
+    Json getList(size_t& total_num, const std::string& db_coll, size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
+    /**
+     * \brief Метод возвращает N имеющихся устройств.
+     * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
+     * \param db_coll  Имя коллекции с записями.
+     * \param filter  Строка с фильтром.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     */
+    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& filter,
+                            size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
+    /**
+     * \brief Метод возвращает N имеющихся устройств.
+     * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
+     * \param db_coll  Имя коллекции с записями.
+     * \param filter  Строка с фильтром.
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     */
+    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& filter, const std::string& field, bool direct,
+                     size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по точке и радиусу геолокации.
+     * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
+     * \param db_coll  Имя коллекции с записями.
      * \param longitude  Долгота.
      * \param latitude  Широта.
      * \param radius  Радиус в геокоординатах.
-     * \param num_objs  Количество запрашиваемых устройств.
-     * \param skip_objs Количество пропускаемых в запросе устройств.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip  Количество пропускаемых в запросе устройств.
      */
-    Json getDevicesByGeo(double longitude, double latitude, double radius, size_t skip, size_t num);
+    Json getByGeo(size_t& found, const std::string& db_coll,
+                  double longitude, double latitude, double radius, size_t num, size_t skip);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по полигону геолокации.
+     * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
+     * \param db_coll  Имя коллекции с записями.
      * \param x  Долгота лево.
      * \param y  Широта низ.
      * \param w  Долгота право.
      * \param h  Широта верх.
-     * \param num_objs  Количество запрашиваемых устройств.
-     * \param skip_objs Количество пропускаемых в запросе устройств.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip  Количество пропускаемых в запросе устройств.
      */
-    Json getDevicesByGeo(double x, double y, double w, double h, size_t skip, size_t num);
+    Json getByPoly(size_t& found, const std::string& db_coll, double x, double y, double w, double h, size_t num, size_t skip);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по идентификаторам БД.
+     * \param db_coll  Имя коллекции с записями.
      * \param ids  Массив строк с идентификаторами из БД.
      */
-    Json getDevicesByIds(std::vector<std::string> ids);
+    Json getByIds(const std::string& db_coll, std::vector<std::string> ids);
 
     /**
      * \brief Метод доавляет новое устройство или обновляет существующее.
-     * \param dev Json с описание нового устройства.
+     * \param dev  Json с описание нового устройства.
      */
     bool insertDevice(const Json& dev);
 
     /**
      * \brief Метод удаляет информацию об устройстве.
-     * \param dev_id Идентификатор удаляемого устройства.
+     * \param dev_id  Идентификатор удаляемого устройства.
      */
     bool removeDevice(const std::string& dev_id);
 
     /**
      * \brief Метод возвращает информацию об устройстве.
-     * \param dev_id Идентификатор требуемого устройства.
+     * \param dev_id  Идентификатор требуемого устройства.
      */
     Json getDevice(const std::string& dev_id);
 
     /**
-     * \brief Метод возвращает N имеющихся событий.
-     * \param num_objs  Количество запрашиваемых устройств.
-     * \param skip_objs Количество пропускаемых в запросе устройств.
-     */
-    Json getEvents(size_t num_objs = 10, size_t skip_objs = 0);
-
-    /**
      * \brief Метод возвращает N имеющихся событий по идентификатору устройства.
+     * \param found  Количество найденных записей, соответствующих фильтру.
      * \param dev_id  Идентификатор устройства.
-     * \param num_objs  Количество запрашиваемых устройств.
-     * \param skip_objs Количество пропускаемых в запросе устройств.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getEventsByDevId(const std::string& dev_id, size_t skip, size_t num);
-
-    /**
-     * \brief Метод возвращает N имеющихся событий по точке и радиусу геолокации.
-     * \param longitude  Долгота.
-     * \param latitude  Широта.
-     * \param radius  Радиус в геокоординатах.
-     * \param num_objs  Количество запрашиваемых событий.
-     * \param skip_objs Количество пропускаемых в запросе событий.
-     */
-    Json getEventsByGeo(double longitude, double latitude, double radius, size_t skip, size_t num);
-
-    /**
-     * \brief Метод возвращает N имеющихся событий по полигону геолокации.
-     * \param x  Долгота лево.
-     * \param y  Широта низ.
-     * \param w  Долгота право.
-     * \param h  Широта верх.
-     * \param num_objs  Количество запрашиваемых событий.
-     * \param skip_objs Количество пропускаемых в запросе событий.
-     */
-    Json getEventsByGeo(double x, double y, double w, double h, size_t skip, size_t num);
-
-    /**
-     * \brief Метод возвращает N имеющихся событий по идентификаторам БД.
-     * \param ids  Массив строк с идентификаторами из БД.
-     */
-    Json getEventsByIds(std::vector<std::string> ids);
+    Json getEventsByDevId(size_t& found, const std::string& dev_id, size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод доавляет новое событие или обновляет существующее.
-     * \param ev Json с описание нового событие.
+     * \param dev  Json с описание нового события.
      */
     bool insertEvent(const Json& ev);
 
     /**
-     * \brief Метод удаляет информация о событие.
-     * \param ev_id Идентификатор удаляемого события.
+     * \brief Метод удаляет информацию о событии.
+     * \param ev_id  Идентификатор удаляемого события.
      */
     bool removeEvent(const std::string& ev_id);
 
     /**
      * \brief Метод возвращает информацию о событии.
-     * \param ev_id Идентификатор требуемого события.
+     * \param ev_id  Идентификатор требуемого устройства.
      */
     Json getEvent(const std::string& ev_id);
 };

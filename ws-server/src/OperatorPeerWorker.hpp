@@ -9,6 +9,7 @@
 #include "OperatorCommands.hpp"
 #include "BaseWorker.hpp"
 
+
 namespace server {
 
 /**
@@ -20,10 +21,8 @@ class OperatorPeerWorker : public BaseWorker {
     virtual bool lastMessage(const ConnectionValuesIter &iter, const std::string &msg);
     virtual void sendClose(size_t connection_id);
 
-    std::string _token;
-
 public:
-    OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb, const std::string& reports_path);
+    OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const std::string& reports_path, size_t garb_timer);
     virtual ~OperatorPeerWorker();
 };
 } /// server

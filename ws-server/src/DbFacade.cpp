@@ -197,6 +197,35 @@ void DbFacade::disconnect() try {
 }
 
 
+void DbFacade::eraseOldTokens(size_t timeout) try {
+    auto old = static_cast<size_t>(time(nullptr)) - timeout;
+    BsonObj q = BObjBuilder().append("token", BObjBuilder().appendNumber("$lt", old).obj()).obj();
+    size_t found = _dbc->query(getMdbNs(AUTH_COLLECTION_NAME), q)->itcount();
+    BsonObjs busers;
+    _dbc->findN(busers, getMdbNs(AUTH_COLLECTION_NAME), q, found);
+    for (auto buser : busers) {
+        auto jusr = DbFacade::toJson(buser);
+        auto jtokens = jusr["token"];
+        if (jtokens.is_array()) {
+            Json jeraseds;
+            for (auto jtoken : jtokens) {
+                if (old <= jtoken) {
+                    jeraseds.push_back(jtoken);
+                }
+            }
+            if (not jeraseds.empty()) {
+                jusr["token"] = jeraseds;
+                _dbc->update(getMdbNs(AUTH_COLLECTION_NAME), q, DbFacade::toBson(jusr));
+            }
+        } else {
+            LOG(ERROR) << "Tag token is`t array.";
+        }
+    }
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t erase old tokens. " << e.what();
+}
+
+
 Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
     BsonObj q = BObjBuilder().append("name", user).append("pswd", pswd).obj();
     BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
@@ -235,29 +264,131 @@ bool DbFacade::insertUser(const Json& jusr) try {
     }
     return false;
 } catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t add new device to DB: " << e.what();
+    LOG(ERROR) << "Can`t add|update user to DB: " << e.what();
     return false;
 }
 
 
-Json DbFacade::getDevices(size_t num_objs, size_t skip_objs) try {
-    BsonObjs found_devs;
-    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), BObjBuilder().obj(), num_objs,  skip_objs);
-    Json jdevs;
-    size_t i = 0; 
-    for (auto bdev : found_devs) {
-        jdevs[i] = (DbFacade::toJson(bdev));
-        ++i;
+Json DbFacade::getUniqueAddresses(const std::string& filter) try {
+    Json jpipline;
+    if (not filter.empty()) {
+        jpipline.push_back({
+            {"$match", {
+                {"$text", {
+                    {"$search", filter}
+                }}
+            }}});
     }
-    return jdevs;
+    jpipline.push_back({
+        {"$group", {
+            {"_id", "$geo"},
+            {"address", {
+               {"$addToSet", "$coll"}
+            }},
+            {"device_count", {
+              {"$sum", 1}
+            }}
+        }}});
+    jpipline.push_back({
+        {"$project", {
+            {"_id", 0},
+            {"geo", "$_id"},
+            {"address", "$address"},
+            {"device_count", "$device_count"}
+        }}});
+    BsonObj bpipline = DbFacade::toBson(jpipline);
+    auto db_cursor = _dbc->aggregate(getMdbNs(CONTROOLERS_COLLECTION_NAME), bpipline);
+    Json jaddrs;
+    if (db_cursor.get()) {
+        while (db_cursor->more()) {
+            auto baddr = db_cursor->next();
+            jaddrs.push_back(DbFacade::toJson(baddr));
+        }
+    }
+    return jaddrs;
 } catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << num_objs << " `" << skip_objs << "] devices from DB: " << e.what();
+    LOG(ERROR) << "Can`t get [" << filter << "] addresses from DB: " << e.what();
     return Json();
 }
 
 
-Json DbFacade::getDevicesByGeo(double longitude, double latitude, double radius, size_t skip, size_t num) try {
-    BsonObjs found_devs;
+Json DbFacade::getList(size_t& total_num, const std::string& db_coll, size_t num, size_t skip) try {
+    BsonObjs founds;
+    total_num = _dbc->count(getMdbNs(db_coll));
+    _dbc->findN(founds, getMdbNs(db_coll), BObjBuilder().obj(), num,  skip);
+    Json jvals;
+    size_t i = 0; 
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << num << " `" << skip << "] " << db_coll << " from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& filter, size_t num, size_t skip) try {
+    BsonObjs founds;
+    Json jq = {
+        {"$text", {
+             {"$search", filter}
+        }}
+    };
+    DbQuery q(jq.dump());
+    found = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    if (num < found) {
+        _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
+    } else {
+        _dbc->findN(founds, getMdbNs(db_coll), q, found, skip);
+    }
+    size_t i = 0;
+    Json jvals;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << filter << "] " << db_coll << " from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& filter,
+                           const std::string& field, bool direct, size_t num, size_t skip) try {
+    BsonObjs founds;
+    Json jq = {
+        {"$text", {
+             {"$search", filter}
+        }}
+    };
+    DbQuery q(jq.dump());
+    found = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    q.sort(field, (direct ? 1 : -1));
+    if (num < found) {
+        _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
+    } else {
+        _dbc->findN(founds, getMdbNs(db_coll), q, found, skip);
+    }
+    size_t i = 0;
+    Json jvals;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception& e) {
+    LOG(ERROR) << "Can`t get [" << filter << "] " << db_coll << " from DB with sort ["
+               << field << "|" << BTOS(direct) << "]: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getByGeo(size_t& found, const std::string& db_coll,
+                        double longitude, double latitude, double radius, size_t num, size_t skip) try {
+    BsonObjs founds;
     Json jq = {
         {"geo", {
              {"$geoWithin", {
@@ -266,22 +397,24 @@ Json DbFacade::getDevicesByGeo(double longitude, double latitude, double radius,
         }}
     };
     DbQuery q(jq.dump());
-    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, num, skip);
+    found = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
     size_t i = 0;
-    Json jdevs;
-    for (auto bdev : found_devs) {
-        jdevs[i] = (DbFacade::toJson(bdev));
+    Json jvals;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
         ++i;
     }
-    return jdevs;
+    return jvals;
 } catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << longitude << " `" << latitude << "] devices from DB: " << e.what();
+    LOG(ERROR) << "Can`t get [" << longitude << " `" << latitude << "] " << db_coll << " from DB: " << e.what();
     return Json();
 }
 
 
-Json DbFacade::getDevicesByGeo(double x, double y, double w, double h, size_t skip, size_t num) try {
-    BsonObjs found_devs;
+Json DbFacade::getByPoly(size_t& found, const std::string& db_coll,
+                         double x, double y, double w, double h, size_t num, size_t skip) try {
+    BsonObjs founds;
     Json jq = {
         {"geo", {
              {"$geoWithin", {
@@ -290,36 +423,37 @@ Json DbFacade::getDevicesByGeo(double x, double y, double w, double h, size_t sk
         }}
     };
     DbQuery q(jq.dump());
-    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, num, skip);
+    found = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
     size_t i = 0;
-    Json jdevs;
-    for (auto bdev : found_devs) {
-        jdevs[i] = (DbFacade::toJson(bdev));
+    Json jvals;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
         ++i;
     }
-    return jdevs;
+    return jvals;
 } catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << x << "," << y << "," << w << "," << h << "] devices from DB: " << e.what();
+    LOG(ERROR) << "Can`t get [" << x << "," << y << "," << w << "," << h << "] " << db_coll << " from DB: " << e.what();
     return Json();
 }
 
 
-Json DbFacade::getDevicesByIds(std::vector<std::string> ids) try {
-    BsonObjs found_devs;
+Json DbFacade::getByIds(const std::string& db_coll, std::vector<std::string> ids) try {
+    BsonObjs founds;
     BArrBuilder bids;
     for (auto id : ids) {
         bids.append(mongo::OID(id));
     }
     auto bq = BObjBuilder().append("_id", BObjBuilder().append("$in", bids.arr()).obj()).obj();
     DbQuery q(bq);
-    _dbc->findN(found_devs, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, ids.size());
+    _dbc->findN(founds, getMdbNs(db_coll), q, ids.size());
     size_t i = 0;
-    Json jdevs;
-    for (auto bdev : found_devs) {
-        jdevs[i] = (DbFacade::toJson(bdev));
+    Json jvals;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
         ++i;
     }
-    return jdevs;
+    return jvals;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t get devices from DB by isd: " << e.what();
     return Json();
@@ -377,104 +511,20 @@ Json DbFacade::getDevice(const std::string& dev_id) try {
 }
 
 
-Json DbFacade::getEvents(size_t num_objs, size_t skip_objs) try {
+Json DbFacade::getEventsByDevId(size_t& found, const std::string& dev_id, size_t num, size_t skip) try {
     BsonObjs found_evs;
-    _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), BObjBuilder().obj(), num_objs,  skip_objs);
-    Json jevs;
-    size_t i = 0;
-    for (auto bev : found_evs) {
-        jevs[i] = (DbFacade::toJson(bev));
-        ++i;
-    }
-    return jevs;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << num_objs << " `" << skip_objs << "] events from DB: " << e.what();
-    return Json();
-}
-
-
-Json DbFacade::getEventsByDevId(const std::string& dev_id, size_t skip, size_t num) try {
     auto q = BObjBuilder().append("dev_id", dev_id).obj();
-    auto found_ev = _dbc->findOne(getMdbNs(EVENTS_COLLECTION_NAME), q);
-    if (found_ev.isEmpty()) {
-        return toJson(found_ev);
-    } else {
-        LOG(INFO) << "Can`t find event by [" << dev_id << "] in DB";
-    }
-    return Json();
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get " << dev_id << "[" << num << " `" << skip << "] events from DB: " << e.what();
-    return Json();
-}
-
-
-Json DbFacade::getEventsByGeo(double longitude, double latitude, double radius, size_t skip, size_t num) try {
-    BsonObjs found_evs;
-    Json jq = {
-        {"geo", {
-             {"$geoWithin", {
-                  {"$centerSphere", {{longitude, latitude}, radius}}
-             }}
-        }}
-    };
-    DbQuery q(jq.dump());
+    found = _dbc->query(getMdbNs(EVENTS_COLLECTION_NAME), q)->itcount();
     _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), q, num, skip);
-    size_t i = 0;
     Json jevs;
+    size_t i = 0;
     for (auto bev : found_evs) {
         jevs[i] = (DbFacade::toJson(bev));
         ++i;
     }
     return jevs;
 } catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << longitude << "," << latitude << "," << radius << "," << num << " `" << skip
-               << "] events from DB: " << e.what();
-    return Json();
-}
-
-
-Json DbFacade::getEventsByGeo(double x, double y, double w, double h, size_t skip, size_t num) try {
-    BsonObjs found_devs;
-    Json jq = {
-        {"geo", {
-             {"$geoWithin", {
-                  {"$polygon", {{x, y}, {w, y}, {w, h}, {x, h}} }
-             }}
-        }}
-    };
-    DbQuery q(jq.dump());
-    _dbc->findN(found_devs, getMdbNs(EVENTS_COLLECTION_NAME), q, num, skip);
-    size_t i = 0;
-    Json jdevs;
-    for (auto bdev : found_devs) {
-        jdevs[i] = (DbFacade::toJson(bdev));
-        ++i;
-    }
-    return jdevs;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << x << "," << y << "," << w << "," << h << "] events from DB: " << e.what();
-    return Json();
-}
-
-
-Json DbFacade::getEventsByIds(std::vector<std::string> ids) try {
-    BsonObjs found_evs;
-    BArrBuilder bids;
-    for (auto id : ids) {
-        bids.append(mongo::OID(id));
-    }
-    auto bq = BObjBuilder().append("_id", BObjBuilder().append("$in", bids.arr()).obj()).obj();
-    DbQuery q(bq);
-    _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), q, ids.size());
-    size_t i = 0;
-    Json jevs;
-    for (auto bev : found_evs) {
-        jevs[i] = (DbFacade::toJson(bev));
-        ++i;
-    }
-    return jevs;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get events from DB: " << e.what();
+    LOG(ERROR) << "Can`t get " << dev_id << " events from DB: " << e.what();
     return Json();
 }
 

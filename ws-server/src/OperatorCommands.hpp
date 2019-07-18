@@ -10,8 +10,12 @@
 #include <memory>
 
 #include "JsonCommand.hpp"
-#include "IndexDbFacade.hpp"
 #include "DbFacade.hpp"
+
+
+static const size_t MAX_NUMBER_DEVICES_FOR_REPORT = 10000;
+static const size_t DEFAULT_GARBAGE_TIMEOUT = 60 * 60 * 24 * 30; ///< Количество секунд для удаления старых записей.
+static const size_t OLD_TOKENS_TIMEOUT = 60 * 60; ///< Количество секунд для удаления старых токенов.
 
 namespace server {
 
@@ -19,19 +23,13 @@ typedef utils::Json Json;
 typedef utils::JsonCommand JsonCommand;
 typedef server::DbFacade DbFacade;
 typedef std::shared_ptr<DbFacade> PDbFacade;
-typedef sindex::IndexDbFacade IndexDbFacade;
-typedef std::shared_ptr<IndexDbFacade> PIndexDbFacade;
 typedef std::function<void(const std::string&)> SendFn;
-typedef std::function<bool(const std::string&, const Json&, std::mutex&, const SendFn&)> ExecuteFn;
+typedef std::function<bool(const Json&, std::mutex&, const SendFn&)> ExecuteFn;
 typedef std::map<std::string, ExecuteFn> CommandsExecuters;
 
 
-
-static const size_t MAX_NUMBER_DEVICES_FOR_REPORT = 10000;
-
 class BaseCommand : public JsonCommand {
 protected:
-    std::string _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
     std::mutex& _mutex;
     SendFn _snd_fn;
 
@@ -54,13 +52,16 @@ protected:
      */
     Json fillResponceData(const Json& js);
 
+    bool checkToken(const std::string& token);
+
 public:
+    //static std::string _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
+    static size_t _garb_timer;
     static PDbFacade _db;
-    static PIndexDbFacade _xdb;
 
-    static bool executeByName(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    static bool executeByName(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 
-    BaseCommand(const std::string& token, const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    BaseCommand(const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 };
 
 
@@ -100,7 +101,7 @@ public:
  */
 class AuthorizeCommand : public BaseCommand {
 public:
-    AuthorizeCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    AuthorizeCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~AuthorizeCommand();
 
     /**
@@ -115,7 +116,10 @@ public:
  * \brief  Выход из сервиса:
  *         Rquest 1: {
  *           "cmd": {
- *             "name":"logout"
+ *             "name":"logout",
+ *             "data" {
+ *               "token":"< идентификатор пользователя сервиса >"
+ *             }
  *           }
  *         }
  *
@@ -129,8 +133,43 @@ public:
  */
 class LogoutCommand : public BaseCommand {
 public:
-    LogoutCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    LogoutCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~LogoutCommand();
+    virtual Json execute();
+};
+
+
+/*!
+ * \brief  Получение уникальных адресов:
+ *         Rquest 1: {
+ *           "cmd": {
+ *             "name":"get_uniq_addrs"
+ *             "data": {
+ *                "token":"< идентификатор пользователя сервиса >",
+ *                "filter": <строка фильтра, может отсутствовать>
+ *             }
+ *           }
+ *         }
+ *
+ *         Responce: {
+ *           "resp": {
+ *             "name":"auth",
+ *             "status":"< ok | err >",
+ *             "uniq_addrs":[<Json c описаниеv адреса>, ...]
+ *             "desc":"<описание, при ок — этого поля не будет>"
+ *           }
+ *         }
+ *
+ *        Описание адреса: {
+ *           "geo": [latitude, longitute],
+ *           "address":[<строка адреса>, ... ],
+ *           "device_count" : <количество устройств для данного адреса>
+ *        }
+ */
+class UniqueAddressesCommand : public BaseCommand {
+public:
+    UniqueAddressesCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    virtual ~UniqueAddressesCommand();
     virtual Json execute();
 };
 
@@ -144,6 +183,10 @@ public:
  *                "skip":"<количество пропускаемых записей в списке найденных устройств>",
  *                "num":"<количество возвращаемых устройств>",
  *                "filter":"<любая строка, которой могут соответствовать строки в БД>"
+ *                "sort": {
+ *                  "field": "<название поля по которому сортируется.>"
+ *                  "direction": "<направление сортировки [ asc | desc ] >"
+ *                }
  *              }
  *            }
  *          }
@@ -210,7 +253,7 @@ public:
  */
 class GetDevicesListCommand : public BaseCommand {
 public:
-    GetDevicesListCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    GetDevicesListCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetDevicesListCommand();
     virtual Json execute();
 };
@@ -239,7 +282,7 @@ public:
  */
 class ActivateDeviceCommands : public BaseCommand {
 public:
-    ActivateDeviceCommands(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    ActivateDeviceCommands(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~ActivateDeviceCommands();
     virtual Json execute();
 };
@@ -247,14 +290,31 @@ public:
 
 /*!
  * \brief  Запрос списка событий:
- *         Rquest: {
+ *         Rquest 1: {
  *           "cmd": {
  *             "name":"get_events",
  *             "data": {
  *               "token":"< идентификатор пользователя сервиса >",
+ *               "skip":"<количество пропускаемых записей в найденном списке>",
  *               "num":"<количество возвращаемых событий>",
  *               "dev_id":"<идентификатор устройства, (уникален) >",
  *               "filter":"<любая строка, которой могут соответствовать строки в БД>",
+ *               "sort": {
+ *                 "field": "<название поля по которому сортируется.>"
+ *                 "direction": "<направление сортировки [ asc | desc ] >"
+ *               }
+ *             }
+ *           }
+ *         }
+ *
+ *         Rquest 2: {
+ *           "cmd": {
+ *             "name":"get_events",
+ *             "data": {
+ *               "token":"< идентификатор пользователя сервиса >",
+ *               "skip":"<количество пропускаемых записей в списке найденных устройств>",
+ *               "num":"<количество возвращаемых устройств>",
+ *               "geo_poly":[ x, y, w, h ],
  *             }
  *           }
  *         }
@@ -282,7 +342,7 @@ public:
  */
 class GetEventsListCommand : public BaseCommand {
 public:
-    GetEventsListCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    GetEventsListCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetEventsListCommand();
     virtual Json execute();
 };
@@ -310,7 +370,7 @@ public:
  */
 class CreateReportCommand : public BaseCommand {
 public:
-    CreateReportCommand(const std::string& token, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    CreateReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~CreateReportCommand();
     virtual Json execute();
 };

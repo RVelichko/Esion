@@ -36,7 +36,7 @@
                         <h2 style='color: green;'>ESION commands debugger</h2>
                     </div>
                     <div id='esion_version' class='col-xs-2' style='text-align: right;'>
-                        <h3>V 1.0</h3>
+                        <h3>V 1.3</h3>
                     </div>
                 </div>
                 <div id='container'class='col-xs-12' >
@@ -56,16 +56,22 @@
                                 </div>
                                 <div class='row col-xs-12'>
                                     <div class='row col-xs-1'>
-                                        <button id='bt_get_devs' class='btn btn-primary col-xs-12' onclick='getDevices(true)' style='font-size:130%'>get_devs</button>
+                                        <button id='bt_get_f_devs' class='btn btn-primary col-xs-12' onclick='getDevices(true)' style='font-size:130%'>get_devs</button>
                                     </div>
-                                    <div class='row col-xs-7'>
+                                    <div class='row col-xs-3'>
                                         <input id='id_get_devs_filter' class='col-xs-12' type='text' placeholder='Санкт-Петербург'>
                                     </div>
                                     <div class='row col-xs-2'>
-                                        <input id='id_get_devs_skip' class='col-xs-12' type='number' placeholder=0>
+                                        <input id='id_get_devs_field' class='col-xs-12' type='text' placeholder='user'>
                                     </div>
                                     <div class='row col-xs-2'>
-                                        <input id='id_get_devs_num' class='col-xs-12' type='number' placeholder=100>
+                                        <input id='id_get_devs_direct' class='col-xs-12' type='text' placeholder='asc'>
+                                    </div>
+                                    <div class='row col-xs-2'>
+                                        <input id='id_get_devs_f_skip' class='col-xs-12' type='number' placeholder=0>
+                                    </div>
+                                    <div class='row col-xs-2'>
+                                        <input id='id_get_devs_f_num' class='col-xs-12' type='number' placeholder=100>
                                     </div>
                                 </div>
                                 <div class='row col-xs-12'>
@@ -78,7 +84,7 @@
                                     <div class='row col-xs-2'>
                                         <input id='id_get_devs_la' class='col-xs-12' type='number' placeholder=30.273611>
                                     </div>
-                                    <div class='row col-xs-2'>
+                                    <div class='row col-xs-3'>
                                         <input id='id_get_devs_r' class='col-xs-12' type='number' placeholder=0.001>
                                     </div>
                                     <div class='row col-xs-2'>
@@ -137,14 +143,20 @@
                                     <div class='row col-xs-1'>
                                         <button id='bt_get_evs' class='btn btn-primary col-xs-12' onclick='getEvents(true)' style='font-size:130%'>get_events</button>
                                     </div>
-                                    <div class='row col-xs-7'>
+                                    <div class='row col-xs-3'>
                                         <input id='id_get_evs_filter' class='col-xs-12' type='text' placeholder='Санкт-Петербург'>
                                     </div>
                                     <div class='row col-xs-2'>
-                                        <input id='id_get_evs_skip' class='col-xs-12' type='number' placeholder=0>
+                                        <input id='id_get_evs_field' class='col-xs-12' type='text' placeholder='user'>
                                     </div>
                                     <div class='row col-xs-2'>
-                                        <input id='id_get_evs_num' class='col-xs-12' type='number' placeholder=100>
+                                        <input id='id_get_evs_direct' class='col-xs-12' type='text' placeholder='asc'>
+                                    </div>
+                                    <div class='row col-xs-2'>
+                                        <input id='id_get_evs_f_skip' class='col-xs-12' type='number' placeholder=0>
+                                    </div>
+                                    <div class='row col-xs-2'>
+                                        <input id='id_get_evs_f_num' class='col-xs-12' type='number' placeholder=100>
                                     </div>
                                 </div>
                                 <div class='row col-xs-12'>
@@ -153,6 +165,14 @@
                                     </div>
                                     <div class='row col-xs-11'>
                                         <input id='id_get_report' class='col-xs-12' type='text' placeholder='Адрес для которого требуется отчёт.'>
+                                    </div>
+                                </div>
+                                <div class='row col-xs-12'>
+                                    <div class='row col-xs-1'>
+                                        <button id='bt_get_uniq_addrs' class='btn btn-primary col-xs-12' onclick='getUniqueAddresses()' style='font-size:130%'>get_uniq_addrs</button>
+                                    </div>
+                                    <div class='row col-xs-11'>
+                                        <input id='id_get_uniq_addrs_filter' class='col-xs-12' type='text'>
                                     </div>
                                 </div>
                                 <div class='row col-xs-12'>

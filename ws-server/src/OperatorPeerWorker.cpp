@@ -1,7 +1,6 @@
 #include <functional>
 
 #include "Log.hpp"
-#include "uuid.hpp"
 #include "ReportGenerator.hpp"
 #include "OperatorPeerWorker.hpp"
 
@@ -15,10 +14,14 @@ typedef std::lock_guard<std::mutex> LockQuard;
 bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
     static std::mutex m;
     Json json;
-    { ///< LOCK Розобрать полученную строку в json.
-        LockQuard l(m);
-        json = Json::parse(msg);
-    };
+    if (not msg.empty()) {
+        { ///< LOCK Розобрать полученную строку в json.
+            LockQuard l(m);
+            json = Json::parse(msg);
+        };
+    } else {
+        LOG(TRACE) << "Empty message.";
+    }
     fn(json);
     return true;
 } catch(std::exception &e) {
@@ -32,15 +35,16 @@ PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const st
     PConnectionValue con_val;
     parseMessage(msg, [&](const Json &json) {
         con_val = std::make_shared<ConnectionValue>();
-        auto jcmd = json.value("cmd", Json());
-        if (not jcmd.empty() and jcmd.is_object()) {
-            _token = utils::GenerateHex(16);
-            auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-            if (not BaseCommand::executeByName(_token, jcmd, _mutex, snd_fn)) {
-                LOG(ERROR) << "Command is`t exequted!";
+        if (not json.empty()) {
+            auto jcmd = json.value("cmd", Json());
+            if (not jcmd.empty() and jcmd.is_object()) {
+                auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
+                if (not BaseCommand::executeByName(jcmd, _mutex, snd_fn)) {
+                    LOG(ERROR) << "Command is`t exequted!";
+                }
+            } else {
+                LOG(ERROR) << "First message is`t command! Must by \"auth\" command!";
             }
-        } else {
-            LOG(ERROR) << "First message is`t command! Must by \"auth\" command!";
         }
     });
     return con_val;
@@ -52,17 +56,19 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
     LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
     parseMessage(msg, [=](const Json &json) {
         /// Обработка запроса проверки подключения.
-        auto ping = json.find("ping");
-        if (ping not_eq json.end()) {
-            Json jsnd = {{"pong", "pong"}};
-            _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
-            LOG(DEBUG) << jsnd;
-        } else {
-            auto jcmd = json.value("cmd", Json());
-            if (not jcmd.empty() and jcmd.is_object()) {
-                auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-                if (not BaseCommand::executeByName(_token, jcmd, _mutex, snd_fn)) {
-                    LOG(ERROR) << "Command is`t exequted!";
+        if (not json.empty()) {
+            auto ping = json.find("ping");
+            if (ping not_eq json.end()) {
+                Json jsnd = {{"pong", "pong"}};
+                _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
+                LOG(DEBUG) << jsnd;
+            } else {
+                auto jcmd = json.value("cmd", Json());
+                if (not jcmd.empty() and jcmd.is_object()) {
+                    auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
+                    if (not BaseCommand::executeByName(jcmd, _mutex, snd_fn)) {
+                        LOG(ERROR) << "Command is`t exequted!";
+                    }
                 }
             }
         }
@@ -78,11 +84,10 @@ void OperatorPeerWorker::sendClose(size_t connection_id) {
 }
 
 
-OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const PIndexDbFacade& xdb,
-                                       const std::string& reports_path)
+OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const std::string& reports_path, size_t garb_timer)
     : BaseWorker(mutex) {
+    BaseCommand::_garb_timer = garb_timer;
     BaseCommand::_db = db;
-    BaseCommand::_xdb = xdb;
     ReportGenerator::_reports_path = reports_path;
 }
 

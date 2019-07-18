@@ -181,3 +181,5 @@ struct LogSequence {
 #define WARNING utils::Log::Level::_warning
 #define ERROR utils::Log::Level::_error
 #define FATAL utils::Log::Level::_fatal
+
+#define BTOS(flag) ((flag) ? "TRUE" : "FALSE")
