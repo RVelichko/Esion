@@ -5,6 +5,7 @@
 #include <fstream>
 #include <ctime>
 #include <set>
+#include <locale>
 
 #include <boost/filesystem.hpp>
 
@@ -84,14 +85,19 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                 }
                 time_t rawtime;
                 time(&rawtime);
-                std::string file_name = "Devices_" + TimeToStr(rawtime) + REPORT_FILE_EXTENTION;
-                std::string file_name_utf8 = "Devices_" + TimeToStr(rawtime) + "_UTF8" + REPORT_FILE_EXTENTION;
+                std::locale loc;
+                std::string lo_enc;
+                for(auto elem : enc) {
+                   lo_enc += std::tolower(elem, loc);
+                }
+                std::string file_name = "Devices_" + TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
+                std::string file_name_utf8 = "Devices_" + TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
                 std::string path = bpath.string() + "/" + file_name;
                 std::string path_utf8 = bpath.string() + "/" + file_name_utf8;
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "№,Номер устройства,Адрес,Владелец,GEO,Дата последнего обновления,"
+                    ofs << "N%,Номер устройства,Адрес,Владелец,GEO,Дата последнего обновления,"
                         << "Тип питания,Напряжение,Описание,Статус,";
                     for (size_t i = 1; i <= 4; ++i) {
                          ofs << "Тип " << i << ",Кубометров " << i << ",Число импульсов " << i << ",Название " << i
@@ -138,10 +144,19 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                         }
                         ofs << "\n";
                     }
-                    std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
-                    std::system(sys_cmd.c_str());
-                    bfs::remove(path_utf8);
-                    _result_path = file_name;
+                    if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
+                        std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
+                        std::system(sys_cmd.c_str());
+                        if (bfs::exists(bfs::path(path))) {
+                            bfs::remove(path_utf8);
+                            _result_path = file_name;
+                        } else {
+                            _result_path = file_name_utf8;
+                            LOG(ERROR) << "Can`t create report for encoding to \"" << _encoding << "\"";
+                        }
+                    } else {
+                        _result_path = file_name;
+                    }
                     LOG(DEBUG) << "Create report file: \"" << _result_path << "\"";
                 } else {
                     LOG(ERROR) << "Can`t open report file \"" << path << "\"";
@@ -171,14 +186,19 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                 }
                 time_t rawtime;
                 time(&rawtime);
-                std::string file_name = "Events_" + TimeToStr(rawtime) + REPORT_FILE_EXTENTION;
-                std::string file_name_utf8 = "Events_" + TimeToStr(rawtime) + "_UTF8" + REPORT_FILE_EXTENTION;
+                std::locale loc;
+                std::string lo_enc;
+                for(auto elem : enc) {
+                   lo_enc += std::tolower(elem, loc);
+                }
+                std::string file_name = "Events_" + TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
+                std::string file_name_utf8 = "Events_" + TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
                 std::string path = bpath.string() + "/" + file_name;
                 std::string path_utf8 = bpath.string() + "/" + file_name_utf8;
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "№,Номер события,Номер устройства,Адрес,Владелец,GEO,Дата события,"
+                    ofs << "N%,Номер события,Номер устройства,Адрес,Владелец,GEO,Дата события,"
                         << "Приоритет,Описание,";
                     ofs << "\n";
                     size_t line_num = 0;
@@ -203,14 +223,18 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                             << jev["desc"].get<std::string>() << ",";
                         ofs << "\n";
                     }
-                    std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
-                    std::system(sys_cmd.c_str());
-                    if (bfs::exists(bfs::path(path))) {
-                        bfs::remove(path_utf8);
-                        _result_path = file_name;
+                    if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
+                        std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
+                        std::system(sys_cmd.c_str());
+                        if (bfs::exists(bfs::path(path))) {
+                            bfs::remove(path_utf8);
+                            _result_path = file_name;
+                        } else {
+                            _result_path = file_name_utf8;
+                            LOG(ERROR) << "Can`t create report for encoding to \"" << _encoding << "\"";
+                        }
                     } else {
                         _result_path = file_name_utf8;
-                        LOG(ERROR) << "Can`t create report for encoding to \"" << _encoding << "\"";
                     }
                     LOG(DEBUG) << "Create report file: \"" << _result_path << "\"";
                 } else {
