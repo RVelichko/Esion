@@ -53,7 +53,9 @@ bool BaseCommand::executeByName(const Json& js, std::mutex& mutex, const SendFn&
         ExecuteCmd<GetDevicesListCommand>("get_devs").value(),
         ExecuteCmd<ActivateDeviceCommands>("set_dev_status").value(),
         ExecuteCmd<GetEventsListCommand>("get_events").value(),
-        ExecuteCmd<CreateReportCommand>("get_report").value(),
+        ExecuteCmd<CreateDevicesReportCommand>("get_devices_report").value(),
+        ExecuteCmd<CreateEventsReportCommand>("get_events_report").value(),
+        ExecuteCmd<GetCriticalNumberCommand>("get_critical").value()
     };
     static std::mutex cmd_execs_mutex;
     /// Выполнить обработку команды.
@@ -71,9 +73,25 @@ bool BaseCommand::executeByName(const Json& js, std::mutex& mutex, const SendFn&
             return exec_fn(js, mutex, snd_fn);
         } else {
             LOG(WARNING) << "Can`t find command name " << *jname << "!";
+            Json jresp = {
+                {"resp", {
+                    {"name", *jname},
+                    {"status", "err"},
+                    {"desc", "Can`t find command name " + jname->get<std::string>() + "!"}
+                }}
+            };
+            snd_fn(jresp.dump());
         }
     } else {
-        LOG(WARNING) << "Command is not correct! Can`t find \"name\".";
+        LOG(WARNING) << "Command is not correct! Can`t find tag `name`.";
+        Json jresp = {
+            {"resp", {
+                {"name", *jname},
+                {"status", "err"},
+                {"desc", "Command " + jname->get<std::string>() + " is`t correct! Can`t find tag `name`."}
+            }}
+        };
+        snd_fn(jresp.dump());
     }
     return false;
 }
@@ -159,6 +177,7 @@ Json AuthorizeCommand::execute() {
             Json jusr;
             { /// LOCK
                 LockQuard l(_mutex);
+                _db->eraseOldTokens(OLD_TOKENS_TIMEOUT);
                 jusr = _db->findUser(*jlogin, *jpswd);
             }
             if (not jusr.empty()) {
@@ -339,10 +358,28 @@ Json GetDevicesListCommand::execute() {
             if (not jskip->empty() and jskip->is_number() and not jnum->empty() and jnum->is_number()) {
                 size_t skip = *jskip;
                 size_t num = *jnum;
-                auto jgeo_poly = _jdata.find("geo_poly");
-                auto jgeo      = _jdata.find("geo");
-                auto jradius   = _jdata.find("radius");
-                auto jfilter   = _jdata.find("filter");
+                /// Подготовка полей для определения типа команды.
+                auto jgeo_poly  = _jdata.find("geo_poly");
+                auto jgeo       = _jdata.find("geo");
+                auto jradius    = _jdata.find("radius");
+                auto jfilter    = _jdata.find("filter");
+                auto jsort      = _jdata.find("sort");
+                std::string field;
+                bool direct_flag = true;
+                if (jsort not_eq _jdata.end() and jsort->is_object()) {
+                    auto jfield = jsort->find("field");
+                    auto jdirection = jsort->find("direction");
+                    if (jfield not_eq jsort->end() and jfield->is_string() and
+                        jdirection not_eq jsort->end() and jdirection->is_string() and
+                        ((*jdirection) == "asc" or (*jdirection) == "desc")) {
+                        field = jsort->value("field", "");
+                        direct_flag = ((jsort->value("direction", "asc") == "asc") ? true : false);
+                    } else {
+                        LOG(WARNING) << "Incorrect sort tag: [" << _name << "] \"" << _jdata.dump() << "\"";
+                        jres = getErrorResponce("Incorrect 'sort' tag.");
+                    }
+                }
+                /// Выполнение команды в соответствии с заданными полями.
                 if (jgeo_poly not_eq _jdata.end() and jgeo_poly->is_array() and jgeo_poly->size() == 4) {
                     double x = (*jgeo_poly)[0];
                     double y = (*jgeo_poly)[1];
@@ -369,47 +406,25 @@ Json GetDevicesListCommand::execute() {
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);
                     jres["resp"]["count"] = found;
-                } else if (jfilter not_eq _jdata.end() and
-                           jfilter->is_string() and not jfilter->empty()) {
-                    auto jsort = _jdata.find("sort");
-                    if (jsort not_eq _jdata.end() and jsort->is_object()) {
-                        auto jfield = jsort->find("field");
-                        if (jfield not_eq jsort->end() and jfield->is_string()) {
-                            auto jdirection = jsort->find("direction");
-                            if (jdirection not_eq jsort->end() and jdirection->is_string() and
-                                ((*jdirection) == "asc" or (*jdirection) == "desc")) {
-                                bool direct = (*jdirection) == "asc" ? true : false;
-                                Json jlist;
-                                { /// LOCK
-                                    LockQuard l(_mutex);
-                                    jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, *jfilter, *jfield, direct,
-                                                             num, skip);
-                                }
-                                eraseMongoId(jlist);
-                                jres = fillResponceData(jlist);
-                                jres["resp"]["count"] = found;
-                            } else {
-                                LOG(WARNING) << "Incorrect sort tag direction: [" << _name << "] \"" << _jdata.dump() << "\"";
-                                jres = getErrorResponce("Incorrect sort tag direction.");
-                            }
-                        } else {
-                            LOG(WARNING) << "Incorrect sort tag field: [" << _name << "] \"" << _jdata.dump() << "\"";
-                            jres = getErrorResponce("Incorrect sort tag field.");
-                        }
+                } else if (jfilter not_eq _jdata.end() and jfilter->is_string() and not jfilter->empty()) {
+                    Json jlist;
+                    if (not field.empty()) {
+                        LockQuard l(_mutex);
+                        jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, *jfilter, field, direct_flag, num, skip);
                     } else {
-                        Json jlist;
-                        { /// LOCK
-                            LockQuard l(_mutex);
-                            jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, *jfilter, num, skip);
-                        }
-                        eraseMongoId(jlist);
-                        jres = fillResponceData(jlist);
-                        jres["resp"]["count"] = found;
+                        LockQuard l(_mutex);
+                        jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, *jfilter, num, skip);
                     }
+                    eraseMongoId(jlist);
+                    jres = fillResponceData(jlist);
+                    jres["resp"]["count"] = found;
                 } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
                            jradius == _jdata.end() and jfilter == _jdata.end()) {
                     Json jlist;
-                    { /// LOCK
+                    if (not field.empty()) {
+                        LockQuard l(_mutex);
+                        jlist = _db->getList(found, CONTROOLERS_COLLECTION_NAME, field, direct_flag, num, skip);
+                    } else {
                         LockQuard l(_mutex);
                         jlist = _db->getList(found, CONTROOLERS_COLLECTION_NAME, num, skip);
                     }
@@ -513,6 +528,7 @@ Json GetEventsListCommand::execute() {
             auto jskip = _jdata.find("skip");
             auto jnum  = _jdata.find("num");
             if (not jskip->empty() and jskip->is_number() and not jnum->empty() and jnum->is_number()) {
+                /// Подготовка полей для определения типа команды.
                 size_t skip = *jskip;
                 size_t num = *jnum;
                 auto jgeo_poly = _jdata.find("geo_poly");
@@ -520,6 +536,23 @@ Json GetEventsListCommand::execute() {
                 auto jradius   = _jdata.find("radius");
                 auto jfilter   = _jdata.find("filter");
                 auto jdev_id   = _jdata.find("dev_id");
+                auto jsort      = _jdata.find("sort");
+                std::string field;
+                bool direct_flag = true;
+                if (jsort not_eq _jdata.end() and jsort->is_object()) {
+                    auto jfield = jsort->find("field");
+                    auto jdirection = jsort->find("direction");
+                    if (jfield not_eq jsort->end() and jfield->is_string() and
+                        jdirection not_eq jsort->end() and jdirection->is_string() and
+                        ((*jdirection) == "asc" or (*jdirection) == "desc")) {
+                        field = jsort->value("field", "");
+                        direct_flag = ((jsort->value("direction", "asc") == "asc") ? true : false);
+                    } else {
+                        LOG(WARNING) << "Incorrect sort tag: [" << _name << "] \"" << _jdata.dump() << "\"";
+                        jres = getErrorResponce("Incorrect 'sort' tag.");
+                    }
+                }
+                /// Выполнение типа команды в соответствии с переданными полями.
                 if (jgeo_poly not_eq _jdata.end() and jgeo_poly->is_array() and jgeo_poly->size() == 4) {
                     double x = (*jgeo_poly)[0];
                     double y = (*jgeo_poly)[1];
@@ -548,7 +581,10 @@ Json GetEventsListCommand::execute() {
                 } else if (jdev_id not_eq _jdata.end() and
                            jdev_id->is_string() and not jdev_id->empty()) {
                     Json jevs;
-                    { /// LOCK
+                    if (not field.empty()) {
+                        LockQuard l(_mutex);
+                        jevs = _db->getEventsByDevId(found, *jdev_id, field, direct_flag, num, skip);
+                    } else {
                         LockQuard l(_mutex);
                         jevs = _db->getEventsByDevId(found, *jdev_id, num, skip);
                     }
@@ -558,7 +594,10 @@ Json GetEventsListCommand::execute() {
                 } else if (jfilter not_eq _jdata.end() and
                            jfilter->is_string() and not jfilter->empty()) {
                     Json jevs;
-                    { /// LOCK
+                    if (not field.empty()) {
+                        LockQuard l(_mutex);
+                        jevs = _db->getByFilter(found, EVENTS_COLLECTION_NAME, *jfilter, field, direct_flag, num, skip);
+                    } else {
                         LockQuard l(_mutex);
                         jevs = _db->getByFilter(found, EVENTS_COLLECTION_NAME, *jfilter, num, skip);
                     }
@@ -568,7 +607,10 @@ Json GetEventsListCommand::execute() {
                 } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
                            jradius == _jdata.end() and jfilter == _jdata.end()) {
                     Json jdevs;
-                    { /// LOCK
+                    if (not field.empty()) {
+                        LockQuard l(_mutex);
+                        jdevs = _db->getList(found, EVENTS_COLLECTION_NAME, field, direct_flag, num, skip);
+                    } else {
                         LockQuard l(_mutex);
                         jdevs = _db->getList(found, EVENTS_COLLECTION_NAME, num, skip);
                     }
@@ -594,18 +636,18 @@ Json GetEventsListCommand::execute() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-CreateReportCommand::CreateReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_report", js, mutex, snd_fn) {
+CreateDevicesReportCommand::CreateDevicesReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
+    : BaseCommand("get_devices_report", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
 
-CreateReportCommand::~CreateReportCommand() {
+CreateDevicesReportCommand::~CreateDevicesReportCommand() {
     LOG(DEBUG);
 }
 
 
-Json CreateReportCommand::execute() {
+Json CreateDevicesReportCommand::execute() {
     Json jres;
     if (_is_corrected) {
         auto jtoken  = _jdata.find("token");
@@ -613,13 +655,18 @@ Json CreateReportCommand::execute() {
             auto jcoll = _jdata.find("coll");
             if (jcoll not_eq _jdata.end()) {
                 size_t found = 0;
-                Json jdevs;
+                Json jvals;
                 { /// LOCK
                     LockQuard l(_mutex);
-                    jdevs = _db->getByFilter(found, EVENTS_COLLECTION_NAME, *jcoll, std::numeric_limits<uint32_t>::max());
+                    jvals = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, *jcoll, std::numeric_limits<uint32_t>::max());
                 }
-                if (not jdevs.empty()) {
-                    ReportGenerator rep_gen(jdevs);
+                if (not jvals.empty()) {
+                    std::string encoding;
+                    auto jencoding = _jdata.find("encoding");
+                    if (jencoding not_eq _jdata.end() and jencoding->is_string()) {
+                        encoding = (*jencoding);
+                    }
+                    DevicesReportGenerator rep_gen(jvals, encoding);
                     if (rep_gen) {
                         jres = {
                           {"resp", {
@@ -634,6 +681,112 @@ Json CreateReportCommand::execute() {
                     LOG(ERROR) << "Can`t create report!";
                     jres = getErrorResponce("Can`t create report!");
                 }
+            }
+        } else {
+            LOG(FATAL) << "Invalid token " << *jtoken;
+            jres = getErrorResponce("Invalid token.");
+        }
+    } else {
+        LOG(ERROR) << "Incorrect Command: " << _name;
+        jres = getErrorResponce("Incorrect Command: " + _name);
+    }
+    _snd_fn(jres.dump());
+    return jres;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+CreateEventsReportCommand::CreateEventsReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
+    : BaseCommand("get_events_report", js, mutex, snd_fn) {
+    LOG(DEBUG);
+}
+
+
+CreateEventsReportCommand::~CreateEventsReportCommand() {
+    LOG(DEBUG);
+}
+
+
+Json CreateEventsReportCommand::execute() {
+    Json jres;
+    if (_is_corrected) {
+        auto jtoken  = _jdata.find("token");
+        if (jtoken not_eq _jdata.end() and jtoken->is_string() and checkToken(*jtoken)) {
+            auto jcoll = _jdata.find("coll");
+            if (jcoll not_eq _jdata.end()) {
+                size_t found = 0;
+                Json jvals;
+                { /// LOCK
+                    LockQuard l(_mutex);
+                    jvals = _db->getByFilter(found, EVENTS_COLLECTION_NAME, *jcoll, std::numeric_limits<uint32_t>::max());
+                }
+                if (not jvals.empty()) {
+                    std::string encoding;
+                    auto jencoding = _jdata.find("encoding");
+                    if (jencoding not_eq _jdata.end() and jencoding->is_string()) {
+                        encoding = (*jencoding);
+                    }
+                    EventsReportGenerator rep_gen(jvals, encoding);
+                    if (rep_gen) {
+                        jres = {
+                          {"resp", {
+                            {"name", _name},
+                            {"status", "ok"},
+                            {"report_url", std::string(rep_gen)}
+                          }}
+                        };
+                        LOG(DEBUG) << jres;
+                    }
+                } else {
+                    LOG(ERROR) << "Can`t create report!";
+                    jres = getErrorResponce("Can`t create report!");
+                }
+            }
+        } else {
+            LOG(FATAL) << "Invalid token " << *jtoken;
+            jres = getErrorResponce("Invalid token.");
+        }
+    } else {
+        LOG(ERROR) << "Incorrect Command: " << _name;
+        jres = getErrorResponce("Incorrect Command: " + _name);
+    }
+    _snd_fn(jres.dump());
+    return jres;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+GetCriticalNumberCommand::GetCriticalNumberCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
+    : BaseCommand("get_critical", js, mutex, snd_fn) {
+    LOG(DEBUG);
+}
+
+
+GetCriticalNumberCommand::~GetCriticalNumberCommand() {
+    LOG(DEBUG);
+}
+
+
+Json GetCriticalNumberCommand::execute() {
+    Json jres;
+    if (_is_corrected) {
+        auto jtoken  = _jdata.find("token");
+        if (jtoken not_eq _jdata.end() and jtoken->is_string() and checkToken(*jtoken)) {
+            auto jfilter = _jdata.find("filter");
+            if (jfilter not_eq _jdata.end()) {
+                size_t found = 0;
+                { /// LOCK
+                    LockQuard l(_mutex);
+                    found = _db->getCriticalNum(*jfilter);
+                }
+                jres = {
+                  {"resp", {
+                    {"name", _name},
+                    {"status", "ok"},
+                    {"num", found}
+                  }}
+                };
+                LOG(DEBUG) << jres;
             }
         } else {
             LOG(FATAL) << "Invalid token " << *jtoken;

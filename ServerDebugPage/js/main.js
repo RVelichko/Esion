@@ -243,14 +243,40 @@ function setDevStatus() {
 }
 
 
-function getReport() {
+function getDevicesReport() {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
-        var get_report = СhangeSetting('#id_get_report');
+        var encoding = СhangeSetting('#id_get_dev_report_enc');
+        var get_report = СhangeSetting('#id_get_dev_report');
         var jget_report = {
             cmd: {
-                name:"get_report",
+                name:"get_devices_report",
                 data: {
                     coll: get_report,
+                    encoding: encoding,
+                    token: window.token
+                }
+            }
+        };
+        var jstr = JSON.stringify(jget_report);
+        window.websock.send(jstr);
+        AddLeftLog("Send to server: " + jstr);
+        console.log("Send to server: " + jstr);
+    } else {
+        console.log('ERR: WebSocket is not opened.');
+    }
+}
+
+
+function getEventsReport() {
+    if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
+        var encoding = СhangeSetting('#id_get_ev_report_enc');
+        var get_report = СhangeSetting('#id_get_ev_report');
+        var jget_report = {
+            cmd: {
+                name:"get_events_report",
+                data: {
+                    coll: get_report,
+                    encoding: encoding,
                     token: window.token
                 }
             }
@@ -363,6 +389,24 @@ function getUniqueAddresses() {
         }
     };
     var jstr = JSON.stringify(jget_uniq_addrs);
+    window.websock.send(jstr);
+    AddLeftLog('Send to server: ' + jstr);
+    console.log('Send to server: ' + jstr);
+}
+
+
+function getCritical() {
+    var filter = $('#id_get_critical_filter').val();
+    var jget_critical = {
+        cmd: {
+            name: "get_critical",
+            data: {
+                filter: filter,
+                token: window.token
+            }
+        }
+    };
+    var jstr = JSON.stringify(jget_critical);
     window.websock.send(jstr);
     AddLeftLog('Send to server: ' + jstr);
     console.log('Send to server: ' + jstr);
@@ -510,7 +554,15 @@ function HandleSettings() {
                         if (cmd_name === 'set_dev_status') {
                             AddRightLog('Device status is set!');
                         }
-                        if (cmd_name === 'get_report') {
+                        if (cmd_name === 'get_critical') {
+                            if (typeof resp['num'] !== 'unefined') {
+                                var num = JSON.stringify(resp['num']);
+                                AddRightLog('Criticals num: ' + num);
+                            } else {
+                                AddRightLog('ERR: Num tag is undeclared!');
+                            }
+                        }
+                        if (cmd_name === 'get_devices_report' || cmd_name === 'get_events_report') {
                             if (typeof resp['report_url'] !== 'unefined') {
                                 var report_url = resp.report_url;
                                 AddRightLog('Report URL: ' + report_url);

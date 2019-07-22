@@ -118,6 +118,18 @@ public:
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
+     * \param [OUT] total_num  Общее количество устройств.
+     * \param db_coll  Имя коллекции с записями.
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     */
+    Json getList(size_t& total_num, const std::string& db_coll, const std::string& field, bool direct,
+                 size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
+    /**
+     * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
      * \param db_coll  Имя коллекции с записями.
      * \param filter  Строка с фильтром.
@@ -201,6 +213,18 @@ public:
     Json getEventsByDevId(size_t& found, const std::string& dev_id, size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
+     * \brief Метод возвращает N имеющихся событий по идентификатору устройства.
+     * \param found  Количество найденных записей, соответствующих фильтру.
+     * \param dev_id  Идентификатор устройства.
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     */
+    Json getEventsByDevId(size_t& found, const std::string& dev_id, const std::string& field, bool direct,
+                          size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
+    /**
      * \brief Метод доавляет новое событие или обновляет существующее.
      * \param dev  Json с описание нового события.
      */
@@ -217,5 +241,11 @@ public:
      * \param ev_id  Идентификатор требуемого устройства.
      */
     Json getEvent(const std::string& ev_id);
+
+    /**
+     * \brief Метод возвращает количество устройств, соотвествующих фильтру, у которых емеется критическое событие.
+     * \param filter  Строка с фильтром.
+     */
+    size_t getCriticalNum(const std::string& filter);
 };
 } /// server

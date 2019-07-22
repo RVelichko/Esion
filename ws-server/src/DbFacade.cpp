@@ -199,7 +199,12 @@ void DbFacade::disconnect() try {
 
 void DbFacade::eraseOldTokens(size_t timeout) try {
     auto old = static_cast<size_t>(time(nullptr)) - timeout;
-    BsonObj q = BObjBuilder().append("token", BObjBuilder().appendNumber("$lt", old).obj()).obj();
+    Json jq = {
+        {"token", {
+            {"$lt", std::to_string(old)}
+        }}
+    };
+    BsonObj q(DbFacade::toBson(jq));
     size_t found = _dbc->query(getMdbNs(AUTH_COLLECTION_NAME), q)->itcount();
     BsonObjs busers;
     _dbc->findN(busers, getMdbNs(AUTH_COLLECTION_NAME), q, found);
@@ -209,7 +214,8 @@ void DbFacade::eraseOldTokens(size_t timeout) try {
         if (jtokens.is_array()) {
             Json jeraseds;
             for (auto jtoken : jtokens) {
-                if (old <= jtoken) {
+                size_t t = static_cast<size_t>(std::atoll(jtoken.get<std::string>().c_str()));
+                if (old <= t) {
                     jeraseds.push_back(jtoken);
                 }
             }
@@ -227,7 +233,12 @@ void DbFacade::eraseOldTokens(size_t timeout) try {
 
 
 Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
-    BsonObj q = BObjBuilder().append("name", user).append("pswd", pswd).obj();
+    Json jq = {
+        {"name", user},
+        {"pswd", pswd}
+    };
+    BsonObj q(DbFacade::toBson(jq));
+    //BsonObj q = BObjBuilder().append("name", user).append("pswd", pswd).obj();
     BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
@@ -238,7 +249,11 @@ Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
 
 
 Json DbFacade::findUser(const std::string& token) try {
-    BsonObj q = BObjBuilder().append("token", token).obj();
+    Json jq = {
+        {"token", token}
+    };
+    BsonObj q(DbFacade::toBson(jq));
+    //BsonObj q = BObjBuilder().append("token", token).obj();
     BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
@@ -315,6 +330,9 @@ Json DbFacade::getUniqueAddresses(const std::string& filter) try {
 Json DbFacade::getList(size_t& total_num, const std::string& db_coll, size_t num, size_t skip) try {
     BsonObjs founds;
     total_num = _dbc->count(getMdbNs(db_coll));
+    if (total_num < num) {
+        num = total_num;
+    }
     _dbc->findN(founds, getMdbNs(db_coll), BObjBuilder().obj(), num,  skip);
     Json jvals;
     size_t i = 0; 
@@ -329,6 +347,31 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, size_t num
 }
 
 
+Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& field, bool direct,
+                       size_t num, size_t skip) try {
+    BsonObjs founds;
+    total_num = _dbc->count(getMdbNs(db_coll));
+    if (total_num < num) {
+        num = total_num;
+    }
+    DbQuery q(BObjBuilder().obj());
+    size_t d = (direct ? 1 : -1);
+    auto sq = q.sort(field, d);
+    _dbc->findN(founds, getMdbNs(db_coll), sq, num,  skip);
+    Json jvals;
+    size_t i = 0;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception& e) {
+    LOG(ERROR) << "Can`t get [" << num << " | " << skip << "] " << field << ": "  << BTOS(direct) << ", "
+               << db_coll << " from DB: " << e.what();
+    return Json();
+}
+
+
 Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& filter, size_t num, size_t skip) try {
     BsonObjs founds;
     Json jq = {
@@ -338,11 +381,10 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
-    if (num < found) {
-        _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
-    } else {
-        _dbc->findN(founds, getMdbNs(db_coll), q, found, skip);
+    if (found < num) {
+        num = found;
     }
+    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -366,12 +408,12 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
-    q.sort(field, (direct ? 1 : -1));
-    if (num < found) {
-        _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
-    } else {
-        _dbc->findN(founds, getMdbNs(db_coll), q, found, skip);
+    if (found < num) {
+        num = found;
     }
+    size_t d = (direct ? 1 : -1);
+    auto sq = q.sort(field, d);
+    _dbc->findN(founds, getMdbNs(db_coll), sq, num, skip);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -398,6 +440,9 @@ Json DbFacade::getByGeo(size_t& found, const std::string& db_coll,
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    if (found < num) {
+        num = found;
+    }
     _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
     size_t i = 0;
     Json jvals;
@@ -424,6 +469,9 @@ Json DbFacade::getByPoly(size_t& found, const std::string& db_coll,
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    if (found < num) {
+        num = found;
+    }
     _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
     size_t i = 0;
     Json jvals;
@@ -515,7 +563,34 @@ Json DbFacade::getEventsByDevId(size_t& found, const std::string& dev_id, size_t
     BsonObjs found_evs;
     auto q = BObjBuilder().append("dev_id", dev_id).obj();
     found = _dbc->query(getMdbNs(EVENTS_COLLECTION_NAME), q)->itcount();
+    if (found < num) {
+        num = found;
+    }
     _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), q, num, skip);
+    Json jevs;
+    size_t i = 0;
+    for (auto bev : found_evs) {
+        jevs[i] = (DbFacade::toJson(bev));
+        ++i;
+    }
+    return jevs;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get " << dev_id << " events from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getEventsByDevId(size_t& found, const std::string& dev_id, const std::string& field, bool direct,
+                                size_t num, size_t skip) try {
+    BsonObjs found_evs;
+    DbQuery q(BObjBuilder().append("dev_id", dev_id).obj());
+    found = _dbc->query(getMdbNs(EVENTS_COLLECTION_NAME), q)->itcount();
+    if (found < num) {
+        num = found;
+    }
+    size_t d = direct ? 1 : -1;
+    auto sq = q.sort(field, d);
+    _dbc->findN(found_evs, getMdbNs(EVENTS_COLLECTION_NAME), sq, num, skip);
     Json jevs;
     size_t i = 0;
     for (auto bev : found_evs) {
@@ -578,3 +653,50 @@ Json DbFacade::getEvent(const std::string& ev_id) try {
     LOG(ERROR) << "Can`t get [" << ev_id << "] events from DB: " << e.what();
     return Json();
 }
+
+
+size_t DbFacade::getCriticalNum(const std::string& filter) try {
+    size_t num = 0;
+    Json jpipline;
+    if (not filter.empty()) {
+        jpipline.push_back({
+            {"$match", {
+                {"$text", {
+                    {"$search", filter}
+                }},
+                {"priority", "Критический"}
+            }}
+        });
+     } else {
+        jpipline.push_back({
+            {"$match", {
+                {"priority", "Критический"}
+            }}
+        });
+    }
+    jpipline.push_back({
+        {"$group", {
+            {"_id", "$dev_id"}
+        }}
+    });
+    jpipline.push_back({
+        {"$count", "critical_devices"}
+    });
+    BsonObj bpipline = DbFacade::toBson(jpipline);
+    auto db_cursor = _dbc->aggregate(getMdbNs(EVENTS_COLLECTION_NAME), bpipline);
+    if (db_cursor.get()) {
+        while (db_cursor->more()) {
+            auto bs = db_cursor->next();
+            auto js = DbFacade::toJson(bs);
+            auto jcritical_devices = js.find("critical_devices");
+            if (jcritical_devices not_eq js.end() and jcritical_devices->is_number()) {
+                num = jcritical_devices->get<size_t>();
+            }
+        }
+    }
+    return num;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get [" << filter << "] criticals number from DB: " << e.what();
+    return 0;
+}
+

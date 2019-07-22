@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 
 #include "JsonCommand.hpp"
 #include "DbFacade.hpp"
@@ -352,26 +353,84 @@ public:
  * \brief  Команда на формирование отчёта.
  *         Rquest: {
  *           "cmd": {
- *             "name":"get_report",
+ *             "name":"get_devices_report",
  *             "data": {
  *               "token":"< идентификатор пользователя сервиса >",
  *               "coll":"< адрес для которого необходимо сформировать отчёт >",
+ *               "encoding": "< название кодировки в которой необходимо представить отчёт >"
  *             }
  *           }
  *         }
  *         Responce: {
  *           "resp": {
- *             "name":"get_report",
+ *             "name":"get_devices_report",
  *             "status":"< ok | err >",
  *             "report_url":"<url с файлом отчёта>"
  *             "desc":"<описание, при ок этого поля не будет>"
  *           }
  *         }
  */
-class CreateReportCommand : public BaseCommand {
+class CreateDevicesReportCommand : public BaseCommand {
 public:
-    CreateReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
-    virtual ~CreateReportCommand();
+    CreateDevicesReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    virtual ~CreateDevicesReportCommand();
+    virtual Json execute();
+};
+
+
+/*!
+ * \brief  Команда на формирование отчёта.
+ *         Rquest: {
+ *           "cmd": {
+ *             "name":"get_events_report",
+ *             "data": {
+ *               "token":"< идентификатор пользователя сервиса >",
+ *               "coll":"< адрес для которого необходимо сформировать отчёт >",
+ *               "encoding": "< название кодировки в которой необходимо представить отчёт >"
+ *             }
+ *           }
+ *         }
+ *         Responce: {
+ *           "resp": {
+ *             "name":"get_events_report",
+ *             "status":"< ok | err >",
+ *             "report_url":"<url с файлом отчёта>"
+ *             "desc":"<описание, при ок этого поля не будет>"
+ *           }
+ *         }
+ */
+class CreateEventsReportCommand : public BaseCommand {
+public:
+    CreateEventsReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    virtual ~CreateEventsReportCommand();
+    virtual Json execute();
+};
+
+
+/*!
+ * \brief  Команда возвращает колечество устройств с критическим событием.
+ *         Rquest: {
+ *           "cmd": {
+ *             "name":"get_critical",
+ *             "data": {
+ *               "filter":"<любая строка, которой могут соответствовать строки в БД>",
+ *               "token":"< идентификатор пользователя сервиса >",
+ *             }
+ *           }
+ *         }
+ *         Responce: {
+ *           "resp": {
+ *             "name":"get_events_report",
+ *             "status":"< ok | err >",
+ *             "num": < количество анйденных вхождений >
+ *             "desc":"<описание, при ок этого поля не будет>"
+ *           }
+ *         }
+ */
+class GetCriticalNumberCommand : public BaseCommand {
+public:
+    GetCriticalNumberCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    virtual ~GetCriticalNumberCommand();
     virtual Json execute();
 };
 } /// server

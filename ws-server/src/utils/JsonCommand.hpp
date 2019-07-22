@@ -15,6 +15,7 @@
 namespace utils {
 
 typedef nlohmann::json Json;
+typedef Json::iterator JIter;
 
 
 class JsonCommand {
