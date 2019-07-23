@@ -201,7 +201,8 @@ Json AuthorizeCommand::execute() {
                 LOG(FATAL) << "Value user is null.";
                 jres = getErrorResponce("Can`t found user " + jlogin->get<std::string>() + " | " + jpswd->get<std::string>() + ".");
             }
-        } else if (jtoken not_eq _jdata.end() and jtoken->is_string()) {
+        } else if (jtoken not_eq _jdata.end() and
+                   jtoken->is_string() and not jtoken->get<std::string>().empty()) {
             Json jusr;
             { /// LOCK
                 LockQuard l(_mutex);
