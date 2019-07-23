@@ -20,6 +20,28 @@ namespace bfs = boost::filesystem;
 std::string ReportGenerator::_reports_path;
 
 
+void EraseOldFiles(time_t timeout) {
+    auto bpath = bfs::absolute(bfs::path(ReportGenerator::_reports_path));
+    if (bfs::exists(bpath)) {
+        std::vector<bfs::path> dels;
+        for (bfs::directory_iterator itr(bpath); itr not_eq bfs::directory_iterator(); ++itr) {
+            if (bfs::is_regular_file(itr->status())) {
+                bfs::path path = itr->path();
+                time_t lwt = bfs::last_write_time(path);
+                time_t old = std::time(nullptr) - timeout;
+                if (lwt < old and path.string().find(".csv") not_eq std::string::npos) {
+                    dels.push_back(path);
+                }
+            }
+        }
+        for (auto d : dels) {
+            bfs::remove(d);
+            LOG(DEBUG) << "Remove: " << d.string();
+        }
+    }
+}
+
+
 std::string TimeToStr(time_t rawtime) {
     struct tm* tm_info = localtime(&rawtime);
     char buf[TIME_STRING_BUFFER_LEN] = {0};
@@ -75,6 +97,7 @@ ReportGenerator::operator std::string () {
 
 DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::string& enc)
     : ReportGenerator(enc) {
+    EraseOldFiles(60 * 60 * 12);
     try {
         if (not jdevs.empty() and jdevs.is_array()) {
             if (not _reports_path.empty()) {
@@ -176,6 +199,7 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
 
 EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string& enc)
     : ReportGenerator(enc) {
+    EraseOldFiles(60 * 60 * 24);
     try {
         if (not jevs.empty() and jevs.is_array()) {
             if (not _reports_path.empty()) {
