@@ -16,6 +16,7 @@ typedef std::lock_guard<std::mutex> LockQuard;
 //std::string BaseCommand::_token;
 size_t BaseCommand::_garb_timer = DEFAULT_GARBAGE_TIMEOUT;
 PDbFacade BaseCommand::_db;
+AuthMap BaseCommand::_auth;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -143,6 +144,21 @@ bool BaseCommand::checkToken(const std::string& token) {
     LockQuard l(_mutex);
     auto jusr = _db->findUser(token);
     return not jusr.empty();
+}
+
+
+std::string BaseCommand::getCollectionUser(const std::string& token) {
+    std::string coll_usr;
+    auto jusr = _db->findUser(token);
+    if (not jusr.empty() and jusr.is_object()) {
+        auto jname = jusr.find("name");
+        auto jpswd = jusr.find("pswd");
+        if (jname not_eq jusr.end() and jname->is_string() and
+            jpswd not_eq jusr.end() and jpswd->is_string()) {
+            coll_usr = jname->get<std::string>() + " " + jpswd->get<std::string>();
+        }
+    }
+    return coll_usr;
 }
 
 
@@ -316,6 +332,7 @@ Json UniqueAddressesCommand::execute() {
             Json juniq_addrs;
             { /// LOCK
                 LockQuard l(_mutex);
+                auto coll_usr = getCollectionUser(*jtoken);
                 juniq_addrs = _db->getUniqueAddresses(filter);
             }
             jres["resp"] = {

@@ -120,52 +120,53 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "N%,Номер устройства,Адрес,Владелец,GEO,Дата последнего обновления,"
-                        << "Тип питания,Напряжение,Описание,Статус,";
-                    for (size_t i = 1; i <= 4; ++i) {
-                         ofs << "Тип " << i << ",Кубометров " << i << ",Число импульсов " << i << ",Название " << i
-                             << ",Единица измерения " << i << "," << "Цена импульса " << i << ",Серийный номер " << i
-                             << ",Дата поверки " << i << ",Описание " << i << ",";
-                    }
+                    ofs << "N%;Идентификатор устройства;Адрес;Владелец;Дата последнего обновления;"
+                        << "Тип питания;Напряжение;Описание;Статус;";
+                    ofs << "Канал N%;Тип;Кубометров;Число импульсов;Название;Единица измерения;"
+                        << "Цена импульса;Серийный номер;Дата поверки;Описание;";
                     ofs << "\n";
                     size_t line_num = 0;
                     for (auto jdev : jdevs) {
-                        double lo = 0.0;
-                        double la = 0.0;
-                        auto jgeo = jdev.find("geo");
-                        if (jgeo not_eq jdev.end() and jgeo->is_array() and jgeo->size() == 2) {
-                            lo = (*jgeo)[0];
-                            la = (*jgeo)[1];
-                        } else {
-                            LOG(ERROR) << "Incorrect geo.";
-                        }
-                        ofs << ++line_num << ","
-                            << jdev["dev_id"].get<std::string>() << ","
-                            << jdev["coll"].get<std::string>() << ","
-                            << jdev["user"].get<std::string>() << ","
-                            << lo << " " << la << ","
-                            << TimeToStr(ToNumber(jdev, "update_time")) << ","
-                            << jdev["power_type"].get<std::string>() << ","
-                            << ToString(jdev, "voltage") << ","
-                            << jdev["desc"].get<std::string>() << ","
-                            << jdev["status"].get<std::string>() << ",";
+                        ofs << ++line_num << ";"
+                            << jdev["dev_id"].get<std::string>() << ";"
+                            << jdev["coll"].get<std::string>() << ";"
+                            << jdev["user"].get<std::string>() << ";"
+                            << TimeToStr(ToNumber(jdev, "update_time")) << ";"
+                            << jdev["power_type"].get<std::string>() << ";"
+                            << ToString(jdev, "voltage") << ";"
+                            << jdev["desc"].get<std::string>() << ";"
+                            << jdev["status"].get<std::string>() << ";";
                         auto jcounts = jdev.find("counters");
                         if (jcounts not_eq jdev.end() and jcounts->is_array() and jcounts->size() == 4) {
-                            for (size_t i = 0; i < 4; ++i) {
-                                size_t count = ToNumber((*jcounts)[i], "count");
-                                size_t unit_count = ToNumber((*jcounts)[i], "unit_count");
-                                ofs << (*jcounts)[i]["type"].get<std::string>() << ","
-                                    << count * unit_count << ","
-                                    << count << ","
-                                    << (*jcounts)[i]["unit"].get<std::string>() << ","
-                                    << (*jcounts)[i]["unit_type"].get<std::string>() << ","
-                                    << unit_count << ","
-                                    << ToString((*jcounts)[i], "serial") << ","
-                                    << ToNumber((*jcounts)[i], "verify_date") << ","
-                                    << (*jcounts)[i]["desc"].get<std::string>() << ",";
+                            size_t count = ToNumber((*jcounts)[0], "count");
+                            size_t unit_count = ToNumber((*jcounts)[0], "unit_count");
+                            ofs << 1 << ";"
+                                << (*jcounts)[0]["type"].get<std::string>() << ";"
+                                << count * unit_count << ";"
+                                << count << ";"
+                                << (*jcounts)[0]["unit"].get<std::string>() << ";"
+                                << (*jcounts)[0]["unit_type"].get<std::string>() << ";"
+                                << unit_count << ";"
+                                << ToString((*jcounts)[0], "serial") << ";"
+                                << TimeToStr(ToNumber((*jcounts)[0], "verify_date")) << ";"
+                                << (*jcounts)[0]["desc"].get<std::string>() << ";"
+                                << "\n";
+                            for (size_t i = 1; i < 4; ++i) {
+                                ofs << ";;;;;;;;;" << i + 1 << ";";
+                                count = ToNumber((*jcounts)[i], "count");
+                                unit_count = ToNumber((*jcounts)[i], "unit_count");
+                                ofs << (*jcounts)[i]["type"].get<std::string>() << ";"
+                                    << count * unit_count << ";"
+                                    << count << ";"
+                                    << (*jcounts)[i]["unit"].get<std::string>() << ";"
+                                    << (*jcounts)[i]["unit_type"].get<std::string>() << ";"
+                                    << unit_count << ";"
+                                    << ToString((*jcounts)[i], "serial") << ";"
+                                    << TimeToStr(ToNumber((*jcounts)[i], "verify_date")) << ";"
+                                    << (*jcounts)[i]["desc"].get<std::string>() << ";"
+                                    << "\n";
                             }
                         }
-                        ofs << "\n";
                     }
                     if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
                         std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
@@ -222,29 +223,17 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "N%,Номер события,Номер устройства,Адрес,Владелец,GEO,Дата события,"
-                        << "Приоритет,Описание,";
-                    ofs << "\n";
+                    ofs << "N%;Номер события;Идентификатор устройства;Адрес;Владелец;Дата события;Приоритет;Описание;\n";
                     size_t line_num = 0;
                     for (auto jev : jevs) {
-                        double lo = 0.0;
-                        double la = 0.0;
-                        auto jgeo = jev.find("geo");
-                        if (jgeo not_eq jev.end() and jgeo->is_array() and jgeo->size() == 2) {
-                            lo = (*jgeo)[0];
-                            la = (*jgeo)[1];
-                        } else {
-                            LOG(ERROR) << "Incorrect geo.";
-                        }
                         ofs << ++line_num << ","
-                            << jev["ev_id"].get<std::string>() << ","
-                            << jev["dev_id"].get<std::string>() << ","
-                            << jev["coll"].get<std::string>() << ","
-                            << jev["user"].get<std::string>() << ","
-                            << lo << " " << la << ","
-                            << TimeToStr(ToNumber(jev, "time")) << ","
-                            << jev["priority"].get<std::string>() << ","
-                            << jev["desc"].get<std::string>() << ",";
+                            << jev["ev_id"].get<std::string>() << ";"
+                            << jev["dev_id"].get<std::string>() << ";"
+                            << jev["coll"].get<std::string>() << ";"
+                            << jev["user"].get<std::string>() << ";"
+                            << TimeToStr(ToNumber(jev, "time")) << ";"
+                            << jev["priority"].get<std::string>() << ";"
+                            << jev["desc"].get<std::string>() << ";";
                         ofs << "\n";
                     }
                     if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {

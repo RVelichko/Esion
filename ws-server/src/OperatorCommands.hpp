@@ -27,10 +27,12 @@ typedef std::shared_ptr<DbFacade> PDbFacade;
 typedef std::function<void(const std::string&)> SendFn;
 typedef std::function<bool(const Json&, std::mutex&, const SendFn&)> ExecuteFn;
 typedef std::map<std::string, ExecuteFn> CommandsExecuters;
+typedef std::map<std::string, std::pair<std::string, std::string>> AuthMap;
 
 
 class BaseCommand : public JsonCommand {
 protected:
+    static AuthMap _auth;
     std::mutex& _mutex;
     SendFn _snd_fn;
 
@@ -53,7 +55,17 @@ protected:
      */
     Json fillResponceData(const Json& js);
 
+    /*!
+     * \brief Метод выполняет проверку токена на валидность.
+     * \param token  Проверяемый токен.
+     */
     bool checkToken(const std::string& token);
+
+    /*!
+     * \brief Метод возвращает строку пользователя коллекции.
+     * \param token  Токен пользователя коллеции.
+     */
+    std::string getCollectionUser(const std::string& token);
 
 public:
     //static std::string _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
