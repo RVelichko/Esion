@@ -223,7 +223,7 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "N%;Номер события;Идентификатор устройства;Адрес;Владелец;Дата события;Приоритет;Описание;\n";
+                    ofs << "N%;Идентификатор события;Идентификатор устройства;Адрес;Владелец;Дата события;Приоритет;Описание;\n";
                     size_t line_num = 0;
                     for (auto jev : jevs) {
                         ofs << ++line_num << ","

@@ -238,7 +238,6 @@ Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
         {"pswd", pswd}
     };
     BsonObj q(DbFacade::toBson(jq));
-    //BsonObj q = BObjBuilder().append("name", user).append("pswd", pswd).obj();
     BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
@@ -253,7 +252,6 @@ Json DbFacade::findUser(const std::string& token) try {
         {"token", token}
     };
     BsonObj q(DbFacade::toBson(jq));
-    //BsonObj q = BObjBuilder().append("token", token).obj();
     BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
@@ -284,14 +282,20 @@ bool DbFacade::insertUser(const Json& jusr) try {
 }
 
 
-Json DbFacade::getUniqueAddresses(const std::string& filter) try {
+Json DbFacade::getUniqueAddresses(const std::string& coll_id, const std::string& filter) try {
     Json jpipline;
     if (not filter.empty()) {
         jpipline.push_back({
             {"$match", {
                 {"$text", {
                     {"$search", filter}
-                }}
+                }},
+                {"coll_id", coll_id}
+            }}});
+    } else {
+        jpipline.push_back({
+            {"$match", {
+                {"coll_id", coll_id}
             }}});
     }
     jpipline.push_back({
@@ -327,13 +331,21 @@ Json DbFacade::getUniqueAddresses(const std::string& filter) try {
 }
 
 
-Json DbFacade::getList(size_t& total_num, const std::string& db_coll, size_t num, size_t skip) try {
+Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id, size_t num, size_t skip) try {
     BsonObjs founds;
-    total_num = _dbc->count(getMdbNs(db_coll));
+    Json jq = {
+        {"coll_id", coll_id}
+    };
+    DbQuery q(jq.dump());
+    total_num = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (total_num < num) {
         num = total_num;
     }
-    _dbc->findN(founds, getMdbNs(db_coll), BObjBuilder().obj(), num,  skip);
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), BObjBuilder().obj(), num,  skip, &bexlude_field);
     Json jvals;
     size_t i = 0; 
     for (auto bval : founds) {
@@ -347,17 +359,24 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, size_t num
 }
 
 
-Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& field, bool direct,
-                       size_t num, size_t skip) try {
+Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
+                       const std::string& field, bool direct, size_t num, size_t skip) try {
     BsonObjs founds;
-    total_num = _dbc->count(getMdbNs(db_coll));
+    Json jq = {
+        {"coll_id", coll_id}
+    };
+    DbQuery q(jq.dump());
+    total_num = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (total_num < num) {
         num = total_num;
     }
-    DbQuery q(BObjBuilder().obj());
     size_t d = (direct ? 1 : -1);
     auto sq = q.sort(field, d);
-    _dbc->findN(founds, getMdbNs(db_coll), sq, num,  skip);
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), sq, num,  skip, &bexlude_field);
     Json jvals;
     size_t i = 0;
     for (auto bval : founds) {
@@ -372,19 +391,25 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
 }
 
 
-Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& filter, size_t num, size_t skip) try {
+Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id,
+                           const std::string& filter, size_t num, size_t skip) try {
     BsonObjs founds;
     Json jq = {
         {"$text", {
              {"$search", filter}
-        }}
+        }},
+        {"coll_id", coll_id}
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (found < num) {
         num = found;
     }
-    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip, &bexlude_field);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -398,13 +423,14 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
 }
 
 
-Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& filter,
+Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id, const std::string& filter,
                            const std::string& field, bool direct, size_t num, size_t skip) try {
     BsonObjs founds;
     Json jq = {
         {"$text", {
              {"$search", filter}
-        }}
+        }},
+        {"coll_id", coll_id}
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
@@ -413,7 +439,11 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
     }
     size_t d = (direct ? 1 : -1);
     auto sq = q.sort(field, d);
-    _dbc->findN(founds, getMdbNs(db_coll), sq, num, skip);
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), sq, num, skip, &bexlude_field);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -428,7 +458,7 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
 }
 
 
-Json DbFacade::getByGeo(size_t& found, const std::string& db_coll,
+Json DbFacade::getByGeo(size_t& found, const std::string& db_coll, const std::string& coll_id,
                         double longitude, double latitude, double radius, size_t num, size_t skip) try {
     BsonObjs founds;
     Json jq = {
@@ -436,14 +466,19 @@ Json DbFacade::getByGeo(size_t& found, const std::string& db_coll,
              {"$geoWithin", {
                   {"$centerSphere", {{longitude, latitude}, radius}}
              }}
-        }}
+        }},
+        {"coll_id", coll_id}
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (found < num) {
         num = found;
     }
-    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip, &bexlude_field);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -457,7 +492,7 @@ Json DbFacade::getByGeo(size_t& found, const std::string& db_coll,
 }
 
 
-Json DbFacade::getByPoly(size_t& found, const std::string& db_coll,
+Json DbFacade::getByPoly(size_t& found, const std::string& db_coll, const std::string& coll_id,
                          double x, double y, double w, double h, size_t num, size_t skip) try {
     BsonObjs founds;
     Json jq = {
@@ -465,14 +500,19 @@ Json DbFacade::getByPoly(size_t& found, const std::string& db_coll,
              {"$geoWithin", {
                   {"$polygon", {{x, y}, {w, y}, {w, h}, {x, h}} }
              }}
-        }}
+        }},
+        {"coll_id", coll_id}
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (found < num) {
         num = found;
     }
-    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip);
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), q, num, skip, &bexlude_field);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -510,7 +550,10 @@ Json DbFacade::getByIds(const std::string& db_coll, std::vector<std::string> ids
 
 bool DbFacade::insertDevice(const Json& dev) try {
     std::string dev_id = dev["dev_id"];
-    auto q = BObjBuilder().append("dev_id", dev_id).obj();
+    Json jq = {
+        {"dev_id", dev_id}
+    };
+    DbQuery q(jq.dump());
     auto found_dev = _dbc->findOne(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
     if (found_dev.isEmpty()) {
         _dbc->insert(getMdbNs(CONTROOLERS_COLLECTION_NAME), DbFacade::toBson(dev));
@@ -529,7 +572,10 @@ bool DbFacade::insertDevice(const Json& dev) try {
 
 
 bool DbFacade::removeDevice(const std::string& dev_id) try {
-    auto q = BObjBuilder().append("dev_id", dev_id).obj();
+    Json jq = {
+        {"dev_id", dev_id}
+    };
+    DbQuery q(jq.dump());
     auto found_dev = _dbc->findOne(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
     if (not found_dev.isEmpty()) {
         _dbc->remove(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
@@ -545,7 +591,10 @@ bool DbFacade::removeDevice(const std::string& dev_id) try {
 
 
 Json DbFacade::getDevice(const std::string& dev_id) try {
-    auto q = BObjBuilder().append("dev_id", dev_id).obj();
+    Json jq = {
+        {"dev_id", dev_id}
+    };
+    DbQuery q(jq.dump());
     auto found_dev = _dbc->findOne(getMdbNs(CONTROOLERS_COLLECTION_NAME), q);
     if (not found_dev.isEmpty()) {
         return DbFacade::toJson(found_dev);
@@ -655,7 +704,7 @@ Json DbFacade::getEvent(const std::string& ev_id) try {
 }
 
 
-size_t DbFacade::getCriticalNum(const std::string& filter) try {
+size_t DbFacade::getCriticalNum(const std::string& coll_id, const std::string& filter) try {
     size_t num = 0;
     Json jpipline;
     if (not filter.empty()) {
@@ -664,13 +713,15 @@ size_t DbFacade::getCriticalNum(const std::string& filter) try {
                 {"$text", {
                     {"$search", filter}
                 }},
-                {"priority", "Критический"}
+                {"priority", "Критический"},
+                {"coll_id", coll_id}
             }}
         });
      } else {
         jpipline.push_back({
             {"$match", {
-                {"priority", "Критический"}
+                {"priority", "Критический"},
+                {"coll_id", coll_id}
             }}
         });
     }

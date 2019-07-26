@@ -62,10 +62,10 @@ protected:
     bool checkToken(const std::string& token);
 
     /*!
-     * \brief Метод возвращает строку пользователя коллекции.
+     * \brief Метод возвращает строку идентификатора коллекции.
      * \param token  Токен пользователя коллеции.
      */
-    std::string getCollectionUser(const std::string& token);
+    std::string getCollectionId(const std::string& token);
 
 public:
     //static std::string _token; ///< Уникальный токен авторизации, доступен всем командам, управляется командой авторизации.
@@ -443,6 +443,34 @@ class GetCriticalNumberCommand : public BaseCommand {
 public:
     GetCriticalNumberCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetCriticalNumberCommand();
+    virtual Json execute();
+};
+
+
+/*!
+ * \brief  Команда возвращает описание устройства по идентификатору.
+ *         Rquest: {
+ *           "cmd": {
+ *             "name": "get_device",
+ *             "data": {
+ *               "dev_id":"<идентификатор устройства, (уникален) >",
+ *               "token":"< идентификатор пользователя сервиса >",
+ *             }
+ *           }
+ *         }
+ *         Responce: {
+ *           "resp": {
+ *             "name":"get_device",
+ *             "status":"< ok | err >",
+ *             "device": < полный JSON устройства. >
+ *             "desc":"<описание, при ок этого поля не будет>"
+ *           }
+ *         }
+ */
+class GetDeviceCommand : public BaseCommand {
+public:
+    GetDeviceCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    virtual ~GetDeviceCommand();
     virtual Json execute();
 };
 } /// server

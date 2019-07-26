@@ -21,6 +21,12 @@
 #include "Log.hpp"
 
 
+/*!
+ * \brief Генерация необходимых индексов:
+ *        db.< collection >.createIndex({coll:"text", dev_id:"text", user:"text"}, {default_language:"russian"})
+ *        db.< collection >.createIndex({"geo":"2dsphere"})
+ */
+
 namespace bfs = boost::filesystem;
 //using namespace io;
 
@@ -70,10 +76,19 @@ typedef server::GeoLocation GeoLocation;
 typedef server::GeoRequester GeoRequester;
 
 
+static const time_t MAX_OLD_TIMEOUT = 5184000;
+
 class DbDataTestGenerator {
     PDbFacade _db;
     std::string _addr_file;
     GeoRequester _geo_req;
+
+    time_t getUniqTime(time_t t, size_t count) {
+        static std::set<time_t> uniq_times;
+        time_t uniqt;
+        while (uniqt = t + rand() % (MAX_OLD_TIMEOUT / 100) + count, not uniq_times.insert(uniqt).second);
+        return uniqt;
+    }
 
     double randPercent() {
         return static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
@@ -106,54 +121,78 @@ class DbDataTestGenerator {
     *        }
     */
     Json createDevices() {
+        static std::vector<std::string> names = {
+            "Rod", "Veles", "Svarog", "Ruevit", "Vishen", "Semargl", "Lada", "Lelya"
+        };
         Json jdevs;
         rapidcsv::Document doc(_addr_file, rapidcsv::LabelParams(-1, -1), rapidcsv::SeparatorParams(','));
         size_t count = 0;
         for (size_t i = 0; i < doc.GetRowCount(); ++i) {
             auto row = doc.GetRow<std::string>(i);
             std::string addr;
-            if (not row[1].empty() or not row[2].empty() or
-                not row[3].empty() or not row[4].empty()) {
-                addr = "Санкт-Петербург " + row[1] + ' ' + row[2] +
-                       (not row[3].empty() ? (' ' + row[3]) : "") +
-                       (not row[4].empty() ? (' ' + row[4]) : "");
+            if (not row[1].empty() or not row[2].empty()) {
+                addr = "Санкт-Петербург " + row[1] + ' ' + row[2];
             }
             std::string desc = row[0];
             if (not addr.empty()) {
                 auto jgeo = _geo_req.request(addr);
-                //LOG(DEBUG) << ++count << ": " << addr << ": |" << jgeo.dump() << "| " << desc;
-                size_t num_devs = rand() % 500;
+                size_t num_devs = rand() % 200;
                 /// Сформировать JSON устройства.
+                time_t now = time(nullptr);
+                time_t old = now - rand() % MAX_OLD_TIMEOUT;
+                size_t apmt = rand() % 10 + 1;
                 for (size_t n = 0; n < num_devs; ++n) {
                     ++count;
                     Json counters;
+                    size_t max_cms = rand() % 100 + 1;
+                    time_t timeout = now - old;
                     for (size_t i = 0; i < 4; ++i) {
-                        Json count = {
-                            {"type", (randPercent() < 0.5 ? "none" : "test")},
-                            {"count", rand() % 100},
-                            {"unit", "Литр"},
-                            {"unit_type", "Импульс"},
-                            {"unit_count", (randPercent() < 0.7 ? 1 : 10)},
-                            {"serial", rand() % 500},
-                            {"verify_date", time(nullptr)},
-                            {"desc", "Сгенерирова для тестов."}
-                        };
-                        counters.push_back(count);
+                        if (randPercent() < 0.5) {
+                            Json count = {
+                                {"type", "none"}
+                            };
+                            counters.push_back(count);
+                        } else {
+                            size_t cnt = rand() % 1000;
+                            size_t unit_count = (randPercent() < 0.7 ? 1 : 10);
+                            Json jcubic_meters;
+                            for(size_t cm = 0; cm < max_cms; ++cm) {
+                                Json jcm = {
+                                    {"t", old + ((timeout / max_cms) * cm)},
+                                    {"cm", ((cnt * unit_count) / max_cms) * cm}
+                                };
+                                jcubic_meters.push_back(jcm);
+                            }
+                            Json count = {
+                                {"type", "Debug type"},
+                                {"cubic_meter", jcubic_meters},
+                                {"count", cnt},
+                                {"unit", "Литр"},
+                                {"unit_type", "Импульс"},
+                                {"unit_count", unit_count},
+                                {"serial", rand() % 500},
+                                {"verify_date", old + rand() % (old / 2)},
+                                {"desc", "Отладочный канал N " + std::to_string(i + 1)}
+                            };
+                            counters.push_back(count);
+                        }
                     }
-                    std::string ptype = randPercent() < 0.5 ? "LiOn 3.8V" : "4AA 6V";
-                    static std::vector<std::string> names = {"Rod", "Veles", "Svarog", "Ruevit", "Vishen", "Semargl", "Lada", "Lelya"};;
+                    bool is_lion = randPercent() < 0.5;
                     Json jdev = {
-                        {"dev_id", std::to_string(time(nullptr) + count)},
+                        {"coll_id", "Debug Debug"},
+                        {"dev_id", std::to_string(getUniqTime(old, count))},
                         {"coll", addr},
+                        {"apmt", apmt + n},
                         {"user", (names[rand() % names.size()] + " " + names[rand() % names.size()])},
                         {"geo", jgeo["point"]},
-                        {"update_time", time(nullptr)},
-                        {"power_type", ptype},
-                        {"voltage", (ptype == "4AA 6V" ? "3.699V" : "5.899V")},
-                        {"desc", "Сгенерированое отладочное устройство N " + std::to_string(count)},
+                        {"start_time", old},
+                        {"update_time", now},
+                        {"power_type", is_lion ? "LiOn 3.8V" : "4AA 6V"},
+                        {"voltage", (is_lion ? std::to_string(3.2 + 0.4 * randPercent()) :
+                                               std::to_string(5.3 + 0.6 * randPercent()))},
                         {"status", (randPercent() < 0.9 ? "active" : "not_active" )},
                         {"counters", counters},
-                        {"coll_user", "Debug Debug"}
+                        {"desc", desc + ": N " + std::to_string(count)}
                     };
                     LOG(TRACE) << jdev.dump() << " | " << n << " | " << count;
                     jdevs.push_back(jdev);
@@ -171,18 +210,18 @@ class DbDataTestGenerator {
                 size_t num = rand() % 2 + 1;
                 for (size_t i = 0; i < num; ++i) {
                     ++count;
-                    static std::vector<std::string> prirs = {"Low", "Medium", "Hight", "Critical"};
+                    static std::vector<std::string> prirs = {"Низкий", "Средний", "Высокий", "Критический"};
                     Json jev = {
                         {"ev_id", std::to_string(time(nullptr) + count)},
                         {"dev_id", jdev["dev_id"]},
                         {"coll", jdev["coll"]},
+                        {"apmt", jdev["apmt"]},
                         {"user", jdev["user"]},
                         {"geo", jdev["geo"]},
-                        {"time", (time(nullptr) + rand() % 1000)},
+                        {"time", (jdev["start_time"].get<size_t>() + rand() % 1000)},
                         {"priority", prirs[(rand() % prirs.size())]},
-                        {"status", jdev["dev_id"]},
                         {"desc", "Сгенерированное отладочное событие N " + std::to_string(count)},
-                        {"coll_user", "Debug Debug"}
+                        {"coll_id", "Debug Debug"}
                     };
                     LOG(TRACE) << jev.dump() << " | " << i << " | " << num << " | " << count;
                     jevs.push_back(jev);
@@ -203,10 +242,12 @@ public:
                 LOG(DEBUG) << "_addr_file";
                 auto jdevs = createDevices();
                 for (auto jdev : jdevs) {
+                    //LOG(TRACE) << jdev.dump();
                     _db->insertDevice(jdev);
                 }
                 auto jevs = createEvents(jdevs);
                 for (auto jev : jevs) {
+                    //LOG(TRACE) << jev.dump();
                     _db->insertEvent(jev);
                 }
             } else {

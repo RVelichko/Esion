@@ -103,72 +103,81 @@ public:
 
     /**
      * \brief Метод возвращает список уникальных адресов из базы.
+     * \param coll_id  Идентификатор пользовательской коллекции.
      * \param filter  Строка с фильтром адреса.
      */
-    Json getUniqueAddresses(const std::string& filter);
+    Json getUniqueAddresses(const std::string& coll_id, const std::string& filter);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] total_num  Общее количество устройств.
      * \param db_coll  Имя коллекции с записями.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */ 
-    Json getList(size_t& total_num, const std::string& db_coll, size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+    Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
+                 size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] total_num  Общее количество устройств.
      * \param db_coll  Имя коллекции с записями.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getList(size_t& total_num, const std::string& db_coll, const std::string& field, bool direct,
+    Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id, const std::string& field, bool direct,
                  size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
      * \param db_coll  Имя коллекции с записями.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param filter  Строка с фильтром.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& filter,
-                            size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id, const std::string& filter,
+                     size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
      * \param db_coll  Имя коллекции с записями.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param filter  Строка с фильтром.
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& filter, const std::string& field, bool direct,
+    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id,
+                     const std::string& filter, const std::string& field, bool direct,
                      size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по точке и радиусу геолокации.
      * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
      * \param db_coll  Имя коллекции с записями.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param longitude  Долгота.
      * \param latitude  Широта.
      * \param radius  Радиус в геокоординатах.
      * \param num  Количество запрашиваемых устройств.
      * \param skip  Количество пропускаемых в запросе устройств.
      */
-    Json getByGeo(size_t& found, const std::string& db_coll,
+    Json getByGeo(size_t& found, const std::string& db_coll, const std::string& coll_id,
                   double longitude, double latitude, double radius, size_t num, size_t skip);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по полигону геолокации.
      * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
      * \param db_coll  Имя коллекции с записями.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param x  Долгота лево.
      * \param y  Широта низ.
      * \param w  Долгота право.
@@ -176,7 +185,8 @@ public:
      * \param num  Количество запрашиваемых устройств.
      * \param skip  Количество пропускаемых в запросе устройств.
      */
-    Json getByPoly(size_t& found, const std::string& db_coll, double x, double y, double w, double h, size_t num, size_t skip);
+    Json getByPoly(size_t& found, const std::string& db_coll, const std::string& coll_id,
+                   double x, double y, double w, double h, size_t num, size_t skip);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по идентификаторам БД.
@@ -244,8 +254,9 @@ public:
 
     /**
      * \brief Метод возвращает количество устройств, соотвествующих фильтру, у которых емеется критическое событие.
+     * \param coll_id  Идентификатор пользователя коллекции.
      * \param filter  Строка с фильтром.
      */
-    size_t getCriticalNum(const std::string& filter);
+    size_t getCriticalNum(const std::string& coll_id, const std::string& filter);
 };
 } /// server

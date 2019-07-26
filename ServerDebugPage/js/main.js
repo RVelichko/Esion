@@ -413,6 +413,24 @@ function getCritical() {
 }
 
 
+function getDevice() {
+    var dev_id = $('#id_get_device_id').val();
+    var jget_critical = {
+        cmd: {
+            name: "get_device",
+            data: {
+                dev_id: dev_id,
+                token: window.token
+            }
+        }
+    };
+    var jstr = JSON.stringify(jget_critical);
+    window.websock.send(jstr);
+    AddLeftLog('Send to server: ' + jstr);
+    console.log('Send to server: ' + jstr);
+}
+
+
 function logout() {
     var auth = {
         cmd: {
@@ -513,8 +531,16 @@ function HandleSettings() {
                         }
                         if (cmd_name === 'get_uniq_addrs') {
                             if (typeof resp['uniq_addrs'] !== 'unefined') {
-                                var uniq_addrs = JSON.stringify(resp.uniq_addrs);
-                                AddRightLog('Addresses: ' + uniq_addrs);
+                                var uniq_addrs = resp.uniq_addrs;
+                                if (uniq_addrs !== null && uniq_addrs.length !== 0) {
+                                    for (var i = 0; i < uniq_addrs.length; ++i) {
+                                        var val = JSON.stringify(uniq_addrs[i]);
+                                        AddRightLog('Addr [' + i + ']: ' + val);
+                                    }
+                                } else {
+                                    uniq_addrs = JSON.stringify(resp['uniq_addrs']);
+                                    AddRightLog('Addresses: ' + uniq_addrs);
+                                }
                             } else {
                                 AddRightLog('ERR: uniq_addrs tag is undeclared!');
                             }
@@ -522,7 +548,7 @@ function HandleSettings() {
                         if (cmd_name === 'get_devs') {
                             if (typeof resp['data'] !== 'unefined') {
                                 var data = resp['data'];
-                                if (data.length !== 0) {
+                                if (data !== null && data.length !== 0) {
                                     for (var i = 0; i < data.length; ++i) {
                                         var val = JSON.stringify(data[i]);
                                         AddRightLog('Devices [' + i + ']: ' + val);
@@ -533,6 +559,14 @@ function HandleSettings() {
                                 }
                             } else {
                                 AddRightLog('ERR: Data tag is undeclared!');
+                            }
+                        }
+                        if (cmd_name === 'get_device') {
+                            if (typeof resp['device'] !== 'unefined') {
+                                var device = JSON.stringify(resp['device']);
+                                AddRightLog('Devices: ' + device);
+                            } else {
+                                AddRightLog('ERR: Device tag is undeclared!');
                             }
                         }
                         if (cmd_name === 'get_events') {

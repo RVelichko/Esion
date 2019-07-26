@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(TestDbFacade) {
     LOG(DEBUG) << "######################################";
     size_t num = 0;
     size_t found = 0;
-    for (auto jdev : dbf.getList(found, CONTROOLERS_COLLECTION_NAME, 10, 2)) {
+    for (auto jdev : dbf.getList(found, CONTROOLERS_COLLECTION_NAME, "Debug", 10, 2)) {
         LOG(DEBUG) << "[" << ++num << "] " << jdev;
     } 
     dbf.insertDevice(GetTestDevice(dev_id, time(nullptr), "UPDATED DEVICE"));
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(TestDbFacade) {
     //dbf.removeDevice("1554910784");
     LOG(DEBUG) << "######################################";
     num = 0;
-    for (auto jdev : dbf.getList(found, CONTROOLERS_COLLECTION_NAME)) {
+    for (auto jdev : dbf.getList(found, CONTROOLERS_COLLECTION_NAME, "Debug")) {
         LOG(DEBUG) << "[" << ++num << "] " << jdev;
     } 
     dbf.disconnect();
