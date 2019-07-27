@@ -140,9 +140,10 @@ public:
      * \param filter  Строка с фильтром.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
+     * \param is_all_fields  Возвращать в ответе все поля.
      */
     Json getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id, const std::string& filter,
-                     size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+                     size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0, bool is_all_fields = false);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.

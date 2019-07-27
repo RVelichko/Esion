@@ -691,7 +691,7 @@ Json CreateDevicesReportCommand::execute() {
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
                     jvals = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jcoll,
-                                             std::numeric_limits<uint32_t>::max());
+                                             std::numeric_limits<uint32_t>::max(), 0, true);
                 }
                 if (not jvals.empty()) {
                     std::string encoding;
@@ -699,7 +699,7 @@ Json CreateDevicesReportCommand::execute() {
                     if (jencoding not_eq _jdata.end() and jencoding->is_string()) {
                         encoding = (*jencoding);
                     }
-                    DevicesReportGenerator rep_gen(jvals, encoding);
+                    DevicesReportGenerator rep_gen(jvals, encoding, _snd_fn);
                     if (rep_gen) {
                         jres = {
                           {"resp", {
@@ -761,7 +761,7 @@ Json CreateEventsReportCommand::execute() {
                     if (jencoding not_eq _jdata.end() and jencoding->is_string()) {
                         encoding = (*jencoding);
                     }
-                    EventsReportGenerator rep_gen(jvals, encoding);
+                    EventsReportGenerator rep_gen(jvals, encoding, _snd_fn);
                     if (rep_gen) {
                         jres = {
                           {"resp", {

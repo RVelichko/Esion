@@ -392,7 +392,7 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
 
 
 Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id,
-                           const std::string& filter, size_t num, size_t skip) try {
+                           const std::string& filter, size_t num, size_t skip, bool is_all_fields) try {
     BsonObjs founds;
     Json jq = {
         {"$text", {
@@ -405,9 +405,16 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
     if (found < num) {
         num = found;
     }
-    Json jexlude_field = {
-        {"counters", 0}
-    };
+    Json jexlude_field;
+    if (is_all_fields) {
+        jexlude_field = {
+            {"counters.cubic_meter", 0}
+        };
+    } else {
+        jexlude_field = {
+            {"counters", 0}
+        };
+    }
     BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
     _dbc->findN(founds, getMdbNs(db_coll), q, num, skip, &bexlude_field);
     size_t i = 0;

@@ -530,7 +530,7 @@ function HandleSettings() {
                             AddRightLog('Logout complette!');
                         }
                         if (cmd_name === 'get_uniq_addrs') {
-                            if (typeof resp['uniq_addrs'] !== 'unefined') {
+                            if (typeof resp['uniq_addrs'] !== 'undefined') {
                                 var uniq_addrs = resp.uniq_addrs;
                                 if (uniq_addrs !== null && uniq_addrs.length !== 0) {
                                     for (var i = 0; i < uniq_addrs.length; ++i) {
@@ -546,7 +546,7 @@ function HandleSettings() {
                             }
                         }
                         if (cmd_name === 'get_devs') {
-                            if (typeof resp['data'] !== 'unefined') {
+                            if (typeof resp['data'] !== 'undefined') {
                                 var data = resp['data'];
                                 if (data !== null && data.length !== 0) {
                                     for (var i = 0; i < data.length; ++i) {
@@ -562,7 +562,7 @@ function HandleSettings() {
                             }
                         }
                         if (cmd_name === 'get_device') {
-                            if (typeof resp['device'] !== 'unefined') {
+                            if (typeof resp['device'] !== 'undefined') {
                                 var device = JSON.stringify(resp['device']);
                                 AddRightLog('Devices: ' + device);
                             } else {
@@ -570,7 +570,7 @@ function HandleSettings() {
                             }
                         }
                         if (cmd_name === 'get_events') {
-                            if (typeof resp['data'] !== 'unefined') {
+                            if (typeof resp['data'] !== 'undefined') {
                                 var data = resp['data'];
                                 if (data.length !== 0) {
                                     for (var i = 0; i < data.length; ++i) {
@@ -589,7 +589,7 @@ function HandleSettings() {
                             AddRightLog('Device status is set!');
                         }
                         if (cmd_name === 'get_critical') {
-                            if (typeof resp['num'] !== 'unefined') {
+                            if (typeof resp['num'] !== 'undefined') {
                                 var num = JSON.stringify(resp['num']);
                                 AddRightLog('Criticals num: ' + num);
                             } else {
@@ -597,9 +597,21 @@ function HandleSettings() {
                             }
                         }
                         if (cmd_name === 'get_devices_report' || cmd_name === 'get_events_report') {
-                            if (typeof resp['report_url'] !== 'unefined') {
+                            if (typeof resp['report_url'] !== 'undefined') {
                                 var report_url = resp.report_url;
-                                AddRightLog('Report URL: ' + report_url);
+                                if (cmd_name === 'get_devices_report') {
+                                    $('#id_dev_progress').text(report_url);
+                                } else {
+                                    $('#id_ev_progress').text(report_url);
+                                }
+                                AddRightLog("Report is complette, URL: " + report_url);
+                            } else if (typeof resp['progress'] !== 'undefined') {
+                                var progress = resp.progress;
+                                if (cmd_name === 'get_devices_report') {
+                                    $('#id_dev_progress').text(progress);
+                                } else {
+                                    $('#id_ev_progress').text(progress);
+                                }
                             } else {
                                 AddRightLog('ERR: Can`t find tag of report URL!');
                             }

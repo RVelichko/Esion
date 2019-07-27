@@ -9,6 +9,7 @@
 namespace server {
 
 typedef nlohmann::json Json;
+typedef std::function<void(const std::string&)> SendFn;
 
 static const char REPORT_FILE_EXTENTION[] = ".csv";
 static const size_t TIME_STRING_BUFFER_LEN = 80;
@@ -39,12 +40,12 @@ public:
 
 class DevicesReportGenerator : public ReportGenerator {
 public:
-    DevicesReportGenerator(const Json& jdevs, const std::string& enc);
+    DevicesReportGenerator(const Json& jdevs, const std::string& enc, const SendFn& snd_fn);
 };
 
 
 class EventsReportGenerator : public ReportGenerator {
 public:
-    EventsReportGenerator(const Json& jdevs, const std::string& enc);
+    EventsReportGenerator(const Json& jdevs, const std::string& enc, const SendFn& snd_fn);
 };
 } /// server

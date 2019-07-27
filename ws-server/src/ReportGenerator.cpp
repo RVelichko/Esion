@@ -6,6 +6,7 @@
 #include <ctime>
 #include <set>
 #include <locale>
+#include <algorithm>
 
 #include <boost/filesystem.hpp>
 
@@ -70,6 +71,18 @@ std::string ToString(const Json& j, const std::string& k) {
     }
     return std::string();
 }
+
+
+std::string GetProgressResponce(const std::string &cmd_name, double progress) {
+    Json resp = {
+        {"resp", {
+            {"name", cmd_name},
+            {"status", "ok"},
+            {"progress", progress}
+        }}
+    };
+    return resp.dump();
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -95,12 +108,15 @@ ReportGenerator::operator std::string () {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::string& enc)
+DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::string& enc, const SendFn& snd_fn)
     : ReportGenerator(enc) {
     EraseOldFiles(60 * 60 * 12);
     try {
         if (not jdevs.empty() and jdevs.is_array()) {
             if (not _reports_path.empty()) {
+                if (snd_fn) {
+                    snd_fn(GetProgressResponce("get_devices_report", 0));
+                }
                 /// Создать имя файла отчёта.
                 auto bpath = bfs::absolute(bfs::path(_reports_path));
                 if (not bfs::exists(bpath)) {
@@ -120,56 +136,64 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "N%;Идентификатор устройства;Адрес;Владелец;Дата последнего обновления;"
+                    ofs << "N%;Идентификатор устройства;Адрес;Владелец;Дата запуска;Дата обновления;"
                         << "Тип питания;Напряжение;Описание;Статус;";
                     ofs << "Канал N%;Тип;Кубометров;Число импульсов;Название;Единица измерения;"
                         << "Цена импульса;Серийный номер;Дата поверки;Описание;";
                     ofs << "\n";
                     size_t line_num = 0;
-                    for (auto jdev : jdevs) {
+                    for (size_t n = 0; n < jdevs.size(); ++n) {
+                        auto jdev = jdevs[n];
+                        auto desc = jdev["desc"].get<std::string>();
+                        std::replace(desc.begin(), desc.end(), ';', '|');
+                        std::replace(desc.begin(), desc.end(), '"', '`');
                         ofs << ++line_num << ";"
                             << jdev["dev_id"].get<std::string>() << ";"
                             << jdev["coll"].get<std::string>() << ";"
                             << jdev["user"].get<std::string>() << ";"
+                            << TimeToStr(ToNumber(jdev, "start_time")) << ";"
                             << TimeToStr(ToNumber(jdev, "update_time")) << ";"
                             << jdev["power_type"].get<std::string>() << ";"
                             << ToString(jdev, "voltage") << ";"
-                            << jdev["desc"].get<std::string>() << ";"
-                            << jdev["status"].get<std::string>() << ";";
+                            << jdev["status"].get<std::string>() << ";"
+                            << desc << ";";
                         auto jcounts = jdev.find("counters");
                         if (jcounts not_eq jdev.end() and jcounts->is_array() and jcounts->size() == 4) {
-                            size_t count = ToNumber((*jcounts)[0], "count");
-                            size_t unit_count = ToNumber((*jcounts)[0], "unit_count");
-                            ofs << 1 << ";"
-                                << (*jcounts)[0]["type"].get<std::string>() << ";"
-                                << count * unit_count << ";"
-                                << count << ";"
-                                << (*jcounts)[0]["unit"].get<std::string>() << ";"
-                                << (*jcounts)[0]["unit_type"].get<std::string>() << ";"
-                                << unit_count << ";"
-                                << ToString((*jcounts)[0], "serial") << ";"
-                                << TimeToStr(ToNumber((*jcounts)[0], "verify_date")) << ";"
-                                << (*jcounts)[0]["desc"].get<std::string>() << ";"
-                                << "\n";
+                            auto fill_count_fn = [&](size_t i) {
+                                ofs << i + 1 << ";";
+                                bool is_none = (*jcounts)[i]["type"].get<std::string>() == "none";
+                                if (is_none) {
+                                    ofs << "none;;;;;;;;;\n";
+                                } else {
+                                    size_t count = ToNumber((*jcounts)[i], "count");
+                                    size_t unit_count = ToNumber((*jcounts)[i], "unit_count");
+                                    ofs << (*jcounts)[i]["type"].get<std::string>() << ";"
+                                        << count * unit_count << ";"
+                                        << count << ";"
+                                        << (*jcounts)[i]["unit"].get<std::string>() << ";"
+                                        << (*jcounts)[i]["unit_type"].get<std::string>() << ";"
+                                        << unit_count << ";"
+                                        << ToString((*jcounts)[i], "serial") << ";"
+                                        << TimeToStr(ToNumber((*jcounts)[i], "verify_date")) << ";"
+                                        << (*jcounts)[i]["desc"].get<std::string>() << ";"
+                                        << "\n";
+                                }
+                            };
+                            fill_count_fn(0);
                             for (size_t i = 1; i < 4; ++i) {
-                                ofs << ";;;;;;;;;" << i + 1 << ";";
-                                count = ToNumber((*jcounts)[i], "count");
-                                unit_count = ToNumber((*jcounts)[i], "unit_count");
-                                ofs << (*jcounts)[i]["type"].get<std::string>() << ";"
-                                    << count * unit_count << ";"
-                                    << count << ";"
-                                    << (*jcounts)[i]["unit"].get<std::string>() << ";"
-                                    << (*jcounts)[i]["unit_type"].get<std::string>() << ";"
-                                    << unit_count << ";"
-                                    << ToString((*jcounts)[i], "serial") << ";"
-                                    << TimeToStr(ToNumber((*jcounts)[i], "verify_date")) << ";"
-                                    << (*jcounts)[i]["desc"].get<std::string>() << ";"
-                                    << "\n";
+                                ofs << ";;;;;;;;;;";
+                                fill_count_fn(i);
                             }
+                        } else {
+                            ofs << ";;;;;;;;;;\n";
+                        }
+                        if (snd_fn) {
+                            double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jdevs.size());
+                            snd_fn(GetProgressResponce("get_devices_report", p));
                         }
                     }
                     if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
-                        std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
+                        std::string sys_cmd = "iconv -f utf8 -t " + _encoding + " -o " + path + " " + path_utf8;
                         std::system(sys_cmd.c_str());
                         if (bfs::exists(bfs::path(path))) {
                             bfs::remove(path_utf8);
@@ -198,60 +222,76 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string& enc)
+EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string& enc, const SendFn& snd_fn)
     : ReportGenerator(enc) {
     EraseOldFiles(60 * 60 * 24);
     try {
         if (not jevs.empty() and jevs.is_array()) {
             if (not _reports_path.empty()) {
-                /// Создать имя файла отчёта.
-                auto bpath = bfs::absolute(bfs::path(_reports_path));
-                if (not bfs::exists(bpath)) {
-                    bfs::create_directory(bpath);
-                }
-                time_t rawtime;
-                time(&rawtime);
-                std::locale loc;
-                std::string lo_enc;
-                for(auto elem : enc) {
-                   lo_enc += std::tolower(elem, loc);
-                }
-                std::string file_name = "Events_" + TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
-                std::string file_name_utf8 = "Events_" + TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
-                std::string path = bpath.string() + "/" + file_name;
-                std::string path_utf8 = bpath.string() + "/" + file_name_utf8;
-                std::ofstream ofs(path_utf8.c_str());
-                if (ofs.is_open()) {
-                    /// Записать отчёт в файл.
-                    ofs << "N%;Идентификатор события;Идентификатор устройства;Адрес;Владелец;Дата события;Приоритет;Описание;\n";
-                    size_t line_num = 0;
-                    for (auto jev : jevs) {
-                        ofs << ++line_num << ","
-                            << jev["ev_id"].get<std::string>() << ";"
-                            << jev["dev_id"].get<std::string>() << ";"
-                            << jev["coll"].get<std::string>() << ";"
-                            << jev["user"].get<std::string>() << ";"
-                            << TimeToStr(ToNumber(jev, "time")) << ";"
-                            << jev["priority"].get<std::string>() << ";"
-                            << jev["desc"].get<std::string>() << ";";
-                        ofs << "\n";
+                if (jevs.size()) {
+                    if (snd_fn) {
+                        snd_fn(GetProgressResponce("get_events_report", 0));
                     }
-                    if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
-                        std::string sys_cmd = "iconv -f \"UTF8\" -t \"" + _encoding + "\" -o " + path + " " + path_utf8;
-                        std::system(sys_cmd.c_str());
-                        if (bfs::exists(bfs::path(path))) {
-                            bfs::remove(path_utf8);
-                            _result_path = file_name;
+                    /// Создать имя файла отчёта.
+                    auto bpath = bfs::absolute(bfs::path(_reports_path));
+                    if (not bfs::exists(bpath)) {
+                        bfs::create_directory(bpath);
+                    }
+                    time_t rawtime;
+                    time(&rawtime);
+                    std::locale loc;
+                    std::string lo_enc;
+                    for(auto elem : enc) {
+                       lo_enc += std::tolower(elem, loc);
+                    }
+                    std::string file_name = "Events_" + TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
+                    std::string file_name_utf8 = "Events_" + TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
+                    std::string path = bpath.string() + "/" + file_name;
+                    std::string path_utf8 = bpath.string() + "/" + file_name_utf8;
+                    std::ofstream ofs(path_utf8.c_str());
+                    if (ofs.is_open()) {
+                        /// Записать отчёт в файл.
+                        ofs << "N%;Идентификатор события;Идентификатор устройства;Адрес;Владелец;Дата события;Приоритет;Описание;"
+                            << "\n" << std::flush;
+                        size_t line_num = 0;
+                        for (size_t n =0; n < jevs.size(); ++n) {
+                            auto jev = jevs[n];
+                            auto desc = jev["desc"].get<std::string>();
+                            std::replace(desc.begin(), desc.end(), ';', '|');
+                            std::replace(desc.begin(), desc.end(), '"', '`');
+                            ofs << ++line_num << ","
+                                << jev["ev_id"].get<std::string>() << ";"
+                                << jev["dev_id"].get<std::string>() << ";"
+                                << jev["coll"].get<std::string>() << ";"
+                                << jev["user"].get<std::string>() << ";"
+                                << TimeToStr(ToNumber(jev, "time")) << ";"
+                                << jev["priority"].get<std::string>() << ";"
+                                << desc << ";";
+                            ofs << "\n" << std::flush;
+                            if (snd_fn) {
+                                double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jevs.size());
+                                snd_fn(GetProgressResponce("get_events_report", p));
+                            }
+                        }
+                        if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
+                            std::string sys_cmd = "iconv -f utf8 -t " + _encoding + " -o " + path + " " + path_utf8;
+                            std::system(sys_cmd.c_str());
+                            if (bfs::exists(bfs::path(path))) {
+                                bfs::remove(path_utf8);
+                                _result_path = file_name;
+                            } else {
+                                _result_path = file_name_utf8;
+                                LOG(ERROR) << "Can`t create report for encoding to \"" << _encoding << "\"";
+                            }
                         } else {
                             _result_path = file_name_utf8;
-                            LOG(ERROR) << "Can`t create report for encoding to \"" << _encoding << "\"";
                         }
+                        LOG(DEBUG) << "Create report file: \"" << _result_path << "\"";
                     } else {
-                        _result_path = file_name_utf8;
+                        LOG(ERROR) << "Can`t open report file \"" << path << "\"";
                     }
-                    LOG(DEBUG) << "Create report file: \"" << _result_path << "\"";
                 } else {
-                    LOG(ERROR) << "Can`t open report file \"" << path << "\"";
+                    LOG(ERROR) << "Empty events array.";
                 }
             } else {
                 LOG(ERROR) << "Reports path is not set!";
