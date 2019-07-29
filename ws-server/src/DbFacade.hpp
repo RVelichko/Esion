@@ -266,5 +266,12 @@ public:
      * \param filter  Строка с фильтром.
      */
     size_t getCriticalNum(const std::string& coll_id, const std::string& filter);
+
+    /**
+     * \brief Метод возвращает количество критических событий для устройства.
+     * \param coll_id  Идентификатор пользователя коллекции.
+     * \param dev_id  Идентификатор устройства.
+     */
+    size_t getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id);
 };
 } /// server

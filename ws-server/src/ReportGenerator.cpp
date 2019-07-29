@@ -133,7 +133,7 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                 std::ofstream ofs(path_utf8.c_str());
                 if (ofs.is_open()) {
                     /// Записать отчёт в файл.
-                    ofs << "N%;Идентификатор устройства;Адрес;Владелец;Дата запуска;Дата обновления;"
+                    ofs << "N%;Идентификатор устройства;Адрес;Квартира;Владелец;Дата запуска;Дата обновления;"
                         << "Тип питания;Напряжение;Описание;Статус;";
                     ofs << "Канал N%;Тип;Кубометров;Число импульсов;Название;Единица измерения;"
                         << "Цена импульса;Серийный номер;Дата поверки;Описание;";
@@ -147,6 +147,7 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                         ofs << ++line_num << ";"
                             << jdev["dev_id"].get<std::string>() << ";"
                             << jdev["coll"].get<std::string>() << ";"
+                            << jdev["apmt"].get<std::string>() << ";"
                             << jdev["user"].get<std::string>() << ";"
                             << TimeToStr(ToNumber(jdev, "start_time")) << ";"
                             << TimeToStr(ToNumber(jdev, "update_time")) << ";"
@@ -178,7 +179,7 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                             };
                             fill_count_fn(0);
                             for (size_t i = 1; i < 4; ++i) {
-                                ofs << ";;;;;;;;;;";
+                                ofs << ";;;;;;;;;;;";
                                 fill_count_fn(i);
                             }
                         } else {
@@ -257,6 +258,7 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                                 << jev["ev_id"].get<std::string>() << ";"
                                 << jev["dev_id"].get<std::string>() << ";"
                                 << jev["coll"].get<std::string>() << ";"
+                                << jev["apmt"].get<std::string>() << ";"
                                 << jev["user"].get<std::string>() << ";"
                                 << TimeToStr(ToNumber(jev, "time")) << ";"
                                 << jev["priority"].get<std::string>() << ";"

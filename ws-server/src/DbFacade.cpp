@@ -781,3 +781,40 @@ size_t DbFacade::getCriticalNum(const std::string& coll_id, const std::string& f
     return 0;
 }
 
+
+size_t DbFacade::getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id) try {
+    size_t num = 0;
+    Json jpipline;
+    jpipline.push_back({
+        {"$match", {
+            {"dev_id", dev_id},
+            {"priority", "Критический"},
+            {"coll_id", coll_id}
+        }}
+    });
+    jpipline.push_back({
+        {"$group", {
+            {"_id", "$dev_id"}
+        }}
+    });
+    jpipline.push_back({
+        {"$count", "critical_devices"}
+    });
+    BsonObj bpipline = DbFacade::toBson(jpipline);
+    auto db_cursor = _dbc->aggregate(getMdbNs(EVENTS_COLLECTION_NAME), bpipline);
+    if (db_cursor.get()) {
+        while (db_cursor->more()) {
+            auto bs = db_cursor->next();
+            auto js = DbFacade::toJson(bs);
+            auto jcritical_devices = js.find("critical_devices");
+            if (jcritical_devices not_eq js.end() and jcritical_devices->is_number()) {
+                num = jcritical_devices->get<size_t>();
+            }
+        }
+    }
+    return num;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get for [" << dev_id << "] criticals number from DB: " << e.what();
+    return 0;
+}
+

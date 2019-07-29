@@ -811,8 +811,9 @@ Json GetCriticalNumberCommand::execute() {
         auto jtoken  = _jdata.find("token");
         if (jtoken not_eq _jdata.end() and jtoken->is_string() and checkToken(*jtoken)) {
             auto jfilter = _jdata.find("filter");
-            if (jfilter not_eq _jdata.end()) {
-                size_t found = 0;
+            auto jdev_id = _jdata.find("dev_id");
+            size_t found = 0;
+            if (jfilter not_eq _jdata.end() and jfilter->is_string() and jdev_id == _jdata.end()) {
                 { /// LOCK
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
@@ -826,6 +827,23 @@ Json GetCriticalNumberCommand::execute() {
                   }}
                 };
                 LOG(DEBUG) << jres;
+            } else if (jdev_id not_eq _jdata.end() and jdev_id->is_string() and jfilter == _jdata.end()) {
+                { /// LOCK
+                    LockQuard l(_mutex);
+                    auto coll_id = getCollectionId(*jtoken);
+                    found = _db->getCriticalNumByDevId(coll_id, *jdev_id);
+                }
+                jres = {
+                  {"resp", {
+                    {"name", _name},
+                    {"status", "ok"},
+                    {"num", found}
+                  }}
+                };
+                LOG(DEBUG) << jres;
+            } else {
+                LOG(FATAL) << "Invalid command format!";
+                jres = getErrorResponce("Invalid command format!");
             }
         } else {
             LOG(FATAL) << "Invalid token " << *jtoken;

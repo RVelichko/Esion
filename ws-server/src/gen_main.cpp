@@ -156,13 +156,15 @@ class DbDataTestGenerator {
                             size_t sum_cnt = 0;
                             size_t unit_count = (randPercent() < 0.7 ? 1 : 10);
                             Json jcubic_meters;
+                            double sum_cm = 0.0;
                             for(size_t cm = 0; cm < max_cms; ++cm) {
                                 size_t cnt = rand() % 50;
                                 sum_cnt += cnt;
                                 double dcm = static_cast<double>(cnt * unit_count) / 1000.0;
+                                sum_cm += dcm;
                                 Json jcm = {
                                     {"t", old + ((timeout / max_cms) * cm)},
-                                    {"cm", dcm}
+                                    {"cm", sum_cm}
                                 };
                                 jcubic_meters.push_back(jcm);
                             }
