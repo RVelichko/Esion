@@ -331,34 +331,6 @@ Json DbFacade::getUniqueAddresses(const std::string& coll_id, const std::string&
 }
 
 
-Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id, size_t num, size_t skip) try {
-    BsonObjs founds;
-    Json jq = {
-        {"coll_id", coll_id}
-    };
-    DbQuery q(jq.dump());
-    total_num = _dbc->query(getMdbNs(db_coll), q)->itcount();
-    if (total_num < num) {
-        num = total_num;
-    }
-    Json jexlude_field = {
-        {"counters", 0}
-    };
-    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
-    _dbc->findN(founds, getMdbNs(db_coll), BObjBuilder().obj(), num,  skip, &bexlude_field);
-    Json jvals;
-    size_t i = 0; 
-    for (auto bval : founds) {
-        jvals[i] = (DbFacade::toJson(bval));
-        ++i;
-    }
-    return jvals;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << num << " `" << skip << "] " << db_coll << " from DB: " << e.what();
-    return Json();
-}
-
-
 Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
                        const std::string& field, bool direct, size_t num, size_t skip) try {
     BsonObjs founds;
@@ -367,16 +339,19 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
     };
     DbQuery q(jq.dump());
     total_num = _dbc->query(getMdbNs(db_coll), q)->itcount();
+    if (not field.empty()) {
+        size_t d = (direct ? 1 : -1);
+        auto sq = q.sort(field, d);
+        q = sq;
+    }
     if (total_num < num) {
         num = total_num;
     }
-    size_t d = (direct ? 1 : -1);
-    auto sq = q.sort(field, d);
     Json jexlude_field = {
         {"counters", 0}
     };
     BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
-    _dbc->findN(founds, getMdbNs(db_coll), sq, num,  skip, &bexlude_field);
+    _dbc->findN(founds, getMdbNs(db_coll), q, num,  skip, &bexlude_field);
     Json jvals;
     size_t i = 0;
     for (auto bval : founds) {
@@ -391,8 +366,45 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
 }
 
 
-Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id,
-                           const std::string& filter, size_t num, size_t skip, bool is_all_fields) try {
+Json DbFacade::getDevicesByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+                                const std::string& field, bool direct, size_t num, size_t skip) try {
+    BsonObjs founds;
+    Json jq = {
+        {"coll_id", coll_id},
+        {date_type, {
+             {"$gte", date_time},
+             {"$lt", (date_time + 86400)}
+        }}
+    };
+    DbQuery q(jq.dump());
+    found = _dbc->query(getMdbNs(CONTROOLERS_COLLECTION_NAME), q)->itcount();
+    size_t d = (direct ? 1 : -1);
+    auto sq = q.sort(field, d);
+    if (found < num) {
+        num = found;
+    }
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(CONTROOLERS_COLLECTION_NAME), q, num,  skip, &bexlude_field);
+    Json jvals;
+    size_t i = 0;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception& e) {
+    LOG(ERROR) << "Can`t get [" << num << " | " << skip << "] " << date_type << ": "  << date_time << ", "
+               << field << ": "  << BTOS(direct) << ", "
+               << "devices from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id, const std::string& filter,
+                           const std::string& field, bool direct, size_t num, size_t skip, bool is_all_fields) try {
     BsonObjs founds;
     Json jq = {
         {"$text", {
@@ -404,6 +416,11 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
     found = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (found < num) {
         num = found;
+    }
+    if (not field.empty()) {
+        size_t d = (direct ? 1 : -1);
+        auto sq = q.sort(field, d);
+        q = sq;
     }
     Json jexlude_field;
     if (is_all_fields) {
@@ -417,40 +434,6 @@ Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std:
     }
     BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
     _dbc->findN(founds, getMdbNs(db_coll), q, num, skip, &bexlude_field);
-    size_t i = 0;
-    Json jvals;
-    for (auto bval : founds) {
-        jvals[i] = (DbFacade::toJson(bval));
-        ++i;
-    }
-    return jvals;
-} catch (const std::exception &e) {
-    LOG(ERROR) << "Can`t get [" << filter << "] " << db_coll << " from DB: " << e.what();
-    return Json();
-}
-
-
-Json DbFacade::getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id, const std::string& filter,
-                           const std::string& field, bool direct, size_t num, size_t skip) try {
-    BsonObjs founds;
-    Json jq = {
-        {"$text", {
-             {"$search", filter}
-        }},
-        {"coll_id", coll_id}
-    };
-    DbQuery q(jq.dump());
-    found = _dbc->query(getMdbNs(db_coll), q)->itcount();
-    if (found < num) {
-        num = found;
-    }
-    size_t d = (direct ? 1 : -1);
-    auto sq = q.sort(field, d);
-    Json jexlude_field = {
-        {"counters", 0}
-    };
-    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
-    _dbc->findN(founds, getMdbNs(db_coll), sq, num, skip, &bexlude_field);
     size_t i = 0;
     Json jvals;
     for (auto bval : founds) {
@@ -656,6 +639,46 @@ Json DbFacade::getEventsByDevId(size_t& found, const std::string& dev_id, const 
     return jevs;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t get " << dev_id << " events from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+                               const std::string& field, bool direct, size_t num, size_t skip)  try {
+    BsonObjs founds;
+    Json jq = {
+        {"coll_id", coll_id},
+        {date_type, {
+             {"$gte", date_time},
+             {"$lt", (date_time + 86400)}
+        }}
+    };
+    DbQuery q(jq.dump());
+    found = _dbc->query(getMdbNs(EVENTS_COLLECTION_NAME), q)->itcount();
+    if (not field.empty()) {
+        size_t d = (direct ? 1 : -1);
+        auto sq = q.sort(field, d);
+        q = sq;
+    }
+    if (found < num) {
+        num = found;
+    }
+    Json jexlude_field = {
+        {"counters", 0}
+    };
+    BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
+    _dbc->findN(founds, getMdbNs(EVENTS_COLLECTION_NAME), q, num,  skip, &bexlude_field);
+    Json jvals;
+    size_t i = 0;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception& e) {
+    LOG(ERROR) << "Can`t get [" << num << " | " << skip << "] " << date_type << ": "  << date_time << ", "
+               << field << ": "  << BTOS(direct) << ", "
+               << "devices from DB: " << e.what();
     return Json();
 }
 

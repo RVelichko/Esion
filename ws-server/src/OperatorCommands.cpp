@@ -385,6 +385,8 @@ Json GetDevicesListCommand::execute() {
                 auto jradius    = _jdata.find("radius");
                 auto jfilter    = _jdata.find("filter");
                 auto jsort      = _jdata.find("sort");
+                auto jdate_time = _jdata.find("date_time");
+                auto jdate_type = _jdata.find("date_type");
                 std::string field;
                 bool direct_flag = true;
                 if (jsort not_eq _jdata.end() and jsort->is_object()) {
@@ -434,12 +436,22 @@ Json GetDevicesListCommand::execute() {
                     jres["resp"]["count"] = found;
                 } else if (jfilter not_eq _jdata.end() and jfilter->is_string() and not jfilter->empty()) {
                     Json jlist;
-                    if (not field.empty()) {
+                    { /// LOCK
                         LockQuard l(_mutex);
-                        jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jfilter, field, direct_flag, num, skip);
-                    } else {
+                        jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jfilter,
+                                                 field, direct_flag, num, skip);
+                    }
+                    eraseMongoId(jlist);
+                    jres = fillResponceData(jlist);
+                    jres["resp"]["count"] = found;
+                } else if (jdate_time not_eq _jdata.end() and jdate_time->is_number() and
+                           jdate_type not_eq _jdata.end() and jdate_type->is_string()) {
+                    time_t date_time = static_cast<time_t>(jdate_time->get<size_t>());
+                    std::string date_type = *jdate_type;
+                    Json jlist;
+                    { /// LOCK
                         LockQuard l(_mutex);
-                        jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jfilter, num, skip);
+                        jlist = _db->getDevicesByTime(found, coll_id, date_time, date_type, field, direct_flag, num, skip);
                     }
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);
@@ -447,12 +459,9 @@ Json GetDevicesListCommand::execute() {
                 } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
                            jradius == _jdata.end() and jfilter == _jdata.end()) {
                     Json jlist;
-                    if (not field.empty()) {
+                    { /// LOCK
                         LockQuard l(_mutex);
                         jlist = _db->getList(found, CONTROOLERS_COLLECTION_NAME, coll_id, field, direct_flag, num, skip);
-                    } else {
-                        LockQuard l(_mutex);
-                        jlist = _db->getList(found, CONTROOLERS_COLLECTION_NAME, coll_id, num, skip);
                     }
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);
@@ -625,12 +634,9 @@ Json GetEventsListCommand::execute() {
                 } else if (jfilter not_eq _jdata.end() and
                            jfilter->is_string() and not jfilter->empty()) {
                     Json jevs;
-                    if (not field.empty()) {
+                    { /// LOCK
                         LockQuard l(_mutex);
                         jevs = _db->getByFilter(found, EVENTS_COLLECTION_NAME, coll_id, *jfilter, field, direct_flag, num, skip);
-                    } else {
-                        LockQuard l(_mutex);
-                        jevs = _db->getByFilter(found, EVENTS_COLLECTION_NAME, coll_id, *jfilter, num, skip);
                     }
                     eraseMongoId(jevs);
                     jres = fillResponceData(jevs);
@@ -638,12 +644,9 @@ Json GetEventsListCommand::execute() {
                 } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
                            jradius == _jdata.end() and jfilter == _jdata.end()) {
                     Json jdevs;
-                    if (not field.empty()) {
+                    { /// LOCK
                         LockQuard l(_mutex);
                         jdevs = _db->getList(found, EVENTS_COLLECTION_NAME, coll_id, field, direct_flag, num, skip);
-                    } else {
-                        LockQuard l(_mutex);
-                        jdevs = _db->getList(found, EVENTS_COLLECTION_NAME, coll_id, num, skip);
                     }
                     eraseMongoId(jdevs);
                     jres = fillResponceData(jdevs);
@@ -691,7 +694,7 @@ Json CreateDevicesReportCommand::execute() {
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
                     jvals = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jcoll,
-                                             std::numeric_limits<uint32_t>::max(), 0, true);
+                                             "", true, std::numeric_limits<uint32_t>::max(), 0, true);
                 }
                 if (not jvals.empty()) {
                     std::string encoding;
@@ -753,7 +756,7 @@ Json CreateEventsReportCommand::execute() {
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
                     jvals = _db->getByFilter(found, EVENTS_COLLECTION_NAME, coll_id, *jcoll,
-                                             std::numeric_limits<uint32_t>::max());
+                                             "", true, std::numeric_limits<uint32_t>::max());
                 }
                 if (not jvals.empty()) {
                     std::string encoding;

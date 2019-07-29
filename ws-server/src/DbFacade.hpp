@@ -113,24 +113,29 @@ public:
      * \param [OUT] total_num  Общее количество устройств.
      * \param db_coll  Имя коллекции с записями.
      * \param coll_id  Идентификатор пользователя коллекции.
-     * \param num  Количество запрашиваемых устройств.
-     * \param skip Количество пропускаемых в запросе устройств.
-     */ 
-    Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
-                 size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
-
-    /**
-     * \brief Метод возвращает N имеющихся устройств.
-     * \param [OUT] total_num  Общее количество устройств.
-     * \param db_coll  Имя коллекции с записями.
-     * \param coll_id  Идентификатор пользователя коллекции.
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id, const std::string& field, bool direct,
+    Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
+                 const std::string& field = "", bool direct = true,
                  size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
+    /**
+     * \brief Метод возвращает N имеющихся устройств.
+     * \param [OUT] found  Количество найденных устройств.
+     * \param coll_id  Идентификатор пользователя коллекции.
+     * \param date_time  Врямя по которому необходимо осуществить поиск.
+     * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     */
+    Json getDevicesByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+                          const std::string& field = "", bool direct = true,
+                          size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
@@ -138,27 +143,15 @@ public:
      * \param db_coll  Имя коллекции с записями.
      * \param coll_id  Идентификатор пользователя коллекции.
      * \param filter  Строка с фильтром.
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
-     * \param is_all_fields  Возвращать в ответе все поля.
+     * \param is_all_fields  Возвращать все поля в запросе.
      */
     Json getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id, const std::string& filter,
+                     const std::string& field = "", bool direct = true,
                      size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0, bool is_all_fields = false);
-
-    /**
-     * \brief Метод возвращает N имеющихся устройств.
-     * \param [OUT] found  Количество найденных записей, соответствующих фильтру.
-     * \param db_coll  Имя коллекции с записями.
-     * \param coll_id  Идентификатор пользователя коллекции.
-     * \param filter  Строка с фильтром.
-     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
-     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
-     * \param num  Количество запрашиваемых устройств.
-     * \param skip Количество пропускаемых в запросе устройств.
-     */
-    Json getByFilter(size_t& found, const std::string& db_coll, const std::string& coll_id,
-                     const std::string& filter, const std::string& field, bool direct,
-                     size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод возвращает N имеющихся устройств по точке и радиусу геолокации.
@@ -234,6 +227,20 @@ public:
      */
     Json getEventsByDevId(size_t& found, const std::string& dev_id, const std::string& field, bool direct,
                           size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
+    /**
+     * \brief Метод возвращает N имеющихся устройств.
+     * \param [OUT] found  Количество найденных устройств.
+     * \param coll_id  Идентификатор пользователя коллекции.
+     * \param date_time  Врямя по которому необходимо осуществить поиск.
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     */
+    Json getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+                         const std::string& field = "", bool direct = true,
+                         size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
     /**
      * \brief Метод доавляет новое событие или обновляет существующее.
