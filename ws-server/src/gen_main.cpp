@@ -153,20 +153,23 @@ class DbDataTestGenerator {
                             };
                             counters.push_back(count);
                         } else {
-                            size_t cnt = rand() % 1000;
+                            size_t sum_cnt = 0;
                             size_t unit_count = (randPercent() < 0.7 ? 1 : 10);
                             Json jcubic_meters;
                             for(size_t cm = 0; cm < max_cms; ++cm) {
+                                size_t cnt = rand() % 50;
+                                sum_cnt += cnt;
+                                double dcm = static_cast<double>(cnt * unit_count) / 1000.0;
                                 Json jcm = {
                                     {"t", old + ((timeout / max_cms) * cm)},
-                                    {"cm", ((cnt * unit_count) / max_cms) * cm}
+                                    {"cm", dcm}
                                 };
                                 jcubic_meters.push_back(jcm);
                             }
                             Json count = {
                                 {"type", "Debug type"},
                                 {"cubic_meter", jcubic_meters},
-                                {"count", cnt},
+                                {"count", sum_cnt},
                                 {"unit", "Литр"},
                                 {"unit_type", "Импульс"},
                                 {"unit_count", unit_count},
@@ -178,6 +181,15 @@ class DbDataTestGenerator {
                         }
                     }
                     bool is_lion = randPercent() < 0.5;
+                    double voltage = 0.0;
+                    size_t volt_perc = 0;
+                    if (is_lion) {
+                        voltage = 3.2 + 0.4 * randPercent();
+                        volt_perc = floor(voltage * 100.0 / 3.8 + 0.05);
+                    } else {
+                        voltage = 5.3 + 0.6 * randPercent();
+                        volt_perc = floor(voltage * 100.0 / 6 + 0.05);
+                    }
                     Json jdev = {
                         {"coll_id", "Debug Debug"},
                         {"dev_id", std::to_string(getUniqTime(old, count))},
@@ -188,8 +200,8 @@ class DbDataTestGenerator {
                         {"start_time", old},
                         {"update_time", now},
                         {"power_type", is_lion ? "LiOn 3.8V" : "4AA 6V"},
-                        {"voltage", (is_lion ? std::to_string(3.2 + 0.4 * randPercent()) :
-                                               std::to_string(5.3 + 0.6 * randPercent()))},
+                        {"voltage", voltage},
+                        {"voltage_perc", volt_perc},
                         {"status", (randPercent() < 0.9 ? "active" : "not_active" )},
                         {"counters", counters},
                         {"desc", desc + ": N " + std::to_string(count)}
