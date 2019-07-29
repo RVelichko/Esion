@@ -114,9 +114,6 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
     try {
         if (not jdevs.empty() and jdevs.is_array()) {
             if (not _reports_path.empty()) {
-                if (snd_fn) {
-                    snd_fn(GetProgressResponce("get_devices_report", 0));
-                }
                 /// Создать имя файла отчёта.
                 auto bpath = bfs::absolute(bfs::path(_reports_path));
                 if (not bfs::exists(bpath)) {
@@ -187,10 +184,10 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                         } else {
                             ofs << ";;;;;;;;;;\n";
                         }
-                        if (snd_fn) {
-                            double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jdevs.size());
-                            snd_fn(GetProgressResponce("get_devices_report", p));
-                        }
+                        //if (snd_fn) {
+                        //    double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jdevs.size() - 1);
+                        //    snd_fn(GetProgressResponce("get_devices_report", p));
+                        //}
                     }
                     if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
                         std::string sys_cmd = "iconv -f utf8 -t " + _encoding + " -o " + path + " " + path_utf8;
@@ -229,9 +226,6 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
         if (not jevs.empty() and jevs.is_array()) {
             if (not _reports_path.empty()) {
                 if (jevs.size()) {
-                    if (snd_fn) {
-                        snd_fn(GetProgressResponce("get_events_report", 0));
-                    }
                     /// Создать имя файла отчёта.
                     auto bpath = bfs::absolute(bfs::path(_reports_path));
                     if (not bfs::exists(bpath)) {
@@ -268,10 +262,10 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                                 << jev["priority"].get<std::string>() << ";"
                                 << desc << ";";
                             ofs << "\n" << std::flush;
-                            if (snd_fn) {
-                                double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jevs.size());
-                                snd_fn(GetProgressResponce("get_events_report", p));
-                            }
+                            //if (snd_fn) {
+                            //    double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jevs.size() - 1);
+                            //    snd_fn(GetProgressResponce("get_events_report", p));
+                            //}
                         }
                         if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
                             std::string sys_cmd = "iconv -f utf8 -t " + _encoding + " -o " + path + " " + path_utf8;

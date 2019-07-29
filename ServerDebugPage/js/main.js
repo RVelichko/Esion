@@ -5,7 +5,9 @@ window.config = {
     "name": "Index debugger page",
 	"service": {
 		"address": "127.0.0.1",
-		"port": 20000,
+        "port": 20000,
+        "_address": "https://esion.ru",
+		"_port": 8080,
 		"rest": "/info",
         "login":"Debug",
         "pswd":"Debug"
