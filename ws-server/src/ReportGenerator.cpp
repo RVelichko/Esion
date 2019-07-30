@@ -147,7 +147,7 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                         ofs << ++line_num << ";"
                             << jdev["dev_id"].get<std::string>() << ";"
                             << jdev["coll"].get<std::string>() << ";"
-                            << jdev["apmt"].get<std::string>() << ";"
+                            << ToNumber(jdev, "apmt") << ";"
                             << jdev["user"].get<std::string>() << ";"
                             << TimeToStr(ToNumber(jdev, "start_time")) << ";"
                             << TimeToStr(ToNumber(jdev, "update_time")) << ";"
@@ -246,7 +246,7 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                     std::ofstream ofs(path_utf8.c_str());
                     if (ofs.is_open()) {
                         /// Записать отчёт в файл.
-                        ofs << "N%;Идентификатор события;Идентификатор устройства;Адрес;Владелец;Дата события;Приоритет;Описание;"
+                        ofs << "N%;Идентификатор события;Идентификатор устройства;Адрес;Квартира;Владелец;Дата события;Приоритет;Описание;"
                             << "\n" << std::flush;
                         size_t line_num = 0;
                         for (size_t n =0; n < jevs.size(); ++n) {
@@ -258,7 +258,7 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                                 << jev["ev_id"].get<std::string>() << ";"
                                 << jev["dev_id"].get<std::string>() << ";"
                                 << jev["coll"].get<std::string>() << ";"
-                                << jev["apmt"].get<std::string>() << ";"
+                                << ToNumber(jev, "apmt") << ";"
                                 << jev["user"].get<std::string>() << ";"
                                 << TimeToStr(ToNumber(jev, "time")) << ";"
                                 << jev["priority"].get<std::string>() << ";"
