@@ -378,8 +378,11 @@ Json DbFacade::getDevicesByTime(size_t& found, const std::string& coll_id, time_
     };
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(CONTROOLERS_COLLECTION_NAME), q)->itcount();
-    size_t d = (direct ? 1 : -1);
-    auto sq = q.sort(field, d);
+    if (not field.empty()) {
+        size_t d = (direct ? 1 : -1);
+        auto sq = q.sort(field, d);
+        q = sq;
+    }
     if (found < num) {
         num = found;
     }

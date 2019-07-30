@@ -191,6 +191,61 @@ function getDevicesGeo() {
     }
 }
 
+function getDevicesDate() {
+    var date_time = $('#id_get_devs_date_time').val();
+    var date_type = СhangeSetting('#id_get_devs_date_type');
+    var field = СhangeSetting('#id_get_devs_date_field');
+    var direct = СhangeSetting('#id_get_devs_date_direct');
+    var skip = СhangeSetting('#id_get_devs_date_skip');
+    var num = СhangeSetting('#id_get_devs_date_num');
+    var jget_devs = {
+        cmd: {
+            name: "get_devs",
+            data: {
+                date_time: Number.parseInt(date_time),
+                date_type: date_type,
+                field: field,
+                direction: direct,
+                skip: Number.parseInt(skip),
+                num: Number.parseInt(num),
+                token: window.token
+            }
+        }
+    };
+    var jstr = JSON.stringify(jget_devs);
+    window.websock.send(jstr);
+    AddLeftLog('Send to server: ' + jstr);
+    console.log('Send to server: ' + jstr);
+}
+
+
+function getEventsDate() {
+    var date_time = $('#id_get_devs_date_time').val();
+    var date_type = СhangeSetting('#id_get_evs_date_type');
+    var field = СhangeSetting('#id_get_evs_date_field');
+    var direct = СhangeSetting('#id_get_evs_date_direct');
+    var skip = СhangeSetting('#id_get_evs_date_skip');
+    var num = СhangeSetting('#id_get_evs_date_num');
+    var jget_evs = {
+        cmd: {
+            name: "get_events",
+            data: {
+                date_time: Number.parseInt(date_time),
+                date_type: date_type,
+                field: field,
+                direction: direct,
+                skip: Number.parseInt(skip),
+                num: Number.parseInt(num),
+                token: window.token
+            }
+        }
+    };
+    var jstr = JSON.stringify(jget_evs);
+    window.websock.send(jstr);
+    AddLeftLog('Send to server: ' + jstr);
+    console.log('Send to server: ' + jstr);
+}
+
 
 function getDevicesPoly() {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
@@ -399,15 +454,29 @@ function getUniqueAddresses() {
 
 function getCritical() {
     var filter = $('#id_get_critical_filter').val();
-    var jget_critical = {
-        cmd: {
-            name: "get_critical",
-            data: {
-                filter: filter,
-                token: window.token
+    var dev_id = $('#id_get_critical_dev_id').val();
+    var jget_critical;
+    if (filter !== null && dev_id === null) {
+        jget_critical = {
+            cmd: {
+                name: "get_critical",
+                data: {
+                    filter: filter,
+                    token: window.token
+                }
             }
-        }
-    };
+        };
+    } else if (dev_id !== null && filter === null) {
+        jget_critical = {
+            cmd: {
+                name: "get_critical",
+                data: {
+                    dev_id: dev_id,
+                    token: window.token
+                }
+            }
+        };
+    }
     var jstr = JSON.stringify(jget_critical);
     window.websock.send(jstr);
     AddLeftLog('Send to server: ' + jstr);

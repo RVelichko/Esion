@@ -566,12 +566,14 @@ Json GetEventsListCommand::execute() {
                 /// Подготовка полей для определения типа команды.
                 size_t skip = *jskip;
                 size_t num = *jnum;
-                auto jgeo_poly = _jdata.find("geo_poly");
-                auto jgeo      = _jdata.find("geo");
-                auto jradius   = _jdata.find("radius");
-                auto jfilter   = _jdata.find("filter");
-                auto jdev_id   = _jdata.find("dev_id");
+                auto jgeo_poly  = _jdata.find("geo_poly");
+                auto jgeo       = _jdata.find("geo");
+                auto jradius    = _jdata.find("radius");
+                auto jfilter    = _jdata.find("filter");
+                auto jdev_id    = _jdata.find("dev_id");
                 auto jsort      = _jdata.find("sort");
+                auto jdate_time = _jdata.find("date_time");
+                auto jdate_type = _jdata.find("date_type");
                 std::string field;
                 bool direct_flag = true;
                 if (jsort not_eq _jdata.end() and jsort->is_object()) {
@@ -640,6 +642,18 @@ Json GetEventsListCommand::execute() {
                     }
                     eraseMongoId(jevs);
                     jres = fillResponceData(jevs);
+                    jres["resp"]["count"] = found;
+                } else if (jdate_time not_eq _jdata.end() and jdate_time->is_number() and
+                           jdate_type not_eq _jdata.end() and jdate_type->is_string()) {
+                    time_t date_time = static_cast<time_t>(jdate_time->get<size_t>());
+                    std::string date_type = *jdate_type;
+                    Json jlist;
+                    { /// LOCK
+                        LockQuard l(_mutex);
+                        jlist = _db->getEventsByTime(found, coll_id, date_time, date_type, field, direct_flag, num, skip);
+                    }
+                    eraseMongoId(jlist);
+                    jres = fillResponceData(jlist);
                     jres["resp"]["count"] = found;
                 } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
                            jradius == _jdata.end() and jfilter == _jdata.end()) {
