@@ -126,6 +126,7 @@ public:
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] found  Количество найденных устройств.
      * \param coll_id  Идентификатор пользователя коллекции.
+     * \param date_time_old  Врямя оn которого необходимо осуществить поиск.
      * \param date_time  Врямя по которому необходимо осуществить поиск.
      * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
@@ -133,7 +134,8 @@ public:
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getDevicesByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+    Json getDevicesByTime(size_t& found, const std::string& coll_id,
+                          time_t date_time_old, time_t date_time, std::string& date_type,
                           const std::string& field = "", bool direct = true,
                           size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 

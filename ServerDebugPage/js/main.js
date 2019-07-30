@@ -192,6 +192,7 @@ function getDevicesGeo() {
 }
 
 function getDevicesDate() {
+    var date_time_old = $('#id_get_devs_date_time_old').val();
     var date_time = $('#id_get_devs_date_time').val();
     var date_type = СhangeSetting('#id_get_devs_date_type');
     var field = СhangeSetting('#id_get_devs_date_field');
@@ -202,6 +203,7 @@ function getDevicesDate() {
         cmd: {
             name: "get_devs",
             data: {
+                date_time_old: Number.parseInt(date_time_old),
                 date_time: Number.parseInt(date_time),
                 date_type: date_type,
                 field: field,
@@ -456,7 +458,7 @@ function getCritical() {
     var filter = $('#id_get_critical_filter').val();
     var dev_id = $('#id_get_critical_dev_id').val();
     var jget_critical;
-    if (filter !== null && dev_id === null) {
+    if (filter !== '' && dev_id === '') {
         jget_critical = {
             cmd: {
                 name: "get_critical",
@@ -466,7 +468,7 @@ function getCritical() {
                 }
             }
         };
-    } else if (dev_id !== null && filter === null) {
+    } else if (dev_id !== '' && filter === '') {
         jget_critical = {
             cmd: {
                 name: "get_critical",

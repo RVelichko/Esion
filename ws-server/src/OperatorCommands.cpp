@@ -385,6 +385,7 @@ Json GetDevicesListCommand::execute() {
                 auto jradius    = _jdata.find("radius");
                 auto jfilter    = _jdata.find("filter");
                 auto jsort      = _jdata.find("sort");
+                auto jdate_time_old = _jdata.find("date_time_old");
                 auto jdate_time = _jdata.find("date_time");
                 auto jdate_type = _jdata.find("date_type");
                 std::string field;
@@ -446,12 +447,17 @@ Json GetDevicesListCommand::execute() {
                     jres["resp"]["count"] = found;
                 } else if (jdate_time not_eq _jdata.end() and jdate_time->is_number() and
                            jdate_type not_eq _jdata.end() and jdate_type->is_string()) {
+                    time_t date_time_old = 0;
+                    if (jdate_time_old not_eq _jdata.end() and jdate_time_old->is_number()) {
+                        date_time_old = static_cast<time_t>(jdate_time_old->get<size_t>());
+                    }
                     time_t date_time = static_cast<time_t>(jdate_time->get<size_t>());
                     std::string date_type = *jdate_type;
                     Json jlist;
                     { /// LOCK
                         LockQuard l(_mutex);
-                        jlist = _db->getDevicesByTime(found, coll_id, date_time, date_type, field, direct_flag, num, skip);
+                        jlist = _db->getDevicesByTime(found, coll_id, date_time_old, date_time, date_type, field, direct_flag,
+                                                      num, skip);
                     }
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);

@@ -366,16 +366,27 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
 }
 
 
-Json DbFacade::getDevicesByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
-                                const std::string& field, bool direct, size_t num, size_t skip) try {
+Json DbFacade::getDevicesByTime(size_t& found, const std::string& coll_id, time_t date_time_old, time_t date_time,
+                                std::string& date_type, const std::string& field, bool direct, size_t num, size_t skip) try {
     BsonObjs founds;
-    Json jq = {
-        {"coll_id", coll_id},
-        {date_type, {
-             {"$gte", date_time},
-             {"$lt", (date_time + 86400)}
-        }}
-    };
+    Json jq;
+    if (date_time_old not_eq 0) {
+        jq = {
+            {"coll_id", coll_id},
+            {date_type, {
+                 {"$gte", date_time_old},
+                 {"$lt", date_time}
+            }}
+        };
+    } else {
+        jq = {
+            {"coll_id", coll_id},
+            {date_type, {
+                 {"$gte", date_time},
+                 {"$lt", (date_time + 86400)}
+            }}
+        };
+    }
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(CONTROOLERS_COLLECTION_NAME), q)->itcount();
     if (not field.empty()) {
