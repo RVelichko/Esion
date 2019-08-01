@@ -240,7 +240,7 @@ public:
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+    Json getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time,
                          const std::string& field = "", bool direct = true,
                          size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 

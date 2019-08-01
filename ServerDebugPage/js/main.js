@@ -222,8 +222,7 @@ function getDevicesDate() {
 
 
 function getEventsDate() {
-    var date_time = $('#id_get_devs_date_time').val();
-    var date_type = СhangeSetting('#id_get_evs_date_type');
+    var date_time = $('#id_get_evs_date_time').val();
     var field = СhangeSetting('#id_get_evs_date_field');
     var direct = СhangeSetting('#id_get_evs_date_direct');
     var skip = СhangeSetting('#id_get_evs_date_skip');
@@ -233,7 +232,6 @@ function getEventsDate() {
             name: "get_events",
             data: {
                 date_time: Number.parseInt(date_time),
-                date_type: date_type,
                 field: field,
                 direction: direct,
                 skip: Number.parseInt(skip),

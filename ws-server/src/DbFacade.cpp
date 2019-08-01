@@ -657,12 +657,12 @@ Json DbFacade::getEventsByDevId(size_t& found, const std::string& dev_id, const 
 }
 
 
-Json DbFacade::getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time, std::string& date_type,
+Json DbFacade::getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time,
                                const std::string& field, bool direct, size_t num, size_t skip)  try {
     BsonObjs founds;
     Json jq = {
         {"coll_id", coll_id},
-        {date_type, {
+        {"time", {
              {"$gte", date_time},
              {"$lt", (date_time + 86400)}
         }}
@@ -690,7 +690,7 @@ Json DbFacade::getEventsByTime(size_t& found, const std::string& coll_id, time_t
     }
     return jvals;
 } catch (const std::exception& e) {
-    LOG(ERROR) << "Can`t get [" << num << " | " << skip << "] " << date_type << ": "  << date_time << ", "
+    LOG(ERROR) << "Can`t get [" << num << " | " << skip << "] " << date_time << ", "
                << field << ": "  << BTOS(direct) << ", "
                << "devices from DB: " << e.what();
     return Json();
