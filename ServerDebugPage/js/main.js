@@ -203,8 +203,8 @@ function getDevicesDate() {
         cmd: {
             name: "get_devs",
             data: {
-                date_time_old: Number.parseInt(date_time_old),
-                date_time: Number.parseInt(date_time),
+                date_time_from: Number.parseInt(date_time_old),
+                date_time_to: Number.parseInt(date_time),
                 date_type: date_type,
                 field: field,
                 direction: direct,
@@ -222,6 +222,7 @@ function getDevicesDate() {
 
 
 function getEventsDate() {
+    var date_time_old = $('#id_get_evs_date_time_old').val();
     var date_time = $('#id_get_evs_date_time').val();
     var field = СhangeSetting('#id_get_evs_date_field');
     var direct = СhangeSetting('#id_get_evs_date_direct');
@@ -231,7 +232,8 @@ function getEventsDate() {
         cmd: {
             name: "get_events",
             data: {
-                date_time: Number.parseInt(date_time),
+                date_time_from: Number.parseInt(date_time_old),
+                date_time_to: Number.parseInt(date_time),
                 field: field,
                 direction: direct,
                 skip: Number.parseInt(skip),

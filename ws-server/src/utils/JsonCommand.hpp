@@ -17,6 +17,10 @@ namespace utils {
 typedef nlohmann::json Json;
 typedef Json::iterator JIter;
 
+static const size_t TIME_STRING_BUFFER_LEN = 80;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 class JsonCommand {
 protected:
@@ -25,6 +29,10 @@ protected:
     Json _jdata;
 
 public:
+    static std::string TimeToStr(time_t rawtime);
+    static size_t ToNumber(const Json& j, const std::string& k);
+    static std::string ToString(const Json& j, const std::string& k);
+
     JsonCommand(const std::string& name);
     explicit JsonCommand(const std::string& name, const Json& jsn);
     virtual ~JsonCommand();

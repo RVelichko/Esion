@@ -5,6 +5,7 @@
  */
 
 #include "json.hpp"
+#include "JsonCommand.hpp"
 
 namespace server {
 
@@ -12,8 +13,6 @@ typedef nlohmann::json Json;
 typedef std::function<void(const std::string&)> SendFn;
 
 static const char REPORT_FILE_EXTENTION[] = ".csv";
-static const size_t TIME_STRING_BUFFER_LEN = 80;
-
 
 class ReportGenerator {
 protected:

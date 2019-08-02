@@ -17,6 +17,8 @@
 using namespace server;
 namespace bfs = boost::filesystem;
 
+typedef utils::JsonCommand Jcom;
+
 
 std::string ReportGenerator::_reports_path;
 
@@ -40,36 +42,6 @@ void EraseOldFiles(time_t timeout) {
             LOG(DEBUG) << "Remove: " << d.string();
         }
     }
-}
-
-
-std::string TimeToStr(time_t rawtime) {
-    struct tm* tm_info = localtime(&rawtime);
-    char buf[TIME_STRING_BUFFER_LEN] = {0};
-    strftime(buf, TIME_STRING_BUFFER_LEN, "%d.%m.%Y-%H:%M:%S", tm_info);
-    return std::string(buf);
-}
-
-
-size_t ToNumber(const Json& j, const std::string& k) {
-    if (j[k].is_number()) {
-        return static_cast<size_t>(j.value(k, 0));
-    } else if (j[k].is_string()) {
-        return static_cast<size_t>(std::stoul(j.value(k, "0")));
-    }
-    return static_cast<size_t>(0);
-}
-
-
-std::string ToString(const Json& j, const std::string& k) {
-    if (j[k].is_number()) {
-        return std::to_string(j.value(k, 0));
-    } else if (j[k].is_number_float()) {
-        return std::to_string(j.value(k, 0.0));
-    } else if (j[k].is_string()) {
-        return j.value(k, "");
-    }
-    return std::string();
 }
 
 
@@ -126,8 +98,8 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                 for(auto elem : enc) {
                    lo_enc += std::tolower(elem, loc);
                 }
-                std::string file_name = "Devices_" + TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
-                std::string file_name_utf8 = "Devices_" + TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
+                std::string file_name = "Devices_" + Jcom::TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
+                std::string file_name_utf8 = "Devices_" + Jcom::TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
                 std::string path = bpath.string() + "/" + file_name;
                 std::string path_utf8 = bpath.string() + "/" + file_name_utf8;
                 std::ofstream ofs(path_utf8.c_str());
@@ -147,12 +119,12 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                         ofs << ++line_num << ";"
                             << jdev["dev_id"].get<std::string>() << ";"
                             << jdev["coll"].get<std::string>() << ";"
-                            << ToNumber(jdev, "apmt") << ";"
+                            << Jcom::ToNumber(jdev, "apmt") << ";"
                             << jdev["user"].get<std::string>() << ";"
-                            << TimeToStr(ToNumber(jdev, "start_time")) << ";"
-                            << TimeToStr(ToNumber(jdev, "update_time")) << ";"
+                            << Jcom::TimeToStr(Jcom::ToNumber(jdev, "start_time")) << ";"
+                            << Jcom::TimeToStr(Jcom::ToNumber(jdev, "update_time")) << ";"
                             << jdev["power_type"].get<std::string>() << ";"
-                            << ToString(jdev, "voltage") << ";"
+                            << Jcom::ToString(jdev, "voltage") << ";"
                             << jdev["status"].get<std::string>() << ";"
                             << desc << ";";
                         auto jcounts = jdev.find("counters");
@@ -163,16 +135,16 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                                 if (is_none) {
                                     ofs << "none;;;;;;;;;\n";
                                 } else {
-                                    size_t count = ToNumber((*jcounts)[i], "count");
-                                    size_t unit_count = ToNumber((*jcounts)[i], "unit_count");
+                                    size_t count = Jcom::ToNumber((*jcounts)[i], "count");
+                                    size_t unit_count = Jcom::ToNumber((*jcounts)[i], "unit_count");
                                     ofs << (*jcounts)[i]["type"].get<std::string>() << ";"
                                         << count * unit_count << ";"
                                         << count << ";"
                                         << (*jcounts)[i]["unit"].get<std::string>() << ";"
                                         << (*jcounts)[i]["unit_type"].get<std::string>() << ";"
                                         << unit_count << ";"
-                                        << ToString((*jcounts)[i], "serial") << ";"
-                                        << TimeToStr(ToNumber((*jcounts)[i], "verify_date")) << ";"
+                                        << Jcom::ToString((*jcounts)[i], "serial") << ";"
+                                        << Jcom::TimeToStr(Jcom::ToNumber((*jcounts)[i], "verify_date")) << ";"
                                         << (*jcounts)[i]["desc"].get<std::string>() << ";"
                                         << "\n";
                                 }
@@ -239,8 +211,8 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                     for(auto elem : enc) {
                        lo_enc += std::tolower(elem, loc);
                     }
-                    std::string file_name = "Events_" + TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
-                    std::string file_name_utf8 = "Events_" + TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
+                    std::string file_name = "Events_" + Jcom::TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
+                    std::string file_name_utf8 = "Events_" + Jcom::TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
                     std::string path = bpath.string() + "/" + file_name;
                     std::string path_utf8 = bpath.string() + "/" + file_name_utf8;
                     std::ofstream ofs(path_utf8.c_str());
@@ -258,9 +230,9 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                                 << jev["ev_id"].get<std::string>() << ";"
                                 << jev["dev_id"].get<std::string>() << ";"
                                 << jev["coll"].get<std::string>() << ";"
-                                << ToNumber(jev, "apmt") << ";"
+                                << Jcom::ToNumber(jev, "apmt") << ";"
                                 << jev["user"].get<std::string>() << ";"
-                                << TimeToStr(ToNumber(jev, "time")) << ";"
+                                << Jcom::TimeToStr(Jcom::ToNumber(jev, "time")) << ";"
                                 << jev["priority"].get<std::string>() << ";"
                                 << desc << ";";
                             ofs << "\n" << std::flush;

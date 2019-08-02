@@ -113,12 +113,17 @@ public:
      * \param [OUT] total_num  Общее количество устройств.
      * \param db_coll  Имя коллекции с записями.
      * \param coll_id  Идентификатор пользователя коллекции.
+     * \param filter  Строка с фильтром.
+     * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
+     * \param date_time_from  Врямя оn которого необходимо осуществить поиск.
+     * \param date_time_to  Врямя по которому необходимо осуществить поиск.
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
     Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
+                 const std::string& filter,  const std::string& date_type, time_t date_time_old, time_t date_time,
                  const std::string& field = "", bool direct = true,
                  size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
@@ -234,13 +239,14 @@ public:
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] found  Количество найденных устройств.
      * \param coll_id  Идентификатор пользователя коллекции.
+     * \param date_time_old  Врямя оn которого необходимо осуществить поиск.
      * \param date_time  Врямя по которому необходимо осуществить поиск.
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
      */
-    Json getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time,
+    Json getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time_old, time_t date_time,
                          const std::string& field = "", bool direct = true,
                          size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 

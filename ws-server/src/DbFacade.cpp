@@ -332,11 +332,28 @@ Json DbFacade::getUniqueAddresses(const std::string& coll_id, const std::string&
 
 
 Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
-                       const std::string& field, bool direct, size_t num, size_t skip) try {
+             const std::string& filter,  const std::string& date_type, time_t date_time_from, time_t date_time_to,
+             const std::string& field, bool direct, size_t num, size_t skip) try {
     BsonObjs founds;
     Json jq = {
         {"coll_id", coll_id}
     };
+    if (not filter.empty()) {
+        jq["$text"] = {
+            {"$search", filter}
+        };
+    }
+    if (date_time_from or date_time_to) {
+        Json jdate_type;
+        if (date_time_from) {
+            jdate_type["$gte"] = date_time_from;
+        }
+        if (date_time_to) {
+            jdate_type["$lt"] = date_time_to;
+        }
+        jq[date_type] = jdate_type;
+    }
+    LOG(TRACE) << jq.dump();
     DbQuery q(jq.dump());
     total_num = _dbc->query(getMdbNs(db_coll), q)->itcount();
     if (not field.empty()) {
@@ -657,16 +674,27 @@ Json DbFacade::getEventsByDevId(size_t& found, const std::string& dev_id, const 
 }
 
 
-Json DbFacade::getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time,
+Json DbFacade::getEventsByTime(size_t& found, const std::string& coll_id, time_t date_time_old, time_t date_time,
                                const std::string& field, bool direct, size_t num, size_t skip)  try {
     BsonObjs founds;
-    Json jq = {
-        {"coll_id", coll_id},
-        {"time", {
-             {"$gte", date_time},
-             {"$lt", (date_time + 86400)}
-        }}
-    };
+    Json jq;
+    if (date_time_old not_eq 0) {
+        jq = {
+            {"coll_id", coll_id},
+            {"time", {
+                 {"$gte", date_time_old},
+                 {"$lt", date_time}
+            }}
+        };
+    } else {
+        jq = {
+            {"coll_id", coll_id},
+            {"time", {
+                 {"$gte", date_time},
+                 {"$lt", (date_time + 86400)}
+            }}
+        };
+    }
     DbQuery q(jq.dump());
     found = _dbc->query(getMdbNs(EVENTS_COLLECTION_NAME), q)->itcount();
     if (not field.empty()) {

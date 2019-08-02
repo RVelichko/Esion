@@ -385,9 +385,9 @@ Json GetDevicesListCommand::execute() {
                 auto jradius    = _jdata.find("radius");
                 auto jfilter    = _jdata.find("filter");
                 auto jsort      = _jdata.find("sort");
-                auto jdate_time_old = _jdata.find("date_time_old");
-                auto jdate_time = _jdata.find("date_time");
-                auto jdate_type = _jdata.find("date_type");
+                auto jdate_time_from = _jdata.find("date_time_from");
+                auto jdate_time_to   = _jdata.find("date_time_to");
+                auto jdate_type      = _jdata.find("date_type");
                 std::string field;
                 bool direct_flag = true;
                 if (jsort not_eq _jdata.end() and jsort->is_object()) {
@@ -435,40 +435,32 @@ Json GetDevicesListCommand::execute() {
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);
                     jres["resp"]["count"] = found;
-                } else if (jfilter not_eq _jdata.end() and jfilter->is_string() and not jfilter->empty()) {
+                } else if ((jfilter not_eq _jdata.end() and jfilter->is_string() and not jfilter->empty()) or
+                           (((jdate_time_from not_eq _jdata.end() and jdate_time_from->is_number()) or
+                           (jdate_time_to not_eq _jdata.end() and jdate_time_to->is_number())) and
+                           jdate_type not_eq _jdata.end() and jdate_type->is_string()) or
+                           (jgeo == _jdata.end() and jgeo_poly == _jdata.end())) {
                     Json jlist;
+                    std::string filter;
+                    if (jfilter not_eq _jdata.end()) {
+                        filter = *jfilter;
+                    }
+                    std::string date_type;
+                    if (jdate_type not_eq _jdata.end()) {
+                        date_type = *jdate_type;
+                    }
+                    size_t date_from = 0;
+                    if (jdate_time_from not_eq _jdata.end()) {
+                        date_from = JsonCommand::ToNumber(_jdata, "date_time_from");
+                    }
+                    size_t date_to = 0;
+                    if (jdate_time_to not_eq _jdata.end()) {
+                        date_to = JsonCommand::ToNumber(_jdata, "date_time_to");
+                    }
                     { /// LOCK
                         LockQuard l(_mutex);
-                        jlist = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jfilter,
-                                                 field, direct_flag, num, skip);
-                    }
-                    eraseMongoId(jlist);
-                    jres = fillResponceData(jlist);
-                    jres["resp"]["count"] = found;
-                } else if (jdate_time not_eq _jdata.end() and jdate_time->is_number() and
-                           jdate_type not_eq _jdata.end() and jdate_type->is_string()) {
-                    time_t date_time_old = 0;
-                    if (jdate_time_old not_eq _jdata.end() and jdate_time_old->is_number()) {
-                        date_time_old = static_cast<time_t>(jdate_time_old->get<size_t>());
-                    }
-                    time_t date_time = static_cast<time_t>(jdate_time->get<size_t>());
-                    std::string date_type = *jdate_type;
-                    Json jlist;
-                    { /// LOCK
-                        LockQuard l(_mutex);
-                        jlist = _db->getDevicesByTime(found, coll_id, date_time_old, date_time, date_type, field, direct_flag,
-                                                      num, skip);
-                    }
-                    eraseMongoId(jlist);
-                    jres = fillResponceData(jlist);
-                    jres["resp"]["count"] = found;
-                } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
-                           jradius == _jdata.end() and jfilter == _jdata.end() and
-                           jdate_time == _jdata.end() and jdate_type == _jdata.end()) {
-                    Json jlist;
-                    { /// LOCK
-                        LockQuard l(_mutex);
-                        jlist = _db->getList(found, CONTROOLERS_COLLECTION_NAME, coll_id, field, direct_flag, num, skip);
+                        jlist = _db->getList(found, CONTROOLERS_COLLECTION_NAME, coll_id, filter,
+                                             date_type, date_from, date_to, field, direct_flag, num, skip);
                     }
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);
@@ -579,7 +571,8 @@ Json GetEventsListCommand::execute() {
                 auto jfilter    = _jdata.find("filter");
                 auto jdev_id    = _jdata.find("dev_id");
                 auto jsort      = _jdata.find("sort");
-                auto jdate_time = _jdata.find("date_time");
+                auto jdate_time_from = _jdata.find("date_time_from");
+                auto jdate_time_to = _jdata.find("date_time_to");
                 std::string field;
                 bool direct_flag = true;
                 if (jsort not_eq _jdata.end() and jsort->is_object()) {
@@ -649,26 +642,30 @@ Json GetEventsListCommand::execute() {
                     eraseMongoId(jevs);
                     jres = fillResponceData(jevs);
                     jres["resp"]["count"] = found;
-                } else if (jdate_time not_eq _jdata.end() and jdate_time->is_number() and jdate_time->get<size_t>() not_eq 0) {
-                    time_t date_time = static_cast<time_t>(jdate_time->get<size_t>());
+                } else if ((jfilter not_eq _jdata.end() and jfilter->is_string() and not jfilter->empty()) or
+                           (((jdate_time_from not_eq _jdata.end() and jdate_time_from->is_number()) or
+                           (jdate_time_to not_eq _jdata.end() and jdate_time_to->is_number()))) or
+                           (jgeo == _jdata.end() and jgeo_poly == _jdata.end())) {
                     Json jlist;
+                    std::string filter;
+                    if (jfilter not_eq _jdata.end()) {
+                        filter = *jfilter;
+                    }
+                    size_t date_from = 0;
+                    if (jdate_time_from not_eq _jdata.end()) {
+                        date_from = JsonCommand::ToNumber(_jdata, "date_time_from");
+                    }
+                    size_t date_to = 0;
+                    if (jdate_time_to not_eq _jdata.end()) {
+                        date_to = JsonCommand::ToNumber(_jdata, "date_time_to");
+                    }
                     { /// LOCK
                         LockQuard l(_mutex);
-                        jlist = _db->getEventsByTime(found, coll_id, date_time, field, direct_flag, num, skip);
+                        jlist = _db->getList(found, EVENTS_COLLECTION_NAME, coll_id, filter,
+                                             "time", date_from, date_to, field, direct_flag, num, skip);
                     }
                     eraseMongoId(jlist);
                     jres = fillResponceData(jlist);
-                    jres["resp"]["count"] = found;
-                } else if (jgeo_poly == _jdata.end() and jgeo == _jdata.end() and
-                           jradius == _jdata.end() and jfilter == _jdata.end() and
-                           jdate_time == _jdata.end()) {
-                    Json jdevs;
-                    { /// LOCK
-                        LockQuard l(_mutex);
-                        jdevs = _db->getList(found, EVENTS_COLLECTION_NAME, coll_id, field, direct_flag, num, skip);
-                    }
-                    eraseMongoId(jdevs);
-                    jres = fillResponceData(jdevs);
                     jres["resp"]["count"] = found;
                 }
             } else {
