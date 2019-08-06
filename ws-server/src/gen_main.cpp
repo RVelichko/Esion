@@ -140,6 +140,7 @@ class DbDataTestGenerator {
                 /// Сформировать JSON устройства.
                 time_t now = time(nullptr);
                 time_t old = now - rand() % MAX_OLD_TIMEOUT;
+                time_t old_halb = std::floor((now - old) * 0.5);
                 size_t apmt = rand() % 10 + 1;
                 for (size_t n = 0; n < num_devs; ++n) {
                     ++count;
@@ -168,6 +169,7 @@ class DbDataTestGenerator {
                                 };
                                 jcubic_meters.push_back(jcm);
                             }
+                            time_t verify_date = old + (rand() % old_halb);
                             Json count = {
                                 {"type", "Debug type"},
                                 {"cubic_meter", jcubic_meters},
@@ -176,7 +178,7 @@ class DbDataTestGenerator {
                                 {"unit_type", "Импульс"},
                                 {"unit_count", unit_count},
                                 {"serial", rand() % 500},
-                                {"verify_date", old + rand() % (old / 2)},
+                                {"verify_date", verify_date},
                                 {"desc", "Отладочный канал N " + std::to_string(i + 1)}
                             };
                             counters.push_back(count);
@@ -225,6 +227,7 @@ class DbDataTestGenerator {
                 for (size_t i = 0; i < num; ++i) {
                     ++count;
                     static std::vector<std::string> prirs = {"Низкий", "Средний", "Высокий", "Критический"};
+                    size_t prirs_id = (rand() % prirs.size());
                     Json jev = {
                         {"ev_id", std::to_string(time(nullptr) + count)},
                         {"dev_id", jdev["dev_id"]},
@@ -233,7 +236,8 @@ class DbDataTestGenerator {
                         {"user", jdev["user"]},
                         {"geo", jdev["geo"]},
                         {"time", (jdev["start_time"].get<size_t>() + rand() % 1000)},
-                        {"priority", prirs[(rand() % prirs.size())]},
+                        {"priority_id", prirs_id + 1},
+                        {"priority", prirs[prirs_id]},
                         {"desc", "Сгенерированное отладочное событие N " + std::to_string(count)},
                         {"coll_id", "Debug Debug"}
                     };

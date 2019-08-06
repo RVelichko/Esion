@@ -306,10 +306,16 @@ function getDevicesReport() {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
         var encoding = СhangeSetting('#id_get_dev_report_enc');
         var get_report = СhangeSetting('#id_get_dev_report');
+        var date_time_from = СhangeSetting('#id_get_dev_rep_date_time_from');
+        var date_time_to = СhangeSetting('#id_get_dev_rep_date_time_to');
+        //var date_type = $('#id_get_dev_rep_date_type').val();
         var jget_report = {
             cmd: {
                 name:"get_devices_report",
                 data: {
+                    date_time_from: Number.parseInt(date_time_from),
+                    date_time_to: Number.parseInt(date_time_to),
+                    date_type: 'update_time',
                     coll: get_report,
                     encoding: encoding,
                     token: window.token
@@ -330,10 +336,14 @@ function getEventsReport() {
     if (typeof window.websock !== 'undefined' && window.websock.readyState === 1) {
         var encoding = СhangeSetting('#id_get_ev_report_enc');
         var get_report = СhangeSetting('#id_get_ev_report');
+        var date_time_from = СhangeSetting('#id_get_ev_rep_date_time_from');
+        var date_time_to = СhangeSetting('#id_get_ev_rep_date_time_to');
         var jget_report = {
             cmd: {
                 name:"get_events_report",
                 data: {
+                    date_time_from: Number.parseInt(date_time_from),
+                    date_time_to: Number.parseInt(date_time_to),
                     coll: get_report,
                     encoding: encoding,
                     token: window.token

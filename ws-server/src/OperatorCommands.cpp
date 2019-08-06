@@ -572,7 +572,7 @@ Json GetEventsListCommand::execute() {
                 auto jdev_id    = _jdata.find("dev_id");
                 auto jsort      = _jdata.find("sort");
                 auto jdate_time_from = _jdata.find("date_time_from");
-                auto jdate_time_to = _jdata.find("date_time_to");
+                auto jdate_time_to   = _jdata.find("date_time_to");
                 std::string field;
                 bool direct_flag = true;
                 if (jsort not_eq _jdata.end() and jsort->is_object()) {
@@ -706,11 +706,26 @@ Json CreateDevicesReportCommand::execute() {
             if (jcoll not_eq _jdata.end()) {
                 size_t found = 0;
                 Json jvals;
+                auto jdate_type = _jdata.find("date_type");
+                std::string date_type;
+                if (jdate_type not_eq _jdata.end()) {
+                    date_type = *jdate_type;
+                }
+                auto jdate_time_from = _jdata.find("date_time_from");
+                size_t date_from = 0;
+                if (jdate_time_from not_eq _jdata.end()) {
+                    date_from = JsonCommand::ToNumber(_jdata, "date_time_from");
+                }
+                auto jdate_time_to = _jdata.find("date_time_to");
+                size_t date_to = 0;
+                if (jdate_time_to not_eq _jdata.end()) {
+                    date_to = JsonCommand::ToNumber(_jdata, "date_time_to");
+                }
                 { /// LOCK
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
-                    jvals = _db->getByFilter(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jcoll,
-                                             "", true, std::numeric_limits<uint32_t>::max(), 0, true);
+                    jvals = _db->getList(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jcoll, date_type, date_from, date_to,
+                                         "", true, std::numeric_limits<uint32_t>::max(), 0, true);
                 }
                 if (not jvals.empty()) {
                     std::string encoding;
@@ -768,11 +783,21 @@ Json CreateEventsReportCommand::execute() {
             if (jcoll not_eq _jdata.end()) {
                 size_t found = 0;
                 Json jvals;
+                auto jdate_time_from = _jdata.find("date_time_from");
+                size_t date_from = 0;
+                if (jdate_time_from not_eq _jdata.end()) {
+                    date_from = JsonCommand::ToNumber(_jdata, "date_time_from");
+                }
+                auto jdate_time_to = _jdata.find("date_time_to");
+                size_t date_to = 0;
+                if (jdate_time_to not_eq _jdata.end()) {
+                    date_to = JsonCommand::ToNumber(_jdata, "date_time_to");
+                }
                 { /// LOCK
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
-                    jvals = _db->getByFilter(found, EVENTS_COLLECTION_NAME, coll_id, *jcoll,
-                                             "", true, std::numeric_limits<uint32_t>::max());
+                    jvals = _db->getList(found, EVENTS_COLLECTION_NAME, coll_id, *jcoll,
+                                         "time", date_from, date_to, "", true, std::numeric_limits<uint32_t>::max());
                 }
                 if (not jvals.empty()) {
                     std::string encoding;
@@ -828,12 +853,27 @@ Json GetCriticalNumberCommand::execute() {
         if (jtoken not_eq _jdata.end() and jtoken->is_string() and checkToken(*jtoken)) {
             auto jfilter = _jdata.find("filter");
             auto jdev_id = _jdata.find("dev_id");
+            auto jdate_type = _jdata.find("date_type");
+            std::string date_type;
+            if (jdate_type == _jdata.end() and jdate_type->is_string()) {
+                date_type = *jdate_type;
+            }
+            auto jdate_time_from = _jdata.find("date_time_from");
+            time_t date_time_from = 0;
+            if (jdate_time_from == _jdata.end() and jdate_time_from->is_number()) {
+                date_time_from = jdate_time_from->get<time_t>();
+            }
+            auto jdate_time_to = _jdata.find("date_time_to");
+            time_t date_time_to = 0;
+            if (jdate_time_to == _jdata.end() and jdate_time_to->is_number()) {
+                date_time_to = jdate_time_to->get<time_t>();
+            }
             size_t found = 0;
             if (jfilter not_eq _jdata.end() and jfilter->is_string() and jdev_id == _jdata.end()) {
                 { /// LOCK
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
-                    found = _db->getCriticalNum(coll_id, *jfilter);
+                    found = _db->getCriticalNum(coll_id, *jfilter, date_type, date_time_from, date_time_to);
                 }
                 jres = {
                   {"resp", {
@@ -847,7 +887,7 @@ Json GetCriticalNumberCommand::execute() {
                 { /// LOCK
                     LockQuard l(_mutex);
                     auto coll_id = getCollectionId(*jtoken);
-                    found = _db->getCriticalNumByDevId(coll_id, *jdev_id);
+                    found = _db->getCriticalNumByDevId(coll_id, *jdev_id, date_type, date_time_from, date_time_to);
                 }
                 jres = {
                   {"resp", {

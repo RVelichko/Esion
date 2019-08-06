@@ -121,18 +121,19 @@ public:
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
      * \param num  Количество запрашиваемых устройств.
      * \param skip Количество пропускаемых в запросе устройств.
+     * \param is_all_fields  Возвращать все поля в запросе.
      */
     Json getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
                  const std::string& filter,  const std::string& date_type, time_t date_time_old, time_t date_time,
                  const std::string& field = "", bool direct = true,
-                 size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+                 size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0, bool is_all_fields = false);
 
     /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] found  Количество найденных устройств.
      * \param coll_id  Идентификатор пользователя коллекции.
-     * \param date_time_old  Врямя оn которого необходимо осуществить поиск.
-     * \param date_time  Врямя по которому необходимо осуществить поиск.
+     * \param date_time_from  Врямя оn которого необходимо осуществить поиск.
+     * \param date_time_to  Врямя по которому необходимо осуществить поиск.
      * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
      * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
      * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
@@ -140,7 +141,7 @@ public:
      * \param skip Количество пропускаемых в запросе устройств.
      */
     Json getDevicesByTime(size_t& found, const std::string& coll_id,
-                          time_t date_time_old, time_t date_time, std::string& date_type,
+                          time_t date_time_from, time_t date_time_to, std::string& date_type,
                           const std::string& field = "", bool direct = true,
                           size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
 
@@ -272,14 +273,22 @@ public:
      * \brief Метод возвращает количество устройств, соотвествующих фильтру, у которых емеется критическое событие.
      * \param coll_id  Идентификатор пользователя коллекции.
      * \param filter  Строка с фильтром.
+     * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
+     * \param date_time_from  Врямя оn которого необходимо осуществить поиск.
+     * \param date_time_to  Врямя по которому необходимо осуществить поиск.
      */
-    size_t getCriticalNum(const std::string& coll_id, const std::string& filter);
+    size_t getCriticalNum(const std::string& coll_id, const std::string& filter,
+                          std::string& date_type, time_t date_time_from, time_t date_time_to);
 
     /**
      * \brief Метод возвращает количество критических событий для устройства.
      * \param coll_id  Идентификатор пользователя коллекции.
      * \param dev_id  Идентификатор устройства.
+     * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
+     * \param date_time_from  Врямя оn которого необходимо осуществить поиск.
+     * \param date_time_to  Врямя по которому необходимо осуществить поиск.
      */
-    size_t getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id);
+    size_t getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id,
+                                 std::string& date_type, time_t date_time_from, time_t date_time_to);
 };
 } /// server

@@ -333,7 +333,7 @@ Json DbFacade::getUniqueAddresses(const std::string& coll_id, const std::string&
 
 Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std::string& coll_id,
              const std::string& filter,  const std::string& date_type, time_t date_time_from, time_t date_time_to,
-             const std::string& field, bool direct, size_t num, size_t skip) try {
+             const std::string& field, bool direct, size_t num, size_t skip, bool is_all_fields) try {
     BsonObjs founds;
     Json jq = {
         {"coll_id", coll_id}
@@ -343,7 +343,7 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
             {"$search", filter}
         };
     }
-    if (date_time_from or date_time_to) {
+    if (not date_type.empty() and (date_time_from or date_time_to)) {
         Json jdate_type;
         if (date_time_from) {
             jdate_type["$gte"] = date_time_from;
@@ -353,6 +353,7 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
         }
         jq[date_type] = jdate_type;
     }
+
     LOG(TRACE) << jq.dump();
     DbQuery q(jq.dump());
     total_num = _dbc->query(getMdbNs(db_coll), q)->itcount();
@@ -364,9 +365,16 @@ Json DbFacade::getList(size_t& total_num, const std::string& db_coll, const std:
     if (total_num < num) {
         num = total_num;
     }
-    Json jexlude_field = {
-        {"counters", 0}
-    };
+    Json jexlude_field;
+    if (is_all_fields) {
+        jexlude_field = {
+            {"counters.cubic_meter", 0}
+        };
+    } else {
+        jexlude_field = {
+            {"counters", 0}
+        };
+    }
     BsonObj bexlude_field = DbFacade::toBson(jexlude_field);
     _dbc->findN(founds, getMdbNs(db_coll), q, num,  skip, &bexlude_field);
     Json jvals;
@@ -776,27 +784,32 @@ Json DbFacade::getEvent(const std::string& ev_id) try {
 }
 
 
-size_t DbFacade::getCriticalNum(const std::string& coll_id, const std::string& filter) try {
+size_t DbFacade::getCriticalNum(const std::string& coll_id, const std::string& filter,
+                                std::string& date_type, time_t date_time_from, time_t date_time_to) try {
     size_t num = 0;
-    Json jpipline;
+    Json jmatch = {
+        {"$match", {
+            {"priority", "Критический"},
+            {"coll_id", coll_id}
+        }}
+    };
     if (not filter.empty()) {
-        jpipline.push_back({
-            {"$match", {
-                {"$text", {
-                    {"$search", filter}
-                }},
-                {"priority", "Критический"},
-                {"coll_id", coll_id}
-            }}
-        });
-     } else {
-        jpipline.push_back({
-            {"$match", {
-                {"priority", "Критический"},
-                {"coll_id", coll_id}
-            }}
-        });
+        jmatch["$match"]["$text"] = {
+            {"$search", filter}
+        };
     }
+    if (not date_type.empty() and (date_time_from or date_time_to)) {
+        Json jdate_type;
+        if (date_time_from) {
+            jdate_type["$gte"] = date_time_from;
+        }
+        if (date_time_to) {
+            jdate_type["$lt"] = date_time_to;
+        }
+        jmatch["$match"][date_type] = jdate_type;
+    }
+    Json jpipline;
+    jpipline.push_back(jmatch);
     jpipline.push_back({
         {"$group", {
             {"_id", "$dev_id"}
@@ -824,16 +837,28 @@ size_t DbFacade::getCriticalNum(const std::string& coll_id, const std::string& f
 }
 
 
-size_t DbFacade::getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id) try {
+size_t DbFacade::getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id,
+                                       std::string& date_type, time_t date_time_from, time_t date_time_to) try {
     size_t num = 0;
-    Json jpipline;
-    jpipline.push_back({
+    Json jmatch = {
         {"$match", {
             {"dev_id", dev_id},
             {"priority", "Критический"},
             {"coll_id", coll_id}
         }}
-    });
+    };
+    if (not date_type.empty() and (date_time_from or date_time_to)) {
+        Json jdate_type;
+        if (date_time_from) {
+            jdate_type["$gte"] = date_time_from;
+        }
+        if (date_time_to) {
+            jdate_type["$lt"] = date_time_to;
+        }
+        jmatch["$match"][date_type] = jdate_type;
+    }
+    Json jpipline;
+    jpipline.push_back(jmatch);
     jpipline.push_back({
         {"$group", {
             {"_id", "$dev_id"}
