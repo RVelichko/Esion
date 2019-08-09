@@ -290,5 +290,14 @@ public:
      */
     size_t getCriticalNumByDevId(const std::string& coll_id, const std::string& dev_id,
                                  std::string& date_type, time_t date_time_from, time_t date_time_to);
+
+    /**
+     * \brief Метод возвращает части значений в диапозоне указанных дат из массивов показаний счётчиков одного контроллера.
+     * \param coll_id  Идентификатор пользователя коллекции.
+     * \param dev_id  Идентификатор устройства.
+     * \param date_time_from  Врямя оn которого необходимо осуществить поиск.
+     * \param date_time_to  Врямя по которому необходимо осуществить поиск.
+     */
+    Json getCubicMeters(const std::string& coll_id, const std::string& dev_id, time_t date_time_from, time_t date_time_to);
 };
 } /// server

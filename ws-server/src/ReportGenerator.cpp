@@ -22,6 +22,8 @@ typedef utils::JsonCommand Jcom;
 
 std::string ReportGenerator::_reports_path;
 
+static const char SEP = ';';
+
 
 void EraseOldFiles(time_t timeout) {
     auto bpath = bfs::absolute(bfs::path(ReportGenerator::_reports_path));
@@ -98,6 +100,9 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                 for(auto elem : enc) {
                    lo_enc += std::tolower(elem, loc);
                 }
+                if (lo_enc == "utf-8") {
+                    lo_enc = "utf8";
+                }
                 std::string file_name = "Devices_" + Jcom::TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
                 std::string file_name_utf8 = "Devices_" + Jcom::TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
                 std::string path = bpath.string() + "/" + file_name;
@@ -107,13 +112,14 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                     /// Записать отчёт в файл.
                     ofs << "N%;Идентификатор устройства;Адрес;Квартира;Владелец;Дата запуска;Дата обновления;"
                         << "Тип питания;Напряжение;Описание;Статус;";
-                    ofs << "Канал N%;Тип;Кубометров;Число импульсов;Название;Единица измерения;"
-                        << "Цена импульса;Серийный номер;Дата поверки;Описание;";
+                    ofs << "Канал N%;Тип;Предыдущее потребление куб.м.;Текущее потребление куб.м.;"
+                        << "Число импульсов;Название;Единица измерения;Цена импульса;Серийный номер;Дата поверки;Описание;";
                     ofs << "\n";
                     size_t line_num = 0;
                     for (size_t n = 0; n < jdevs.size(); ++n) {
                         auto jdev = jdevs[n];
                         auto desc = jdev["desc"].get<std::string>();
+                        std::replace(desc.begin(), desc.end(), ',', ' ');
                         std::replace(desc.begin(), desc.end(), ';', '|');
                         std::replace(desc.begin(), desc.end(), '"', '`');
                         ofs << ++line_num << ";"
@@ -131,21 +137,29 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                         if (jcounts not_eq jdev.end() and jcounts->is_array() and jcounts->size() == 4) {
                             auto fill_count_fn = [&](size_t i) {
                                 ofs << i + 1 << ";";
-                                bool is_none = (*jcounts)[i]["type"].get<std::string>() == "none";
+                                auto jcount_obj = (*jcounts)[i];
+                                bool is_none = jcount_obj["type"].get<std::string>() == "none";
                                 if (is_none) {
-                                    ofs << "none;;;;;;;;;\n";
+                                    ofs << "none;;;;;;;;;;\n";
                                 } else {
-                                    size_t count = Jcom::ToNumber((*jcounts)[i], "count");
-                                    size_t unit_count = Jcom::ToNumber((*jcounts)[i], "unit_count");
-                                    ofs << (*jcounts)[i]["type"].get<std::string>() << ";"
-                                        << count * unit_count << ";"
+                                    double old_cm = 0.0;
+                                    auto jold_cm = jcount_obj.find("old_cm");
+                                    if (jold_cm not_eq jcount_obj.end() and jold_cm->is_number()) {
+                                        old_cm = jold_cm->get<double>();
+                                    }
+                                    size_t count = Jcom::ToNumber(jcount_obj, "count");
+                                    size_t unit_count = Jcom::ToNumber(jcount_obj, "unit_count");
+                                    double cm = static_cast<double>(count * unit_count) / 1000;
+                                    ofs << jcount_obj["type"].get<std::string>() << ";"
+                                        << old_cm << ";"
+                                        << cm << ";"
                                         << count << ";"
-                                        << (*jcounts)[i]["unit"].get<std::string>() << ";"
-                                        << (*jcounts)[i]["unit_type"].get<std::string>() << ";"
+                                        << jcount_obj["unit"].get<std::string>() << ";"
+                                        << jcount_obj["unit_type"].get<std::string>() << ";"
                                         << unit_count << ";"
-                                        << Jcom::ToString((*jcounts)[i], "serial") << ";"
-                                        << Jcom::TimeToStr(Jcom::ToNumber((*jcounts)[i], "verify_date")) << ";"
-                                        << (*jcounts)[i]["desc"].get<std::string>() << ";"
+                                        << Jcom::ToString(jcount_obj, "serial") << ";"
+                                        << Jcom::TimeToStr(Jcom::ToNumber(jcount_obj, "verify_date")) << ";"
+                                        << jcount_obj["desc"].get<std::string>() << ";"
                                         << "\n";
                                 }
                             };
@@ -155,14 +169,14 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                                 fill_count_fn(i);
                             }
                         } else {
-                            ofs << ";;;;;;;;;;\n";
+                            ofs << ";;;;;;;;;;;\n";
                         }
                         //if (snd_fn) {
                         //    double p = (100.0 * static_cast<double>(n)) / static_cast<double>(jdevs.size() - 1);
                         //    snd_fn(GetProgressResponce("get_devices_report", p));
                         //}
                     }
-                    if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
+                    if (lo_enc not_eq "utf8") {
                         std::string sys_cmd = "iconv -f utf8 -t " + _encoding + " -o " + path + " " + path_utf8;
                         std::system(sys_cmd.c_str());
                         if (bfs::exists(bfs::path(path))) {
@@ -211,6 +225,9 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                     for(auto elem : enc) {
                        lo_enc += std::tolower(elem, loc);
                     }
+                    if (lo_enc == "utf-8") {
+                        lo_enc = "utf8";
+                    }
                     std::string file_name = "Events_" + Jcom::TimeToStr(rawtime) + "_" + lo_enc + REPORT_FILE_EXTENTION;
                     std::string file_name_utf8 = "Events_" + Jcom::TimeToStr(rawtime) + "_utf8" + REPORT_FILE_EXTENTION;
                     std::string path = bpath.string() + "/" + file_name;
@@ -224,6 +241,7 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                         for (size_t n =0; n < jevs.size(); ++n) {
                             auto jev = jevs[n];
                             auto desc = jev["desc"].get<std::string>();
+                            std::replace(desc.begin(), desc.end(), ',', ' ');
                             std::replace(desc.begin(), desc.end(), ';', '|');
                             std::replace(desc.begin(), desc.end(), '"', '`');
                             ofs << ++line_num << ","
@@ -241,7 +259,7 @@ EventsReportGenerator::EventsReportGenerator(const Json& jevs, const std::string
                             //    snd_fn(GetProgressResponce("get_events_report", p));
                             //}
                         }
-                        if (lo_enc not_eq "utf8" and lo_enc not_eq "utf-8") {
+                        if (lo_enc not_eq "utf8") {
                             std::string sys_cmd = "iconv -f utf8 -t " + _encoding + " -o " + path + " " + path_utf8;
                             std::system(sys_cmd.c_str());
                             if (bfs::exists(bfs::path(path))) {

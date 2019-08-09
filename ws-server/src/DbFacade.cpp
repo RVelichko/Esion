@@ -302,10 +302,10 @@ Json DbFacade::getUniqueAddresses(const std::string& coll_id, const std::string&
         {"$group", {
             {"_id", "$geo"},
             {"address", {
-               {"$addToSet", "$coll"}
+                {"$addToSet", "$coll"}
             }},
             {"device_count", {
-              {"$sum", 1}
+                {"$sum", 1}
             }}
         }}});
     jpipline.push_back({
@@ -880,6 +880,70 @@ size_t DbFacade::getCriticalNumByDevId(const std::string& coll_id, const std::st
         }
     }
     return num;
+} catch (const std::exception &e) {
+    LOG(ERROR) << "Can`t get for [" << dev_id << "] criticals number from DB: " << e.what();
+    return 0;
+}
+
+
+Json DbFacade::getCubicMeters(const std::string& coll_id, const std::string& dev_id,
+                              time_t date_time_from, time_t date_time_to) try {
+    size_t num = 0;
+    Json jmatch = {
+        {"$match", {
+            {"coll_id", coll_id},
+            {"dev_id", dev_id}
+        }}
+    };
+    Json jpipline;
+    jpipline.push_back(jmatch);
+    jpipline.push_back({
+        {"$unwind", "$counters"}
+    });
+    Json jand;
+    Json jgt;
+    jgt.push_back("$$cm.t");
+    jgt.push_back(date_time_from);
+    jand.push_back({
+        {"$gt", jgt}
+    });
+    Json jlte;
+    jlte.push_back("$$cm.t");
+    jlte.push_back(date_time_to);
+    jand.push_back({
+        {"$lte", jlte}
+    });
+    Json jprj = {
+        {"$project", {
+            {"cubm", {
+                {"$filter", {
+                    {"input", "$counters.cubic_meter"},
+                    {"as","cm"},
+                    {"cond", {
+                        {"$and",jand}
+                    }}
+                }}
+            }}
+        }}
+    };
+    jpipline.push_back(jprj);
+    BsonObj bpipline = DbFacade::toBson(jpipline);
+    auto db_cursor = _dbc->aggregate(getMdbNs(CONTROOLERS_COLLECTION_NAME), bpipline);
+    Json jcubms;
+    if (db_cursor.get()) {
+        while (db_cursor->more()) {
+            auto bs = db_cursor->next();
+            auto js = DbFacade::toJson(bs);
+            auto jcubm = js.find("cubm");
+            LOG(TRACE) << jcubm->dump();
+            if (jcubm not_eq js.end() and jcubm->is_array()) {
+                jcubms.push_back(*jcubm);
+            } else if (jcubm not_eq js.end()) {
+                jcubms.push_back(Json());
+            }
+        }
+    }
+    return jcubms;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t get for [" << dev_id << "] criticals number from DB: " << e.what();
     return 0;

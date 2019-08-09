@@ -721,9 +721,10 @@ Json CreateDevicesReportCommand::execute() {
                 if (jdate_time_to not_eq _jdata.end()) {
                     date_to = JsonCommand::ToNumber(_jdata, "date_time_to");
                 }
+                std::string coll_id;
                 { /// LOCK
                     LockQuard l(_mutex);
-                    auto coll_id = getCollectionId(*jtoken);
+                    coll_id = getCollectionId(*jtoken);
                     jvals = _db->getList(found, CONTROOLERS_COLLECTION_NAME, coll_id, *jcoll, date_type, date_from, date_to,
                                          "", true, std::numeric_limits<uint32_t>::max(), 0, true);
                 }
@@ -732,6 +733,30 @@ Json CreateDevicesReportCommand::execute() {
                     auto jencoding = _jdata.find("encoding");
                     if (jencoding not_eq _jdata.end() and jencoding->is_string()) {
                         encoding = (*jencoding);
+                    }
+                    for (auto &jdev : jvals) {
+                        auto jdev_id = jdev.find("dev_id");
+                        auto jcounters = jdev.find("counters");
+                        if (jdev_id not_eq jdev.end() and not coll_id.empty()) {
+                            Json jcubms;
+                            { /// LOCK
+                                LockQuard l(_mutex);
+                                jcubms =_db->getCubicMeters(coll_id, *jdev_id, (date_from - 259200), date_from);
+                            }
+                            if (not jcubms.empty() and jcubms.is_array() and jcubms.size() == 4 and
+                                jcounters not_eq jdev.end() and jcounters->is_array() and jcounters->size() == 4) {
+                                for (size_t i = 0; i < 4; ++i) {
+                                    if (not jcubms[i].empty()) {
+                                        auto jcms = jcubms[i];
+                                        if (jcms.size()) {
+                                            size_t cms_len = jcms.size();
+                                            double ocm = jcms[cms_len - 1]["cm"];
+                                            jdev["counters"][i]["old_cm"] = ocm;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     DevicesReportGenerator rep_gen(jvals, encoding, _snd_fn);
                     if (rep_gen) {
