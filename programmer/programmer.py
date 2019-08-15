@@ -26,7 +26,6 @@ def GetTimeMs():
 def RunProcess(exe):
     p = subprocess.Popen(exe, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
     while(True):
-        # returns None while subprocess is running
         retcode = p.poll()
         line = p.stdout.readline()
         yield line
@@ -35,17 +34,16 @@ def RunProcess(exe):
 
 
 newlines = ['\n', '\r\n', '\r']
+
 def Unbuffered(proc, stream='stdout'):
     stream = getattr(proc, stream)
     with contextlib.closing(stream):
         while True:
             out = []
             last = stream.read(1)
-            # Don't loop forever
             if last == '' and proc.poll() is not None:
                 break
             while last not in newlines:
-                # Don't loop forever
                 if last == '' and proc.poll() is not None:
                     break
                 out.append(last)
@@ -120,7 +118,6 @@ class ProgressViewer(object):
 	def setVal(self, val):
 		if val <= self.max_val:
 			i = int(math.floor(9.0 * (float(val) / float(self.max_val)) + 0.05))
-			#print('# {} {}'.format(i, val))
 			led_pins = self.lights_line.getPins()
 			while self.step < i:
 				GPIO.output(led_pins[self.step], GPIO.HIGH)
@@ -128,7 +125,6 @@ class ProgressViewer(object):
 
 	def update(self):
 		smls = GetTimeMs() - self.time_mls
-#		print('update [{}]: {}'.format(smls, self.time_mls))
 		if 200 < smls:
 			self.time_mls = GetTimeMs()
 			self.stepTo()
@@ -192,8 +188,6 @@ class Error(object):
 			GPIO.output(led_pins[self.old_pos], GPIO.LOW)
 			self.old_pos = random.randint(0, 8)
 			GPIO.output(led_pins[self.old_pos], GPIO.HIGH)
-			#GPIO.output(led_pins[random.randint(0, 8)], GPIO.LOW)
-			#GPIO.output(led_pins[random.randint(0, 8)], GPIO.HIGH)
 
 	def clear(self):
 		self.lights_line.clear()
@@ -217,7 +211,6 @@ class Flasher(object):
 		self.mls = GetTimeMs()
 		self.bt_pin = 24
 		GPIO.setup(self.bt_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-		#GPIO.add_event_callback(self.bt_pin, PushCallback)
 
 	def __del__(self):
 		pass
@@ -235,8 +228,6 @@ class Flasher(object):
 			reg_res = re.search(r'.+(cp210x).+(attached) +(to) +(ttyUSB\d)', line)
 			if reg_res is not None:
 				self.tty_usb = reg_res.group(4)
-			#else:
-				#print('# {}'.format(line))
 		for line in RunProcess('esptool.py --port /dev/{} flash_id'.format(self.tty_usb).split()):
 			time.sleep(0.001)
 			reg_res = re.search(r'(Hard) +(resetting) +(via) +(RTS) +(pin).{3}', line)
@@ -389,69 +380,10 @@ class Application(object):
                         	print('Stop Application.')
                         	break
 
-
-def ProgressTest(lights_line):
-        mv = 2555
-        pv = ProgressViewer(lights_line, mv)
-        v = 0
-        while v < mv:
-                #print('sleep {}'.format(v))
-                v += random.randint(0, 32)
-                pv.setVal(v)
-                pv.update()
-                time.sleep(random.uniform(0.0, 0.2))
-        print('is complette.')
-        pv.setVal(mv)
-        v = 50
-        while 0 < v:
-                pv.update()
-                v -= 1
-                time.sleep(random.uniform(0.0, 0.1))
-        del pv
-
-
-def WaitingTest(lights_line):
-	w = Waiting(lights_line)
-	print('Start loop')
-	while True:
-		w.update()
-		time.sleep(0.001)
-		global is_loop
-		if not is_loop:
-			del w
-			print('Stop loop.')
-			break
-
-
-def ErrorTest(lights_line):
-	err = Error(lights_line)
-	print('Start error period')
-	mls = GetTimeMs()
-	while GetTimeMs() < mls + 3000:
-		err.update()
-	del err
-	print('Stop error loop')
-
-
-def PushButtonTest(lights_line):
-	path_to_parts = '{}/{}'.format(os.getcwd(), 'data/partitions.elf')
-	path_to_bin = '{}/{}'.format(os.getcwd(), 'data/firmware.elf')
-	f = Flasher(lights_line, path_to_parts, path_to_bin)
-	print('Start BT test')
-        while True:
-                f.update()
-                time.sleep(0.001)
-                global is_loop
-                if not is_loop:
-                        del f
-                        print('Stop BT test.')
-                        break
-
 #########################################################################################################
 
 
 app = Application()
-
 
 
 def SigHandler(signum, frame):
@@ -464,11 +396,6 @@ def main(argv = sys.argv):
         signal.signal(signal.SIGTERM, SigHandler)
 	signal.signal(signal.SIGINT, SigHandler)
 	global app
-	#ProgressTest(app.lights_line)
-	#ErrorTest(app.lights_line)
-	#WaitingTest(app.lights_line)
-	#PushButtonTest(app.lights_line)
-	#app.clear()
 	app.execute()
 	del app
 
