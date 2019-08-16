@@ -1,5 +1,15 @@
 #!/usr/bin/python
 
+# /etc/wpa_supplicant/wpa_supplicant.conf
+# network={
+#         ssid="wifi"
+#         psk="wifipassword"
+#         scan_ssid=1
+# }
+# ssh -l pi -p 2222 localhost
+# /usr/bin/autossh -M 0 -o LogLevel=error -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -f -R 2222:127.0.0.1:22 -N reverse-tunnel@94.127.68.132
+
+
 import io
 import sys
 import RPi.GPIO as GPIO
