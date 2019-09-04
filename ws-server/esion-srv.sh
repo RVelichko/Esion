@@ -1,4 +1,4 @@
 #!/bin/bash
 /home/rostislav/bin/esion-server &
 PID=$!
-echo $PID > esion-srv.pid
+echo $PID > /var/run/esion-srv.pid

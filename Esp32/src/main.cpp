@@ -19,6 +19,8 @@
 #include <string>
 #include <cctype>
 
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 
 #include <Arduino.h>
 #include <Esp.h>
@@ -28,18 +30,16 @@
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <SPI.h>
-#include <ESP32WebServer.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
 #include "utils.hpp"
-#include "ConfigureServer.hpp"
+#include "ConfigureWebServer.hpp"
 #include "SdController.hpp"
 #include "CountersSender.hpp"
 #include "Programmer.hpp"
-
 
 static const int ENABLE_MEASURE_PIN = 25;       ///< Пин включения измерения напряжения.
 static const int MEASURE_PIN = 27; //ADC2_CHANNEL_7;  ///< Пин измерения напряжения.
@@ -67,6 +67,7 @@ RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10000;
 
 RTC_DATA_ATTR time_t __device_id = 0;
 RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
+RTC_DATA_ATTR int __power_id = 0;
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,10 +176,25 @@ public:
         /// Проверить уровень заряда аккумулятора.
         __adc_level = updateAdcLEvel();
         auto nvs = Nvs::get();
+        /// Получить тип питания.
+        //__power_id = nvs->getPwrId();
+        /// Выполнить проверку уникального идентификатора.
         __device_id = nvs->getId();
         #ifdef DEBUG
-        Serial.println("UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
+        Serial.println("Start ESION [" + String(__device_id, DEC) + "]");
         #endif
+        if (__device_id == 0) {
+            __device_id = DEVICE_ID;
+            Nvs::get()->setId(__device_id);
+            Nvs::get()->setUrl(SERVICE_URL);
+            #ifdef DEBUG
+            Serial.println("INIT UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
+            #endif
+        } else {
+            #ifdef DEBUG
+            Serial.println("UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
+            #endif
+        }
         _dev_conf.wc.ssid = nvs->getSsid();
         _dev_conf.wc.pswd = nvs->getPswd();
         if (_dev_conf.wc.ssid.length()) {
@@ -209,14 +225,6 @@ public:
                 #ifdef DEBUG
                 Serial.println("Time is: " + String(ctime(&_now)));
                 #endif
-                /// Выполнить проверку уникального идентификатора.
-                if (__device_id == 0) {
-                    __device_id = _now;
-                    Nvs::get()->setId(__device_id);
-                    #ifdef DEBUG
-                    Serial.println("CREATE UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
-                    #endif
-                }
             } else {
                 ErrorLights::get()->error();
                 #ifdef DEBUG
@@ -250,10 +258,17 @@ public:
                 auto user_name = nvs->getUser();
                 auto desc = nvs->getDescription();
                 auto coll = nvs->getCollectionName();
+                __power_id = nvs->getPwrId();
+                String powt = "none";
+                if (__power_id == 1) {
+                    powt = "LiOn [3.8V]";
+                } else if (__power_id == 2) {
+                    powt = "4AA [6V]";
+                } 
                 String data_sjson =
                     "{\"id\":\"" + id + "\"," \
                     "\"coll\":\"" + coll + "\"," \
-                    "\"power_type\":\"" + POWER_TYPE + "\"," \
+                    "\"power_type\":\"" + powt + "\"," \
                     "\"power\":\"" + String(__adc_level, DEC) + "\"," \
                     "\"user\":\"" + user_name + "\"," \
                     "\"desc\":\"" + desc + "\"," \
@@ -284,7 +299,11 @@ public:
                 /// Отправить данные на сервер.
                 InitTimerInterrupt(3000);
                 Url U(service_url);
-                _cs.reset(new CountersSender(U.host, U.port, U.path, id, data_sjson));
+                String path = U.path;
+                if (not path.length()) {
+                    path = DEVICE_URL_PATH;
+                }
+                _cs.reset(new CountersSender(U.host, U.port, path, id, data_sjson));
                 _cs->execute();
                 ResetTimerInterrupt();
             } else {
@@ -334,6 +353,16 @@ void SaveCounters() {
         if (__last_max_count) {
             nvs->setCounter(4, __last_max_count);
         }
+        #ifdef DEBUG
+        Serial.println("SAVE ----------------------------"); 
+        Serial.println("Count 1: " + String(__count1, DEC)); 
+        Serial.println("Count 2: " + String(__count2, DEC)); 
+        Serial.println("Count 3: " + String(__count3, DEC)); 
+        Serial.println("Count 4: " + String(__count4, DEC)); 
+        Serial.println("Max: " + String(__last_max_count, DEC)); 
+        Serial.println("---------------------------------"); 
+        #endif
+
     }
 }
 
@@ -362,13 +391,7 @@ void RestoreCounters() {
 void SendTimeout() {
     __is_send_timeout = true;
     #ifdef DEBUG
-    Serial.println("SEND ============================"); 
-    Serial.println("Count 1: " + String(__count1, DEC)); 
-    Serial.println("Count 2: " + String(__count2, DEC)); 
-    Serial.println("Count 3: " + String(__count3, DEC)); 
-    Serial.println("Count 4: " + String(__count4, DEC)); 
-    Serial.println("Max: " + String(__last_max_count, DEC)); 
-    Serial.println("---------------------------------"); 
+    Serial.println("SEND Counters ==================="); 
     #endif
     SaveCounters();
     Esion::getPtr()->sendValues();
@@ -412,11 +435,21 @@ void WakeupReason() {
                 #ifdef DEBUG
                 Serial.println("Press configure button.");
                 #endif
-                auto cs = ConfigureServer::getPtr();
+                auto cs = ConfigureWebServer::getPtr();
                 if (cs) {
                     /// Проверить уровень заряда аккумулятора.
                     __adc_level = Esion::updateAdcLEvel();
                     __device_id = Nvs::get()->getId();
+                    if (__device_id == 0) {
+                        __device_id = DEVICE_ID;
+                        Nvs::get()->setId(__device_id);
+                        Nvs::get()->setUrl(SERVICE_URL);
+                        #ifdef DEBUG
+                        Serial.println("INIT UNIQUE DEVICE ID: [" + String(__device_id, DEC) + "]");
+                        #endif
+                    }
+                    __power_id = Nvs::get()->getPwrId();
+                    SaveCounters();
                     cs->execute(String(__device_id, DEC), __adc_level);
                     cs.reset();
                     auto e = Esion::getPtr();
@@ -469,6 +502,8 @@ void WakeupReason() {
 
 
 void setup() {
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
     delay(100);
     #ifdef DEBUG
     Serial.begin(DEFAULT_SERIAL_SPEED);
@@ -495,7 +530,7 @@ void setup() {
         Blink<BLUE_PIN>::get()->on();
         delay(100);
         #ifdef DEBUG
-        Serial.println("Start. ==============================");
+        Serial.println("Start. ============================== [" + String(DEVICE_ID, DEC) + "]");
         #endif
         __is_run = true;
         Blink<BLUE_PIN>::get()->off();

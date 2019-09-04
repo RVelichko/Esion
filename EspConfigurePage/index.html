@@ -1,406 +1,118 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Configure page</title>
-        <meta charset='utf-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1'>
-    </head>
-    <style>
-        html{width:100%;height:100%;}
-        body{font-family:'Roboto',Times,serif;overflow-x: hidden;}
-        input{margin-bottom:3px;margin-top:0px;}
-        label{margin-left:3px;margin-right:3px;font-size:14pt;}
-        *{box-sizing:border-box;}
-        .clear{clear:both;}
-        .right{text-align:right;}
-        .left{text-align:left;}
-        .row{margin-right:-5px;margin-left:-5px;}
-        .row:before,.row:after{display:table;content:' ';}
-        .row:after{clear: both;}
-        .col-xs-2{width:16.666666%;}
-        .col-xs-4{width:33.333333%;}
-        .col-xs-6{width:50%;}
-        .col-xs-10{width:83.333333%;}
-        .col-xs-12{width:100%;}
-        .col-xs-2,.col-xs-4,.col-xs-6,.col-xs-10,.col-xs-12{position:relative;min-height:1px;padding-bottom:5px;padding-top:5px;padding-right:10px;padding-left:10px;float:left;}
-        .border{border:1px solid #1b9c1a;border-radius:3px;}
-        .btn-cancel:hover{background-color:#4841ad;border-color:#4841ad;}
-        .btn-cancel:checked{background-color:#4841ad;border-color:#4841ad;}
-        .btn-cancel{color:#fff;background-color:#5172bf;border-color:#0026ea;}
-        .btn-primary:hover{background-color:#0d690c;border-color:#0d690c;}
-        .btn-primary:checked{background-color:#0d690c;border-color:#0d690c;}
-        .btn-primary{color:#fff;background-color:#1b9c1a;border-color:#0026ea;}
-        .btn{display:inline-block;padding:6px 12px;margin-bottom:0;font-size:16px;font-weight:400;line-height:1.42857143;text-align:center;white-space:nowrap;vertical-align:middle;touch-action:manipulation;cursor:pointer;user-select:none;background-image:none;border:1px solid transparent;border-radius:4px;}
-    </style>
-    <body>
-        <div class='col-xs-12'>
-            <div id='esion_container' class='border col-xs-12'>
-                <div class='row col-xs-12'>
-                    <div id='esion_label' class='col-xs-10'>
-                        <h2>ESION</h2>
-                    </div>
-                    <div id='esion_version' class='col-xs-2 right'>
-                        <h3>V 2.0</h3>
-                    </div>
-                </div>
-                <div id='settings_container' class='col-xs-12'>
-                    <div class='border col-xs-12'>
-                        <div class='col-xs-12'>
-                            <div id='edit_service'>
-                                <div class='col-xs-12 row'>
-                                    <div class='col-xs-2'>
-                                        <label style='font-weight:bold'>WiFi SSID</label>
-                                    </div>
-                                    <div class='col-xs-10'>
-                                        <input id='server_ssid' class='col-xs-12' type='text' placeholder='Укажите wifi SSID.'>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12 row'>
-                                    <div class='col-xs-2'>
-                                        <label style='font-weight:bold'>WiFi PSWD</label>
-                                    </div>
-                                    <div class='col-xs-10'>
-                                  	    <input id='server_pswd' class='col-xs-12' type='text' placeholder='Укажите wifi PASSWORD.'>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12 row'>
-                                    <div class='col-xs-2'>
-                                        <label style='font-weight:bold'>SRV URL</label>
-                                    </div>
-                                    <div class='col-xs-10'>
-                                        <input id='service_url' class='col-xs-12' type='text' placeholder='Укажите URL сервиса обслуживания.'>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12 row'>
-                                    <div class='col-xs-2'>
-                                        <label style='font-weight:bold'>Коллекция</label>
-                                    </div>
-                                    <div class='col-xs-10'>
-                                        <input id='collection' class='col-xs-12' type='text' placeholder='Укажите имя коллекции для данного устройства.'>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12 row'>
-                                    <div class='col-xs-2'>
-                                        <label style='font-weight:bold'>Пользователь</label>
-                                    </div>
-                                    <div class='col-xs-10'>
-                                        <input id='user_name' class='col-xs-12' type='text' placeholder='Укажите ФИО владельца.'>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12 row'>
-                                    <div class='col-xs-2'>
-                                        <label style='font-weight:bold'>Описание</label>
-                                    </div>
-                                    <div class='col-xs-10'>
-                                        <input id='desc' class='col-xs-12' type='text' placeholder='Укажите адрес и/или подробности места установки.'>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12'><hr></div>
-                                <div class='col-xs-12'>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>№1. Тип:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='type_1' class='col-xs-12' type='text' placeholder='Тип счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_1' class='col-xs-12' type='text' placeholder='Единица измерения.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит/Импл:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_impl_1' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'>
-                                        </div>
-                                    </div>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Сер.Номер:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='serial_1' class='col-xs-12' type='text' placeholder='Номер счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Описание:</label>
-                                        </div>
-                                        <div class='col-xs-4'>
-                                            <input id='desc_1' class='col-xs-12' type='text' placeholder='Описание счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label id='count_1' style='font-weight:bold'>0</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12'><hr></div>
-                                <div class='col-xs-12'>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>№2. Тип:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='type_2' class='col-xs-12' type='text' placeholder='Тип счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_2' class='col-xs-12' type='text' placeholder='Единица измерения.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит/Импл:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_impl_2' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'>
-                                        </div>
-                                    </div>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Сер.Номер:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='serial_2' class='col-xs-12' type='text' placeholder='Номер счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Описание:</label>
-                                        </div>
-                                        <div class='col-xs-4'>
-                                            <input id='desc_2' class='col-xs-12' type='text' placeholder='Описание счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label id='count_2' style='font-weight:bold'>0</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12'><hr></div>
-                                <div class='col-xs-12'>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>№3. Тип:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='type_3' class='col-xs-12' type='text' placeholder='Тип счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_3' class='col-xs-12' type='text' placeholder='Единица измерения.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит/Импл:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_impl_3' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'>
-                                        </div>
-                                    </div>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Сер.Номер:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='serial_3' class='col-xs-12' type='text' placeholder='Номер счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Описание:</label>
-                                        </div>
-                                        <div class='col-xs-4'>
-                                            <input id='desc_3' class='col-xs-12' type='text' placeholder='Описание счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label id='count_3' style='font-weight:bold'>0</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12'><hr></div>
-                                <div class='col-xs-12'>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>№4. Тип:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='type_4' class='col-xs-12' type='text' placeholder='Тип счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_4' class='col-xs-12' type='text' placeholder='Единица измерения.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Юнит/Импл:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='unit_impl_4' class='col-xs-12' type='text' placeholder='Импульсов на юнит.'>
-                                        </div>
-                                    </div>
-                                    <div class='col-xs-12 row'>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Сер.Номер:</label>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <input id='serial_4' class='col-xs-12' type='text' placeholder='Номер счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label style='font-weight:bold'>Описание:</label>
-                                        </div>
-                                        <div class='col-xs-4'>
-                                            <input id='desc_4' class='col-xs-12' type='text' placeholder='Описание счетчика.'>
-                                        </div>
-                                        <div class='col-xs-2'>
-                                            <label id='count_4' style='font-weight:bold'>0</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class='col-xs-12'><hr></div>
-                            </div>
-                        </div>
-                        <div id='under_line' class='row col-xs-12'>
-                            <div id='esion_label' class='col-xs-4'>
-                                <label>Идентификатор: </label>
-                                <label id='id_label' style='font-weight:bold'>0000000000</label>
-                            </div>
-                            <div id='battery' class='col-xs-4'>
-                                <label>Тип питания: </label>
-                                <label id='battery_type_label' style='font-weight:bold'>Li-ion 18650 [3.8V]</label>
-                            </div>
-                            <div id='battery' class='col-xs-4 right'>
-                                <label>Напряжение батареи: </label>
-                                <label id='battery_label' style='font-weight:bold'>3.8V</label>
-                            </div>
-                        </div>
-                        <div class='row col-xs-12'>
-                            <div class='row col-xs-2'></div>
-                            <div class='row col-xs-4'>
-                                <button id='bt_save' class='btn btn-primary col-xs-12' onclick='saveSettings()' style='font-size:130%'>Запомнить настройки</button>
-                            </div>
-                            <div class='row col-xs-4'>
-                                <button id='bt_cancel' class='btn btn-cancel col-xs-12' onclick='cancelSettings()' style='font-size:130%'>Отменить</button>
-                            </div>
-                            <div class='row col-xs-2'></div>
-                        </div>
-                    </div>
-                </div>
-                <div id='author' class='col-xs-12 right'>
-                  <label style='font-size:10px'>ООО "ИнфоТеr-Сервис":</label>
-                  <label style='font-size:10px'>(812)34-77-99-8</label>
-                </dev>
-            </div>
-        </div>
-    </body>
-    <script>
-    function cancelSettings() {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/cancel', true);
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xhr.send('json=' + JSON.stringify({
-            cancel:'cancel'
-        }));
-    }
-    function saveSettings() {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/save', true);
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xhr.send('json=' + JSON.stringify({
-            wifi:{
-                ssid:document.getElementById('server_ssid').value,
-                pswd:document.getElementById('server_pswd').value},
-            url:document.getElementById('service_url').value,
-            coll:document.getElementById('collection').value,
-            user:document.getElementById('user_name').value,
-            desc:document.getElementById('desc').value,
-            counters:[{
-                    type:document.getElementById('type_1').value,
-                    unit:document.getElementById('unit_1').value,
-                    unit_impl:document.getElementById('unit_impl_1').value,
-                    serial:document.getElementById('serial_1').value,
-                    desc:document.getElementById('desc_1').value},{
-                    type:document.getElementById('type_2').value,
-                    unit:document.getElementById('unit_2').value,
-                    unit_impl:document.getElementById('unit_impl_2').value,
-                    serial:document.getElementById('serial_2').value,
-                    desc:document.getElementById('desc_2').value},{
-                    type:document.getElementById('type_3').value,
-                    unit:document.getElementById('unit_3').value,
-                    unit_impl:document.getElementById('unit_impl_3').value,
-                    serial:document.getElementById('serial_3').value,
-                    desc:document.getElementById('desc_3').value},{
-                    type:document.getElementById('type_4').value,
-                    unit:document.getElementById('unit_4').value,
-                    unit_impl:document.getElementById('unit_impl_4').value,
-                    serial:document.getElementById('serial_4').value,
-                    desc:document.getElementById('desc_4').value}]}));}
-        //function changeSetting(id_) {
-        //    e = document.getElementById(id_);
-        //    if (e && e.value) {
-        //        e.placeholder = e.value;
-        //        e.value = '';
-        //    }
-        //}
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <title>ЭСИОН</title>
+  </head>
+  <body>
+    <style lang="scss">
+      #app {
+        font-family: Roboto, Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        color: #2c3e50;
+        min-width: 1250px;
+      }
 
-        //function saveSettings() {
-        //      var xhr = new XMLHttpRequest();
-        //      xhr.open('POST', '/save', true);
-        //      xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        //      xhr.send('json=' + JSON.stringify({
-        //          wifi:{
-        //              ssid:document.getElementById('server_ssid').value,
-        //              pswd:document.getElementById('server_pswd').value},
-        //          url:document.getElementById('service_url').value,
-        //          coll:document.getElementById('collection').value,
-        //          user:document.getElementById('user_name').value,
-        //          desc:document.getElementById('desc').value,
-        //          counters:[{
-        //                  type:document.getElementById('type_1').value,
-        //                  unit:document.getElementById('unit_1').value,
-        //                  unit_impl:document.getElementById('unit_impl_1').value,
-        //                  serial:document.getElementById('serial_1').value,
-        //                  desc:document.getElementById('desc_1').value},{
-        //                  type:document.getElementById('type_2').value,
-        //                  unit:document.getElementById('unit_2').value,
-        //                  unit_impl:document.getElementById('unit_impl_2').value,
-        //                  serial:document.getElementById('serial_2').value,
-        //                  desc:document.getElementById('desc_2').value},{
-        //                  type:document.getElementById('type_3').value,
-        //                  unit:document.getElementById('unit_3').value,
-        //                  unit_impl:document.getElementById('unit_impl_3').value,
-        //                  serial:document.getElementById('serial_3').value,
-        //                  desc:document.getElementById('desc_3').value},{
-        //                  type:document.getElementById('type_4').value,
-        //                  unit:document.getElementById('unit_4').value,
-        //                  unit_impl:document.getElementById('unit_impl_4').value,
-        //                  serial:document.getElementById('serial_4').value,
-        //                  desc:document.getElementById('desc_4').value}]}));
-              //changeSetting('server_ssid');
-              //changeSetting('server_pswd');
-              //changeSetting('service_url');
-              //changeSetting('collection');
-              //changeSetting('user_name');
-              //changeSetting('desc');
-              //changeSetting('type_1');
-              //changeSetting('unit_1');
-              //changeSetting('unit_impl_1');
-              //changeSetting('serial_1');
-              //changeSetting('desc_1');
-              //changeSetting('type_2');
-              //changeSetting('unit_2');
-              //changeSetting('unit_impl_2');
-              //changeSetting('serial_2');
-              //changeSetting('desc_2');
-              //changeSetting('type_3');
-              //changeSetting('unit_3');
-              //changeSetting('unit_impl_3');
-              //changeSetting('serial_3');
-              //changeSetting('desc_3');
-              //changeSetting('type_4');
-              //changeSetting('unit_4');
-              //changeSetting('unit_impl_4');
-              //changeSetting('serial_4');
-              //changeSetting('desc_4');
-        //}
-        //document.addEventListener('DOMContentLoaded',function(){})
-    </script>
+      /* Common styles and overrides */
+      .rotate_90 {
+        transform: rotate(90deg);
+      }
+
+      #app {
+          .md-table-head-label {
+              white-space: normal;
+              display: flex;
+              align-items: center;
+              line-height: 14px;
+              height: 47px;
+          }
+      }
+
+      .app-clip-text {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+      }
+      .app-icon-button.md-button {
+          min-width: auto;
+      }
+
+      .app-flex {
+          flex: 1;
+      }
+
+      .app-disabled {
+          pointer-events: none;
+      }
+
+      .app-vertical-divider {
+          height: 22px;
+          border-right: 1px solid #ccc;
+          margin: 0 7px;
+          width: 1px;
+      }
+
+      .md-autocomplete {
+          input {
+              text-overflow: ellipsis;
+          }
+      }
+
+      .md-menu-content {
+        z-index: 1000 !important;
+        margin-left: 7px;
+      }
+
+      .md-table-head-label {
+        color: #333;
+      }
+
+      .md-table-fixed-header-container {
+        background-color: #f1f1f1;
+      }
+
+      .md-table-head {
+        background-color: #f1f1f1;
+      }
+
+      .md-toolbar .md-title {
+        font-weight: bold !important;
+      }
+
+      .md-table .md-switch {
+        margin: 6px 0 0 0;
+      }
+
+      .md-table-head-container {
+        height: 58px !important;
+        padding: 6px 0 !important;
+      }
+
+      .md-toolbar .md-title {
+        margin-left: 12px !important;
+      }
+
+      .md-toolbar-section-start .md-icon {
+        margin: 0 !important;
+      }
+
+      .md-list-item-content > .md-icon:first-child {
+        margin-right: 22px !important;
+      }
+    </style>
+    <noscript>
+      <strong>We're sorry but esion doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app">
+        <button v-on:click='saveSettings'>Применить</button>
+        <button v-on:click='cancelSettings'>Отменить</button>
+    </div>
+    <script src="vue.min.js"></script>
+    <script src="main.js"></script>
+    <!-- built files will be auto injected -->
+  </body>
 </html>

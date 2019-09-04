@@ -6,11 +6,8 @@
 #include <Arduino.h>
 #include <ArduinoNvs.h>
 
-static const char POWER_TYPE[] = "4AA [6V]"; ///< .
-static const double BATTARY_FULL_VALUE = 6.0;
-//static const char POWER_TYPE[] = "Li-ion 18650 [3.8V]"; ///< .
-//static const double BATTARY_FULL_VALUE = 3.8;
-
+//static const char POWER_TYPE[] = "4AA [6V]";
+static const double BATTARY_FULL_VALUE = 100.0;
 
 static const int NUM_COUNTERS = 4; 
 
@@ -261,7 +258,7 @@ public:
 struct CounterConfig {
     String type;
     String unit;
-    String unit_impl;
+    int unit_impl;
     String serial;
     String desc;
 
@@ -321,7 +318,21 @@ struct Nvs {
     }
 
     /**
-     * \brief Метод выполняет запись идентификатор (должен выполняться 1 раз).
+     * \brief Метод выполняет запись типа питания (должен выполняться 1 раз).
+     */ 
+    void setPwrId(int pwrid) {
+        NVS.setInt("pwrid", pwrid);
+    }
+
+    /**
+     * \brief Метод возвращает тип питания.
+     */ 
+    int getPwrId() {
+        return NVS.getInt("pwrid");
+    }
+
+    /**
+     * \brief Метод выполняет запись идентификатора (должен выполняться 1 раз).
      */ 
     void setId(uint64_t id) {
         NVS.setInt("id", id);
@@ -442,7 +453,7 @@ struct Nvs {
                         cc = cc.substring(i + 1);
                         i = cc.indexOf("|");
                         if (i not_eq -1 and i < cc.length()) {
-                            count_conf.unit_impl = cc.substring(0, i);
+                            count_conf.unit_impl = cc.substring(0, i).toInt();
                             count_conf.desc = cc.substring(i + 1);
                         }
                     }
