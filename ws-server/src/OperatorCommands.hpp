@@ -15,8 +15,6 @@
 
 
 static const size_t MAX_NUMBER_DEVICES_FOR_REPORT = 10000;
-static const size_t DEFAULT_GARBAGE_TIMEOUT = 60 * 60 * 24 * 30; ///< Количество секунд для удаления старых записей.
-static const size_t OLD_TOKENS_TIMEOUT = 60 * 60; ///< Количество секунд для удаления старых токенов.
 
 namespace server {
 
@@ -30,7 +28,7 @@ typedef std::map<std::string, ExecuteFn> CommandsExecuters;
 typedef std::map<std::string, std::pair<std::string, std::string>> AuthMap;
 
 
-class BaseCommand : public JsonCommand {
+class OperatorBaseCommand : public JsonCommand {
 protected:
     static AuthMap _auth;
     std::mutex& _mutex;
@@ -74,7 +72,7 @@ public:
 
     static bool executeByName(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 
-    BaseCommand(const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
+    OperatorBaseCommand(const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn);
 };
 
 
@@ -112,7 +110,7 @@ public:
  *           }
  *         }
  */
-class AuthorizeCommand : public BaseCommand {
+class AuthorizeCommand : public OperatorBaseCommand {
 public:
     AuthorizeCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~AuthorizeCommand();
@@ -144,7 +142,7 @@ public:
  *           }
  *         }
  */
-class LogoutCommand : public BaseCommand {
+class LogoutCommand : public OperatorBaseCommand {
 public:
     LogoutCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~LogoutCommand();
@@ -179,7 +177,7 @@ public:
  *           "device_count" : <количество устройств для данного адреса>
  *        }
  */
-class UniqueAddressesCommand : public BaseCommand {
+class UniqueAddressesCommand : public OperatorBaseCommand {
 public:
     UniqueAddressesCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~UniqueAddressesCommand();
@@ -280,7 +278,7 @@ public:
  *            ]
  *          }
  */
-class GetDevicesListCommand : public BaseCommand {
+class GetDevicesListCommand : public OperatorBaseCommand {
 public:
     GetDevicesListCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetDevicesListCommand();
@@ -309,7 +307,7 @@ public:
  *           }
  *         }
  */
-class ActivateDeviceCommands : public BaseCommand {
+class ActivateDeviceCommands : public OperatorBaseCommand {
 public:
     ActivateDeviceCommands(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~ActivateDeviceCommands();
@@ -381,7 +379,7 @@ public:
  *           "desc":"<описание события>"
  *         }
  */
-class GetEventsListCommand : public BaseCommand {
+class GetEventsListCommand : public OperatorBaseCommand {
 public:
     GetEventsListCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetEventsListCommand();
@@ -418,7 +416,7 @@ public:
  *           }
  *         }
  */
-class CreateDevicesReportCommand : public BaseCommand {
+class CreateDevicesReportCommand : public OperatorBaseCommand {
 public:
     CreateDevicesReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~CreateDevicesReportCommand();
@@ -455,7 +453,7 @@ public:
  *           }
  *         }
  */
-class CreateEventsReportCommand : public BaseCommand {
+class CreateEventsReportCommand : public OperatorBaseCommand {
 public:
     CreateEventsReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~CreateEventsReportCommand();
@@ -484,7 +482,7 @@ public:
  *           }
  *         }
  */
-class GetCriticalNumberCommand : public BaseCommand {
+class GetCriticalNumberCommand : public OperatorBaseCommand {
 public:
     GetCriticalNumberCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetCriticalNumberCommand();
@@ -512,7 +510,7 @@ public:
  *           }
  *         }
  */
-class GetDeviceCommand : public BaseCommand {
+class GetDeviceCommand : public OperatorBaseCommand {
 public:
     GetDeviceCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn);
     virtual ~GetDeviceCommand();

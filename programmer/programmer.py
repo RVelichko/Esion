@@ -1,12 +1,17 @@
 #!/usr/bin/python
 
+# WIFI settings in raspberry:
 # /etc/wpa_supplicant/wpa_supplicant.conf
 # network={
 #         ssid="wifi"
 #         psk="wifipassword"
 #         scan_ssid=1
 # }
+#
+# SSH tonnel settings:
 # ssh -l pi -p 2222 localhost
+#
+# Starting autoconnection ssh to public server:
 # /usr/bin/autossh -M 0 -o LogLevel=error -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -f -R 2222:127.0.0.1:22 -N reverse-tunnel@94.127.68.132
 
 
@@ -101,6 +106,7 @@ class LightsLine(object):
 
 class ProgressViewer(object):
 	def __init__(self, lights_line, max_val = 100):
+		self.old_val = 0
 		self.max_val = max_val
 		self.is_light = False
 		self.lights_line = lights_line
@@ -126,6 +132,9 @@ class ProgressViewer(object):
 			GPIO.output(led_pins[self.step], light)
 
 	def setVal(self, val):
+		if val < self.old_val:
+			self.clear()
+		self.old_val = val
 		if val <= self.max_val:
 			i = int(math.floor(9.0 * (float(val) / float(self.max_val)) + 0.05))
 			led_pins = self.lights_line.getPins()
@@ -207,12 +216,14 @@ def PushCallback():
 	print('PUSH BT')
 
 class Flasher(object):
-	def __init__(self, lights_line, path_to_parts, path_to_bin):
+	def __init__(self, lights_line, path_to_bootloader, path_to_parts, path_to_boot_app, path_to_bin):
+		self.lights_line = lights_line
+		self.path_to_bootloader = path_to_bootloader
 		self.path_to_parts = path_to_parts
+		self.path_to_boot_app = path_to_boot_app
 		self.path_to_bin = path_to_bin
 		self.mutex = Lock()
-		self.state = 'BUTTON'
-		self.lights_line = lights_line
+		self.state = 'WAITING'
 		self.waiting = Waiting(self.lights_line)
 		self.wait_timeout = 3000
 		self.progress = ProgressViewer(self.lights_line)
@@ -226,10 +237,11 @@ class Flasher(object):
 		pass
 
 	def findDevice(self):
-		print('Finding...')
+		print('Finding USB...')
 		self.lights_line.clear()
 		result = False
 		self.tty_usb = ''
+		print('> dmesg')
 		p1 = subprocess.Popen('dmesg', stdout=subprocess.PIPE)
 		proc = subprocess.Popen('grep ttyUSB'.split(), stdin=p1.stdout, stdout=subprocess.PIPE, universal_newlines = True)
                 for line in Unbuffered(proc):
@@ -238,17 +250,22 @@ class Flasher(object):
 			reg_res = re.search(r'.+(cp210x).+(attached) +(to) +(ttyUSB\d)', line)
 			if reg_res is not None:
 				self.tty_usb = reg_res.group(4)
-		for line in RunProcess('esptool.py --port /dev/{} flash_id'.format(self.tty_usb).split()):
-			time.sleep(0.001)
-			reg_res = re.search(r'(Hard) +(resetting) +(via) +(RTS) +(pin).{3}', line)
-			if reg_res is not None:
-				print('Reset')
-				result = True
-			self.waiting.update()
-		self.mutex.acquire()
+		if self.tty_usb != '':
+			print('Found "{}"'.format(self.tty_usb))
+			fid_exe = 'esptool.py --port /dev/{} flash_id'.format(self.tty_usb)
+			print('> {}'.format(fid_exe))
+			for line in RunProcess(fid_exe.split()):
+				time.sleep(0.001)
+				#print('# {}'.format(line))
+				reg_res = re.search(r'(Hard) +(resetting) +(via) +(RTS) +(pin).{3}', line)
+				if reg_res is not None:
+					print('Reset')
+					result = True
+				self.waiting.update()
+			self.mutex.acquire()
 		if result:
 			self.state = 'FOUND'
-			print('Found: {}'.format(self.tty_usb))
+			print('Device is found.')
 		else:
 			self.state = 'ERROR'
 		self.mls = GetTimeMs()
@@ -263,8 +280,9 @@ class Flasher(object):
 		self.mutex.acquire()
                 self.progress.setVal(1)
                 self.mutex.release()
-		print('Erase')
-                for line in RunProcess('esptool.py --port /dev/{} erase_flash'.format(self.tty_usb).split()):
+		erase_exe = 'esptool.py --port /dev/{} erase_flash'.format(self.tty_usb)
+		print('> {}'.format(erase_exe))
+                for line in RunProcess(erase_exe.split()):
                         time.sleep(0.001)
 			reg_res = re.search(r'(Hard) +(resetting) +(via) +(RTS) +(pin).{3}', line)
                         if reg_res is not None:
@@ -272,9 +290,10 @@ class Flasher(object):
                                 result = True
 		if result:
 			result = False
-			print('Try flash: {} {}'.format(self.tty_usb, self.path_to_bin))
-                        exe = 'esptool.py --port /dev/{} write_flash 0x8000 {} 0x10000 {}'.format(self.tty_usb, self.path_to_parts, self.path_to_bin).split()
-                        proc = subprocess.Popen(exe, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, universal_newlines = True)
+			exe = 'esptool.py --chip esp32 --port /dev/{} --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x1000 {} 0x8000 {} 0xe000 {} 0x10000 {}'.format(
+				self.tty_usb, self.path_to_bootloader, self.path_to_parts, self.path_to_boot_app, self.path_to_bin)
+			print('> {}'.format(exe))
+                        proc = subprocess.Popen(exe.split(), stdout = subprocess.PIPE, stderr = subprocess.STDOUT, universal_newlines = True)
 			for line in Unbuffered(proc):
 			        line = line.replace('\r', '\n')
 	                       	time.sleep(0.001)
@@ -287,6 +306,7 @@ class Flasher(object):
 		                        self.mutex.release()
 				reg_res = re.search(r'(Hard) +(resetting) +(via) +(RTS) +(pin).{3}', line)
 	                        if reg_res is not None:
+					time.sleep(1)
         	                        print('Reset.')
 					self.mutex.acquire()
                                         self.progress.setVal(100)
@@ -330,12 +350,12 @@ class Flasher(object):
                         self.progress.update()
                         self.mutex.release()
 		elif state == 'FLASHING':
+			self.mutex.acquire()
 			self.progress.update()
 			if 1000 < sub_mls:
-                                self.mutex.acquire()
                                 self.mls = mls
                                 self.state = 'WAITING'
-
+			self.mutex.release()
 		elif state == 'WAITING':
 			self.waiting.update()
 			if self.wait_timeout < sub_mls:
@@ -377,9 +397,12 @@ class Application(object):
 	        GPIO.cleanup()
 
 	def execute(self):
-		path_to_parts = '{}/{}'.format(os.getcwd(), 'data/partitions.elf')
-        	path_to_bin = '{}/{}'.format(os.getcwd(), 'data/firmware.elf')
-	        f = Flasher(lights_line, path_to_parts, path_to_bin)
+		cwd = os.getcwd()
+		path_to_bootloader = '{}/{}'.format(cwd, 'data/bootloader_dio_40m.bin')
+		path_to_parts =      '{}/{}'.format(cwd, 'data/partitions.bin')
+		path_to_boot_app =   '{}/{}'.format(cwd, 'data/boot_app0.bin')
+        	path_to_bin =        '{}/{}'.format(cwd, 'data/firmware.bin')
+	        f = Flasher(self.lights_line, path_to_bootloader, path_to_parts, path_to_boot_app, path_to_bin)
         	print('Start Application')
 	        while True:
         	        f.update()

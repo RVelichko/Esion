@@ -13,10 +13,9 @@ using namespace server;
 typedef std::lock_guard<std::mutex> LockQuard;
 
 
-//std::string BaseCommand::_token;
-size_t BaseCommand::_garb_timer = DEFAULT_GARBAGE_TIMEOUT;
-PDbFacade BaseCommand::_db;
-AuthMap BaseCommand::_auth;
+size_t OperatorBaseCommand::_garb_timer = DEFAULT_GARBAGE_TIMEOUT;
+PDbFacade OperatorBaseCommand::_db;
+AuthMap OperatorBaseCommand::_auth;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -45,7 +44,7 @@ public:
 };
 
 
-bool BaseCommand::executeByName(const Json& js, std::mutex& mutex, const SendFn& snd_fn) {
+bool OperatorBaseCommand::executeByName(const Json& js, std::mutex& mutex, const SendFn& snd_fn) {
     /// Инициализация локальных статических массивов с обработчиками команд.
     static CommandsExecuters cmd_execs = {
         ExecuteCmd<AuthorizeCommand>("auth").value(),
@@ -99,7 +98,7 @@ bool BaseCommand::executeByName(const Json& js, std::mutex& mutex, const SendFn&
 }
 
 
-Json BaseCommand::getErrorResponce(const std::string &desc) {
+Json OperatorBaseCommand::getErrorResponce(const std::string &desc) {
     return {
         {"resp", {
             {"name", _name},
@@ -110,7 +109,7 @@ Json BaseCommand::getErrorResponce(const std::string &desc) {
 }
 
 
-void BaseCommand::eraseMongoId(Json& js) {
+void OperatorBaseCommand::eraseMongoId(Json& js) {
     auto erase_fn = [](Json& js) {
         auto j_id = js.find("_id");
         if (j_id not_eq js.end()) {
@@ -127,7 +126,7 @@ void BaseCommand::eraseMongoId(Json& js) {
 }
 
 
-Json BaseCommand::fillResponceData(const Json& js) {
+Json OperatorBaseCommand::fillResponceData(const Json& js) {
     /// Заполнить переменную ответа.
     Json jres = {
       {"resp", {
@@ -141,16 +140,16 @@ Json BaseCommand::fillResponceData(const Json& js) {
 }
 
 
-bool BaseCommand::checkToken(const std::string& token) {
+bool OperatorBaseCommand::checkToken(const std::string& token) {
     LockQuard l(_mutex);
-    auto jusr = _db->findUser(token);
+    auto jusr = _db->findUser(token, AUTH_COLLECTION_NAME);
     return not jusr.empty();
 }
 
 
-std::string BaseCommand::getCollectionId(const std::string& token) {
+std::string OperatorBaseCommand::getCollectionId(const std::string& token) {
     std::string coll_id;
-    auto jusr = _db->findUser(token);
+    auto jusr = _db->findUser(token, AUTH_COLLECTION_NAME);
     if (not jusr.empty() and jusr.is_object()) {
         auto jcoll_id = jusr.find("coll_id");
         if (jcoll_id not_eq jusr.end() and jcoll_id->is_string()) {
@@ -162,8 +161,7 @@ std::string BaseCommand::getCollectionId(const std::string& token) {
 }
 
 
-BaseCommand::BaseCommand(const std::string& name, const Json& js,
-                         std::mutex& mutex, const SendFn& snd_fn)
+OperatorBaseCommand::OperatorBaseCommand(const std::string& name, const Json& js, std::mutex& mutex, const SendFn& snd_fn)
     : JsonCommand(name, js)
     , _mutex(mutex)
     , _snd_fn(snd_fn)
@@ -172,7 +170,7 @@ BaseCommand::BaseCommand(const std::string& name, const Json& js,
 
 
 AuthorizeCommand::AuthorizeCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("auth", js, mutex, snd_fn) {
+    : OperatorBaseCommand("auth", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -226,7 +224,7 @@ Json AuthorizeCommand::execute() {
             { /// LOCK
                 LockQuard l(_mutex);
                 _db->eraseOldTokens(OLD_TOKENS_TIMEOUT);
-                jusr = _db->findUser(*jtoken);
+                jusr = _db->findUser(*jtoken, AUTH_COLLECTION_NAME);
             }
             if (not jusr.empty()) {
                 eraseMongoId(jusr);
@@ -260,7 +258,7 @@ Json AuthorizeCommand::execute() {
 
 
 LogoutCommand::LogoutCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("logout", js, mutex, snd_fn) {
+    : OperatorBaseCommand("logout", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -279,7 +277,7 @@ Json LogoutCommand::execute() {
             Json jusr;
             { /// LOCK
                 LockQuard l(_mutex);
-                jusr = _db->findUser(token);
+                jusr = _db->findUser(token, AUTH_COLLECTION_NAME);
             }
             if (not jusr.empty()) {
                 eraseMongoId(jusr);
@@ -312,7 +310,7 @@ Json LogoutCommand::execute() {
 
 
 UniqueAddressesCommand::UniqueAddressesCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_uniq_addrs", js, mutex, snd_fn) {
+    : OperatorBaseCommand("get_uniq_addrs", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -358,7 +356,7 @@ Json UniqueAddressesCommand::execute() {
 
 
 GetDevicesListCommand::GetDevicesListCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_devs", js, mutex, snd_fn) {
+    : OperatorBaseCommand("get_devs", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -485,7 +483,7 @@ Json GetDevicesListCommand::execute() {
 
 
 ActivateDeviceCommands::ActivateDeviceCommands(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("set_dev_status", js, mutex, snd_fn) {
+    : OperatorBaseCommand("set_dev_status", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -543,7 +541,7 @@ Json ActivateDeviceCommands::execute() {
 
 
 GetEventsListCommand::GetEventsListCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_events", js, mutex, snd_fn) {
+    : OperatorBaseCommand("get_events", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -687,7 +685,7 @@ Json GetEventsListCommand::execute() {
 
 
 CreateDevicesReportCommand::CreateDevicesReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_devices_report", js, mutex, snd_fn) {
+    : OperatorBaseCommand("get_devices_report", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -789,7 +787,7 @@ Json CreateDevicesReportCommand::execute() {
 
 
 CreateEventsReportCommand::CreateEventsReportCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_events_report", js, mutex, snd_fn) {
+    : OperatorBaseCommand("get_events_report", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -861,7 +859,7 @@ Json CreateEventsReportCommand::execute() {
 
 
 GetCriticalNumberCommand::GetCriticalNumberCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    : BaseCommand("get_critical", js, mutex, snd_fn) {
+    : OperatorBaseCommand("get_critical", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 
@@ -941,7 +939,7 @@ Json GetCriticalNumberCommand::execute() {
 
 
 GetDeviceCommand::GetDeviceCommand(const Json& js, std::mutex& mutex, const SendFn& snd_fn)
-    :BaseCommand("get_device", js, mutex, snd_fn) {
+    :OperatorBaseCommand("get_device", js, mutex, snd_fn) {
     LOG(DEBUG);
 }
 

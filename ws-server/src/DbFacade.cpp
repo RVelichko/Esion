@@ -197,7 +197,7 @@ void DbFacade::disconnect() try {
 }
 
 
-void DbFacade::eraseOldTokens(size_t timeout) try {
+void DbFacade::eraseOldTokens(size_t timeout, const std::string& user_coll_name) try {
     auto old = static_cast<size_t>(time(nullptr)) - timeout;
     Json jq = {
         {"token", {
@@ -205,9 +205,9 @@ void DbFacade::eraseOldTokens(size_t timeout) try {
         }}
     };
     BsonObj q(DbFacade::toBson(jq));
-    size_t found = _dbc->query(getMdbNs(AUTH_COLLECTION_NAME), q)->itcount();
+    size_t found = _dbc->query(getMdbNs(user_coll_name), q)->itcount();
     BsonObjs busers;
-    _dbc->findN(busers, getMdbNs(AUTH_COLLECTION_NAME), q, found);
+    _dbc->findN(busers, getMdbNs(user_coll_name), q, found);
     for (auto buser : busers) {
         auto jusr = DbFacade::toJson(buser);
         auto jtokens = jusr["token"];
@@ -221,7 +221,7 @@ void DbFacade::eraseOldTokens(size_t timeout) try {
             }
             if (not jeraseds.empty()) {
                 jusr["token"] = jeraseds;
-                _dbc->update(getMdbNs(AUTH_COLLECTION_NAME), q, DbFacade::toBson(jusr));
+                _dbc->update(getMdbNs(user_coll_name), q, DbFacade::toBson(jusr));
             }
         } else {
             LOG(ERROR) << "Tag token is`t array.";
@@ -232,13 +232,13 @@ void DbFacade::eraseOldTokens(size_t timeout) try {
 }
 
 
-Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
+Json DbFacade::findUser(const std::string& user, const std::string& pswd, const std::string& user_coll_name) try {
     Json jq = {
         {"name", user},
         {"pswd", pswd}
     };
     BsonObj q(DbFacade::toBson(jq));
-    BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
+    BsonObj buser = _dbc->findOne(getMdbNs(user_coll_name), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
 } catch (const std::exception &e) {
@@ -247,12 +247,12 @@ Json DbFacade::findUser(const std::string& user, const std::string& pswd) try {
 }
 
 
-Json DbFacade::findUser(const std::string& token) try {
+Json DbFacade::findUser(const std::string& token, const std::string& user_coll_name) try {
     Json jq = {
         {"token", token}
     };
     BsonObj q(DbFacade::toBson(jq));
-    BsonObj buser = _dbc->findOne(getMdbNs(AUTH_COLLECTION_NAME), q);
+    BsonObj buser = _dbc->findOne(getMdbNs(user_coll_name), q);
     Json juser = DbFacade::toJson(buser);
     return juser;
 } catch (const std::exception &e) {

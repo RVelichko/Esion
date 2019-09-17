@@ -15,10 +15,13 @@
 #include "json.hpp"
 
 
+static const char ADMIN_COLLECTION_NAME[] = "admins";
 static const char AUTH_COLLECTION_NAME[] = "users";
 static const char CONTROOLERS_COLLECTION_NAME[] = "counters";
 static const char EVENTS_COLLECTION_NAME[] = "events";
 static const size_t DEFAULT_NUMBER_REQUESTED = 100;
+static const size_t DEFAULT_GARBAGE_TIMEOUT = 60 * 60 * 24 * 30; ///< Количество секунд для удаления старых записей.
+static const size_t OLD_TOKENS_TIMEOUT = 60 * 60; ///< Количество секунд для удаления старых токенов.
 
 
 namespace server {
@@ -75,25 +78,27 @@ public:
      */ 
     void disconnect();
     
-
     /**
      * \brief Метод возвращает первого найденного пользователя.
      * \param timeout  Таймаут для удаления устаревших токенов.
+     * \param user_coll_name  Имя коллекции пользователей.
      */
-    void eraseOldTokens(size_t timeout);
+    void eraseOldTokens(size_t timeout, const std::string& user_coll_name = AUTH_COLLECTION_NAME);
 
     /**
      * \brief Метод возвращает первого найденного пользователя.
      * \param user  Имя пользователя.
      * \param pswd  Пароль пользователя.
+     * \param user_coll_name  Имя коллекции пользователей.
      */
-    Json findUser(const std::string& user, const std::string& pswd);
+    Json findUser(const std::string& user, const std::string& pswd, const std::string& user_coll_name);
 
     /**
      * \brief Метод возвращает первого найденного пользователя.
      * \param token  Токен авторизации пользователя.
+     * \param user_coll_name  Имя коллекции пользователей.
      */
-    Json findUser(const std::string& token);
+    Json findUser(const std::string& token, const std::string& user_coll_name);
 
     /**
      * \brief Метод возвращает первого найденного пользователя.

@@ -1,9 +1,5 @@
-#include <functional>
-
 #include "Log.hpp"
-#include "ReportGenerator.hpp"
-#include "OperatorPeerWorker.hpp"
-
+#include "UsersAdminPeerWorker.hpp"
 
 using namespace server;
 
@@ -12,7 +8,7 @@ namespace ph = std::placeholders;
 typedef std::lock_guard<std::mutex> LockQuard;
 
 
-bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
+bool UsersAdminPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &fn) try {
     static std::mutex m;
     Json json;
     if (not msg.empty()) {
@@ -31,7 +27,7 @@ bool OperatorPeerWorker::parseMessage(const std::string &msg, const ConcreteFn &
 }
 
 
-PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const std::string &msg) {
+PConnectionValue UsersAdminPeerWorker::firstMessage(size_t connection_id, const std::string &msg) {
     LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
     PConnectionValue con_val;
     parseMessage(msg, [&](const Json &json) {
@@ -40,7 +36,7 @@ PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const st
             auto jcmd = json.value("cmd", Json());
             if (not jcmd.empty() and jcmd.is_object()) {
                 auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-                if (not OperatorBaseCommand::executeByName(jcmd, _mutex, snd_fn)) {
+                if (not UsersAdminBaseCommand::executeByName(jcmd, _mutex, snd_fn)) {
                     LOG(ERROR) << "Command is`t exequted!";
                 }
             } else {
@@ -52,7 +48,7 @@ PConnectionValue OperatorPeerWorker::firstMessage(size_t connection_id, const st
 }
 
 
-bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std::string &msg) {
+bool UsersAdminPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std::string &msg) {
     size_t connection_id = iter->first;
     LOG(DEBUG) << "conid = " << connection_id << "; " << msg;
     parseMessage(msg, [=](const Json &json) {
@@ -67,7 +63,7 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
                 auto jcmd = json.value("cmd", Json());
                 if (not jcmd.empty() and jcmd.is_object()) {
                     auto snd_fn = std::bind(_msg_fn, connection_id, ph::_1, WS_STRING_MESSAGE);
-                    if (not OperatorBaseCommand::executeByName(jcmd, _mutex, snd_fn)) {
+                    if (not UsersAdminBaseCommand::executeByName(jcmd, _mutex, snd_fn)) {
                         LOG(ERROR) << "Command is`t exequted!";
                     }
                 }
@@ -79,19 +75,18 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
 }
 
 
-void OperatorPeerWorker::sendClose(size_t connection_id) {
+void UsersAdminPeerWorker::sendClose(size_t connection_id) {
     Json j = {{"cmd", "close"}};
     _msg_fn(connection_id, j.dump(), WS_STRING_MESSAGE);
 }
 
 
-OperatorPeerWorker::OperatorPeerWorker(std::mutex &mutex, const PDbFacade& db, const std::string& reports_path, size_t garb_timer)
+UsersAdminPeerWorker::UsersAdminPeerWorker(std::mutex &mutex, const PDbFacade& db, size_t garb_timer)
     : BaseWorker(mutex) {
-    OperatorBaseCommand::_garb_timer = garb_timer;
-    OperatorBaseCommand::_db = db;
-    ReportGenerator::_reports_path = reports_path;
+    UsersAdminBaseCommand::_garb_timer = garb_timer;
+    UsersAdminBaseCommand::_db = db;
 }
 
 
-OperatorPeerWorker::~OperatorPeerWorker() 
+UsersAdminPeerWorker::~UsersAdminPeerWorker()
 {}

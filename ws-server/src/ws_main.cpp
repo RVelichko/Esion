@@ -15,13 +15,13 @@
 #include <tuple>
 #include <functional>
 
+#include "Log.hpp"
+#include "DbFacade.hpp"
+#include "WebSocketServer.hpp"
 #include "DevicePeerWorker.hpp"
 #include "OperatorPeerWorker.hpp"
+#include "UsersAdminPeerWorker.hpp"
 #include "SignalDispatcher.hpp"
-#include "WebSocketServer.hpp"
-#include "DbFacade.hpp"
-#include "OperatorCommands.hpp"
-#include "Log.hpp"
 
 
 static const size_t DEFAULT_SERVER_PORT = 20000;
@@ -30,6 +30,7 @@ static char DEFAULT_SRV_OPERATOR_LOGIN[] = "esion_operator";
 static char DEFAULT_SRV_OPERATOR_PSWD[]  = "esion_operatorpassowrd";
 static char DEFAULT_DEVICE_POINT[]       = "^/device?$";
 static char DEFAULT_PAGE_POINT[]         = "^/info?$";
+static char DEFAULT_USERS_POINT[]        = "^/ausers?$";
 
 static char DEFAULT_DB_ADDRESS[]  = "127.0.0.1";
 static char DEFAULT_DB_NAME[]     = "devices";
@@ -49,6 +50,7 @@ struct GlobalArgs {
     char* srv_pswd;       ///< параметр -r
     char* device_point;   ///< параметр -e
     char* page_point;     ///< параметр -w
+    char* users_point;    ///< параметр -u
     char* db_addr;        ///< параметр -a
     char* db_name;        ///< параметр -n
     char* db_ligin;       ///< параметр -l
@@ -60,7 +62,7 @@ struct GlobalArgs {
 } __global_args;
 
 
-static const char *__opt_string = "p:k:q:r:c:e:w:a:l:n:s:y:i:o:vh?";
+static const char *__opt_string = "p:k:q:r:c:e:w:u:a:l:n:s:y:i:o:vh?";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -74,6 +76,7 @@ void HelpMessage() {
               << "\t[-r]\t Server operator Password.\t[" << DEFAULT_SRV_OPERATOR_PSWD << "]\n"
               << "\t[-e]\t Device connection point.\t[" << DEFAULT_DEVICE_POINT << "]\n"
               << "\t[-w]\t Web page connection point.\t[" << DEFAULT_PAGE_POINT << "]\n"
+              << "\t[-u]\t Users page connection point.\t[" << DEFAULT_USERS_POINT << "]\n"
               << "\t[-a]\t DB address.\t[" << DEFAULT_DB_ADDRESS << "]\n"
               << "\t[-n]\t DB name.\t[" << DEFAULT_DB_NAME << "]\n"
               << "\t[-l]\t DB login.\t[" << DEFAULT_DB_LOGIN << "]\n"
@@ -94,9 +97,10 @@ typedef server::DbFacade DbFacade;
 typedef server::PDbFacade PDbFacade;
 typedef server::DevicePeerWorker DevicePeerWorker;
 typedef server::OperatorPeerWorker OperatorPeerWorker;
+typedef server::UsersAdminPeerWorker UsersAdminPeerWorker;
 typedef std::shared_ptr<DevicePeerWorker> PDevicePeerWorker;
 typedef std::shared_ptr<OperatorPeerWorker> POperatorPeerWorker;
-typedef server::BaseCommand BaseCommand;
+typedef std::shared_ptr<UsersAdminPeerWorker> PUsersAdminPeerWorker;
 typedef wsocket::UniWsServer UniWsServer;
 
 
@@ -107,6 +111,7 @@ int main(int argc_, char **argv_) {
     __global_args.ssl_key        = DEFAULT_SSL;
     __global_args.device_point   = DEFAULT_DEVICE_POINT;
     __global_args.page_point     = DEFAULT_PAGE_POINT;
+    __global_args.users_point    = DEFAULT_USERS_POINT;
     __global_args.db_addr        = DEFAULT_DB_ADDRESS;
     __global_args.db_name        = DEFAULT_DB_NAME;
     __global_args.db_ligin       = DEFAULT_DB_LOGIN;
@@ -138,6 +143,9 @@ int main(int argc_, char **argv_) {
                 break;
             case 'w':
                 __global_args.page_point = optarg;
+                break;
+            case 'u':
+                __global_args.users_point = optarg;
                 break;
             case 'a':
                 __global_args.db_addr = optarg;
@@ -199,12 +207,15 @@ int main(int argc_, char **argv_) {
         POperatorPeerWorker oper_pw = std::make_shared<OperatorPeerWorker>(mutex, db,
                                                                            __global_args.reports_path,
                                                                            __global_args.garb_timeout);
+        /// Точка подключения администратора пользователей.
+        PUsersAdminPeerWorker uadm_pw = std::make_shared<UsersAdminPeerWorker>(mutex, db, __global_args.garb_timeout);
         /// Конструирование сервера
         UniWsServer p2p(__global_args.port,
                      __global_args.ssl_crt, 
                      __global_args.ssl_key,
                      std::make_pair(__global_args.device_point, device_pw),
-                     std::make_pair(__global_args.page_point, oper_pw));
+                     std::make_pair(__global_args.page_point, oper_pw),
+                     std::make_pair(__global_args.users_point, uadm_pw));
         return EXIT_SUCCESS;
     }
     LOG(ERROR) << "Check Database parameters.";

@@ -8,6 +8,8 @@ add_library(${LIB_ESION_SERVER} STATIC
     ReportGenerator.cpp
     OperatorCommands.cpp
     OperatorPeerWorker.cpp
+    UsersAdminCommands.cpp
+    UsersAdminPeerWorker.cpp
     )
 
 set(APP_ESION_SERVER esion-server)
