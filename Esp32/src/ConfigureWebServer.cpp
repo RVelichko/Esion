@@ -6,30 +6,30 @@
 static const time_t CONFIGURE_TIMEOUT = 1800; ///< Количество секунд работы режима конфигурирования.
 
 
-extern const uint8_t index_html_start[] asm("_binary_src_data_index_html_gz_start");
-extern const uint8_t index_html_end[]   asm("_binary_src_data_index_html_gz_end");
-extern const uint8_t favicon_ico_start[] asm("_binary_src_data_favicon_ico_start");
-extern const uint8_t favicon_ico_end[]   asm("_binary_src_data_favicon_ico_end");
-extern const uint8_t FontRoboto_css_start[] asm("_binary_src_data_FontRoboto_css_gz_start");
-extern const uint8_t FontRoboto_css_end[]   asm("_binary_src_data_FontRoboto_css_gz_end");
-extern const uint8_t app_css_start[] asm("_binary_src_data_css_app_4372d366_css_gz_start");
-extern const uint8_t app_css_end[]   asm("_binary_src_data_css_app_4372d366_css_gz_end");
-extern const uint8_t chunk_vendors_css_start[] asm("_binary_src_data_css_chunk_vendors_e30ee463_css_gz_start");
-extern const uint8_t chunk_vendors_css_end[]   asm("_binary_src_data_css_chunk_vendors_e30ee463_css_gz_end");
-extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_start[] asm("_binary_src_data_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_start");
-extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_end[]   asm("_binary_src_data_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_end");
-extern const uint8_t app_js_start[] asm("_binary_src_data_js_app_0e35ed97_js_gz_start");
-extern const uint8_t app_js_end[]   asm("_binary_src_data_js_app_0e35ed97_js_gz_end");
-extern const uint8_t chunk_vendors_js_start[] asm("_binary_src_data_js_chunk_vendors_6077a4fd_js_gz_start");
-extern const uint8_t chunk_vendors_js_end[]   asm("_binary_src_data_js_chunk_vendors_6077a4fd_js_gz_end");
+extern const uint8_t index_html_start[] asm("_binary_src_dist_index_html_gz_start");
+extern const uint8_t index_html_end[]   asm("_binary_src_dist_index_html_gz_end");
+extern const uint8_t favicon_ico_start[] asm("_binary_src_dist_favicon_ico_start");
+extern const uint8_t favicon_ico_end[]   asm("_binary_src_dist_favicon_ico_end");
+extern const uint8_t FontRoboto_css_start[] asm("_binary_src_dist_FontRoboto_css_gz_start");
+extern const uint8_t FontRoboto_css_end[]   asm("_binary_src_dist_FontRoboto_css_gz_end");
+extern const uint8_t app_css_start[] asm("_binary_src_dist_css_app_f95c37e4_css_gz_start");
+extern const uint8_t app_css_end[]   asm("_binary_src_dist_css_app_f95c37e4_css_gz_end");
+extern const uint8_t chunk_vendors_css_start[] asm("_binary_src_dist_css_chunk_vendors_e30ee463_css_gz_start");
+extern const uint8_t chunk_vendors_css_end[]   asm("_binary_src_dist_css_chunk_vendors_e30ee463_css_gz_end");
+extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_start[] asm("_binary_src_dist_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_start");
+extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_end[]   asm("_binary_src_dist_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_end");
+extern const uint8_t app_js_start[] asm("_binary_src_dist_js_app_ff8aae99_js_gz_start");
+extern const uint8_t app_js_end[]   asm("_binary_src_dist_js_app_ff8aae99_js_gz_end");
+extern const uint8_t chunk_vendors_js_start[] asm("_binary_src_dist_js_chunk_vendors_6077a4fd_js_gz_start");
+extern const uint8_t chunk_vendors_js_end[]   asm("_binary_src_dist_js_chunk_vendors_6077a4fd_js_gz_end");
 
 
 static const char favicon_str[] = "/favicon.ico";
 static const char FontRoboto_str[] = "/FontRoboto.css";
 static const char flUhRq6tzZclQEJ_Vdg_IuiaDsNc_str[] = "/fonts/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.d7e60f9d.woff2";
-static const char app_css_str[] = "/css/app.4372d366.css";
+static const char app_css_str[] = "/css/app.f95c37e4.css";
 static const char chunk_vendors_css_str[] = "/css/chunk-vendors.e30ee463.css";
-static const char app_js_str[] = "/js/app.0e35ed97.js";
+static const char app_js_str[] = "/js/app.ff8aae99.js";
 static const char chunk_vendors_js_str[] = "/js/chunk-vendors.6077a4fd.js";
 
 
@@ -94,7 +94,9 @@ void ConfigureWebServer::handleExit(AsyncWebServerRequest *request) {
 
 void ConfigureWebServer::handleAppInfo(AsyncWebServerRequest *request) {
     size_t bl = static_cast<size_t>(_bat_level * 1000.0);
-    String js = "{\"dev_id\":\"" + _dev_id + "\",\"power_percent\":" + String(static_cast<double>(bl) / 1000.0, DEC) + "}";
+    String js = 
+        "{\"dev_id\":\"" + _dev_id + 
+        "\",\"power_percent\":" + String(static_cast<double>(bl) * 0.001, DEC) + "}";
     #ifdef DEBUG    
     Serial.println("Handle app_info: \"" + js + "\"");
     #endif
@@ -114,14 +116,18 @@ void ConfigureWebServer::handleSettingsInfo(AsyncWebServerRequest *request) {
     auto ssid = Nvs::get()->getSsid();
     auto pswd = Nvs::get()->getPswd();
     auto user = Nvs::get()->getUser();
-    auto coll = Nvs::get()->getCollectionName();
+    auto addr = Nvs::get()->getAddress();
+    auto coll_id = Nvs::get()->getCollectionName();
+    auto apmt = Nvs::get()->getApmt();
     auto desc = Nvs::get()->getDescription();
     String js = "{" \
         "\"cloud_url\":\"" + service_url + "\"," \
         "\"ssid\":\"" + ssid + "\"," \
         "\"pswd\":\"" + pswd  + "\"," \
         "\"user\":\"" + user + "\"," \
-        "\"address\":\"" + coll + "\","\
+        "\"apmt\":\"" + apmt + "\","\
+        "\"address\":\"" + addr + "\","\
+        "\"coll_id\":\"" + coll_id + "\","\
         "\"desc\":\"" + desc + "\"," \
         "\"power\":\"" + pwrt + "\"}";
     #ifdef DEBUG    
@@ -212,9 +218,16 @@ bool ConfigureWebServer::parseSettings(const String &jstr) {
                 String address = jsets["address"].as<char*>();
                 if (address.length()) {
                     address = EscapeQuotes(address);
-                    Nvs::get()->setCollectionName(address);
+                    Nvs::get()->setAddress(address);
                     #ifdef DEBUG
-                    Serial.println("Address: \"" + address + "\"");
+                    Serial.println("Read Address: \"" + address + "\"");
+                    #endif
+                }
+                int apmt = jsets["apmt"].as<int>();
+                if (apmt) {
+                    Nvs::get()->setApmt(apmt);
+                    #ifdef DEBUG
+                    Serial.println("Read apmt: \"" + String(apmt, DEC) + "\"");
                     #endif
                 }
                 String user = jsets["user"].as<char*>();
@@ -222,7 +235,15 @@ bool ConfigureWebServer::parseSettings(const String &jstr) {
                     user = EscapeQuotes(user);
                     Nvs::get()->setUser(user);
                     #ifdef DEBUG
-                    Serial.println("User name: \"" + user + "\"");
+                    Serial.println("Read User name: \"" + user + "\"");
+                    #endif
+                }
+                String coll_id = jsets["coll_id"].as<char*>();
+                if (coll_id.length()) {
+                    coll_id = EscapeQuotes(coll_id);
+                    Nvs::get()->setCollectionName(coll_id);
+                    #ifdef DEBUG
+                    Serial.println("Read Collection: \"" + coll_id + "\"");
                     #endif
                 }
                 String desc = jsets["desc"].as<char*>();

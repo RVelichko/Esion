@@ -13,16 +13,19 @@
 #include <WebSocketClient.h> 
 
 
+typedef std::unique_ptr<WebSocketClient> PWsClient;
+
+
 /**
  * \brief Класс реализует функции отправки по websocket данных на сервер.
  */ 
 class CountersSender {
-    WebSocketClient _wsocket; ///< Объект обслуживания websocket протокола [RFC6455].
-    String _addr;             ///< Адрес сервера обслуживания.
-    uint16_t _port;           ///< Порт подуключения сокета.
-    String _path;             ///< REST точка подключения.
-    String _room_id;          ///< Идентификатор комнаты, к которой привязывается данное устройство.
-    String _json;             ///< Отправляемые на сервер обслуживания данные
+    PWsClient _wsocket; ///< Объект обслуживания websocket протокола [RFC6455].
+    String _addr;       ///< Адрес сервера обслуживания.
+    uint16_t _port;     ///< Порт подуключения сокета.
+    String _path;       ///< REST точка подключения.
+    String _room_id;    ///< Идентификатор комнаты, к которой привязывается данное устройство.
+    String _json;       ///< Отправляемые на сервер обслуживания данные
     bool _is_recv;
     bool _is_err;
 

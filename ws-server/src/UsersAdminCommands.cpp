@@ -372,6 +372,76 @@ UpdateUserCommand::~UpdateUserCommand() {
 
 Json UpdateUserCommand::execute() {
     Json jres;
+    if (_is_corrected) {
+        size_t found = 0;
+        auto jtoken  = _jdata.find("token");
+        if (jtoken not_eq _jdata.end() and jtoken->is_string() and checkToken(*jtoken)) {
+            auto jskip = _jdata.find("skip");
+            auto jnum  = _jdata.find("num");
+            if (not jskip->empty() and jskip->is_number() and not jnum->empty() and jnum->is_number()) {
+                /// Подготовка полей для определения типа команды.
+                size_t skip = *jskip;
+                size_t num = *jnum;
+                auto jfilter    = _jdata.find("filter");
+                auto jsort      = _jdata.find("sort");
+                auto jdate_time_from = _jdata.find("date_time_from");
+                auto jdate_time_to   = _jdata.find("date_time_to");
+                auto jdate_type      = _jdata.find("date_type");
+                std::string field;
+                bool direct_flag = true;
+                if (jsort not_eq _jdata.end() and jsort->is_object()) {
+                    auto jfield = jsort->find("field");
+                    auto jdirection = jsort->find("direction");
+                    if (jfield not_eq jsort->end() and jfield->is_string() and
+                        jdirection not_eq jsort->end() and jdirection->is_string() and
+                        ((*jdirection) == "asc" or (*jdirection) == "desc")) {
+                        field = jsort->value("field", "");
+                        direct_flag = ((jsort->value("direction", "asc") == "asc") ? true : false);
+                    } else {
+                        LOG(WARNING) << "Incorrect sort tag: [" << _name << "] \"" << _jdata.dump() << "\"";
+                        jres = getErrorResponce("Incorrect 'sort' tag.");
+                    }
+                }
+                Json jlist;
+                std::string filter;
+                if (jfilter not_eq _jdata.end()) {
+                    filter = *jfilter;
+                }
+                size_t date_from = 0;
+                if (jdate_time_from not_eq _jdata.end()) {
+                    date_from = JsonCommand::ToNumber(_jdata, "date_time_from");
+                }
+                size_t date_to = 0;
+                if (jdate_time_to not_eq _jdata.end()) {
+                    date_to = JsonCommand::ToNumber(_jdata, "date_time_to");
+                }
+                std::string date_type;
+                if (jdate_type not_eq _jdata.end()) {
+                    date_type = *jdate_type;
+                }
+                { /// LOCK
+                    LockQuard l(_mutex);
+                    jlist = _db->getUsersList(found, filter,
+                                              date_type, date_from, date_to,
+                                              field, direct_flag,
+                                              num, skip);
+                }
+                eraseMongoId(jlist);
+                jres = fillResponceData(jlist);
+                jres["resp"]["count"] = found;
+            } else {
+                LOG(WARNING) << "Incorrect cmd: [" << _name << "] \"" << _jdata.dump() << "\"";
+                jres = getErrorResponce("Incorrect command.");
+            }
+        } else {
+            LOG(FATAL) << "Invalid token " << *jtoken;
+            jres = getErrorResponce("Invalid token.");
+        }
+    } else {
+        LOG(ERROR) << "Incorrect Command: " << _name;
+        jres = getErrorResponce("Incorrect Command: " + _name);
+    }
+    _snd_fn(jres.dump());
     return jres;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

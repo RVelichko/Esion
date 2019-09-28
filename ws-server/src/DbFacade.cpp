@@ -214,9 +214,11 @@ void DbFacade::eraseOldTokens(size_t timeout, const std::string& user_coll_name)
         if (jtokens.is_array()) {
             Json jeraseds;
             for (auto jtoken : jtokens) {
-                size_t t = static_cast<size_t>(std::atoll(jtoken.get<std::string>().c_str()));
-                if (old <= t) {
-                    jeraseds.push_back(jtoken);
+                if (not jtoken.is_null()) {
+                    size_t t = static_cast<size_t>(std::atoll(jtoken.get<std::string>().c_str()));
+                    if (old <= t) {
+                        jeraseds.push_back(jtoken);
+                    }
                 }
             }
             if (not jeraseds.empty()) {
@@ -327,6 +329,52 @@ Json DbFacade::getUniqueAddresses(const std::string& coll_id, const std::string&
     return jaddrs;
 } catch (const std::exception &e) {
     LOG(ERROR) << "Can`t get [" << filter << "] addresses from DB: " << e.what();
+    return Json();
+}
+
+
+Json DbFacade::getUsersList(size_t& total_num,
+             const std::string& filter,  const std::string& date_type, time_t date_time_from, time_t date_time_to,
+             const std::string& field, bool direct, size_t num, size_t skip) try {
+    BsonObjs founds;
+    Json jq;
+    if (not filter.empty()) {
+        jq["$text"] = {
+            {"$search", filter}
+        };
+    }
+    if (not date_type.empty() and (date_time_from or date_time_to)) {
+        Json jdate_type;
+        if (date_time_from) {
+            jdate_type["$gte"] = date_time_from;
+        }
+        if (date_time_to) {
+            jdate_type["$lt"] = date_time_to;
+        }
+        jq[date_type] = jdate_type;
+    }
+    LOG(TRACE) << jq.dump();
+    DbQuery q(jq.dump());
+    total_num = _dbc->query(getMdbNs(AUTH_COLLECTION_NAME), q)->itcount();
+    if (not field.empty()) {
+        size_t d = (direct ? 1 : -1);
+        auto sq = q.sort(field, d);
+        q = sq;
+    }
+    if (total_num < num) {
+        num = total_num;
+    }
+    _dbc->findN(founds, getMdbNs(AUTH_COLLECTION_NAME), q, num,  skip);
+    Json jvals;
+    size_t i = 0;
+    for (auto bval : founds) {
+        jvals[i] = (DbFacade::toJson(bval));
+        ++i;
+    }
+    return jvals;
+} catch (const std::exception& e) {
+    LOG(ERROR) << "Can`t get users [" << num << " | " << skip << "] " << field << ": "  << BTOS(direct)
+               << ", from DB: " << e.what();
     return Json();
 }
 
@@ -888,7 +936,6 @@ size_t DbFacade::getCriticalNumByDevId(const std::string& coll_id, const std::st
 
 Json DbFacade::getCubicMeters(const std::string& coll_id, const std::string& dev_id,
                               time_t date_time_from, time_t date_time_to) try {
-    size_t num = 0;
     Json jmatch = {
         {"$match", {
             {"coll_id", coll_id},

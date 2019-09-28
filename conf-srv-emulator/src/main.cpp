@@ -145,6 +145,7 @@ int main(int argc_, char **argv_) {
                     {"pswd",      "wifipassword"},
                     {"user",      "Test"},
                     {"address",   "Test address"},
+                    {"apmt",      123},
                     {"desc",      "Тестовая конфигурация."},
                     { "power", "bat_4aa" }
                 });

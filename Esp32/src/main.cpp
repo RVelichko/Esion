@@ -49,7 +49,8 @@ static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
 static const uint16_t MAX_ATTEMPS_CONNECTIONS = 200;
 static const uint32_t DEFAULT_LOCAL_PORT = 20000;
 static const char DEFAULT_SERVICE_URL[] = "localhost";
-static const char DEFAULT_SERVICE_POINT[] = "/rest/device";
+static const uint16_t DEFAULT_SERVICE_PORT = 8080;
+static const char DEFAULT_SERVICE_POINT[] = "/device";
 
 
 RTC_DATA_ATTR bool __is_run = false;
@@ -255,9 +256,11 @@ public:
                 String time = ctime(&_now);
                 String id = String(__device_id, DEC);
                 std::array<uint32_t, 4> icounts({__count1, __count2, __count3, __count4});
+                auto apmt = nvs->getApmt();
                 auto user_name = nvs->getUser();
                 auto desc = nvs->getDescription();
-                auto coll = nvs->getCollectionName();
+                auto addr = nvs->getAddress();
+                auto coll_id = nvs->getCollectionName();
                 __power_id = nvs->getPwrId();
                 String powt = "none";
                 if (__power_id == 1) {
@@ -266,13 +269,14 @@ public:
                     powt = "4AA [6V]";
                 } 
                 String data_sjson =
-                    "{\"id\":\"" + id + "\"," \
-                    "\"coll\":\"" + coll + "\"," \
+                    "{\"dev_id\":\"" + id + "\"," \
+                    "\"apmt\":" + String(apmt, DEC) + "," \
+                    "\"coll\":\"" + addr + "\"," \
+                    "\"coll_id\":\"" + coll_id + "\"," \
                     "\"power_type\":\"" + powt + "\"," \
-                    "\"power\":\"" + String(__adc_level, DEC) + "\"," \
+                    "\"voltage\":\"" + String(__adc_level, DEC) + "\"," \
                     "\"user\":\"" + user_name + "\"," \
                     "\"desc\":\"" + desc + "\"," \
-                    "\"time\":" + String(_now, DEC) + "," \
                     "\"counters\":[";
                 for (uint8_t i = 0; i < icounts.size(); ++i) {
                     auto count_cfg = nvs->getCounterConfig(i);
@@ -280,9 +284,9 @@ public:
                         "{\"type\":\"" + count_cfg.type + "\"";
                     if (count_cfg.type not_eq "none") {
                         data_sjson +=
-                            ",\"count\":\"" + String(icounts[i], DEC) + "\"," \
+                            ",\"count\":" + String(icounts[i], DEC) + "," \
                             "\"unit\":\"" + count_cfg.unit + "\"," \
-                            "\"units_count\":\"" + count_cfg.unit_impl + "\"," \
+                            "\"unit_count\":" + count_cfg.unit_impl + "," \
                             "\"serial\":\"" + count_cfg.serial + "\"," \
                             "\"desc\":\"" + count_cfg.desc + "\"";
                     }
@@ -303,7 +307,11 @@ public:
                 if (not path.length()) {
                     path = DEVICE_URL_PATH;
                 }
-                _cs.reset(new CountersSender(U.host, U.port, path, id, data_sjson));
+                uint16_t port = U.port;
+                if (not port) {
+                    port = DEFAULT_SERVICE_PORT;
+                }
+                _cs.reset(new CountersSender(U.host, port, path, id, data_sjson));
                 _cs->execute();
                 ResetTimerInterrupt();
             } else {

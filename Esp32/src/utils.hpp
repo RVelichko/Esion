@@ -177,7 +177,11 @@ public:
  * \brief Структура реализует разбор URL на составляющие.
  */ 
 struct Url {
-    Url(const String& url) {
+    Url(const String& url) 
+        : port(0) {
+        #ifdef DEBUG
+        Serial.println("Input URL: \"" + url + "\"");
+        #endif
         String s(url);
         int iprotocol = s.indexOf("://");
         if (iprotocol not_eq -1) {
@@ -322,19 +326,29 @@ struct Nvs {
      */ 
     void setPwrId(int pwrid) {
         NVS.setInt("pwrid", pwrid);
+        #ifdef DEBUG
+        Serial.println("$ Set PWR id: " + String(pwrid, DEC));
+        #endif
     }
 
     /**
      * \brief Метод возвращает тип питания.
      */ 
     int getPwrId() {
-        return NVS.getInt("pwrid");
+        int pwrid = NVS.getInt("pwrid");
+        #ifdef DEBUG
+        Serial.println("$ Set PWR id: " + String(pwrid, DEC));
+        #endif
+        return pwrid;
     }
 
     /**
      * \brief Метод выполняет запись идентификатора (должен выполняться 1 раз).
      */ 
     void setId(uint64_t id) {
+        #ifdef DEBUG
+        Serial.println("$ Set dev_id: " + idToStr(id));
+        #endif
         NVS.setInt("id", id);
     }
 
@@ -343,6 +357,9 @@ struct Nvs {
      */ 
     uint64_t getId() {
         uint64_t uui64 = NVS.getInt("id");    
+        #ifdef DEBUG
+        Serial.println("$ Get dev_id: " + idToStr(uui64));
+        #endif
         return uui64;
     }
 
@@ -376,6 +393,21 @@ struct Nvs {
         return pswd;
     }
 
+    void setAddress(const String& addr) {
+        NVS.setString("addr", addr);
+        #ifdef DEBUG
+        Serial.println("$ Set Address: " + addr);
+        #endif
+    }
+
+    String getAddress() {
+        String addr = NVS.getString("addr");
+        #ifdef DEBUG
+        Serial.println("$ Get Address: " + addr);
+        #endif
+        return addr;
+    }
+
     void setCollectionName(const String& coln) {
         NVS.setString("coln", coln);
         #ifdef DEBUG
@@ -392,20 +424,32 @@ struct Nvs {
     }
 
     void setUser(const String& user) {
+        #ifdef DEBUG
+        Serial.println("$ Set user: " + user);
+        #endif
         NVS.setString("usr", user);
     }
 
     String getUser() {
         String user = NVS.getString("usr");
+        #ifdef DEBUG
+        Serial.println("$ Get user: " + user);
+        #endif
         return user;
     }
 
     void setDescription(const String& desc) {
+        #ifdef DEBUG
+        Serial.println("$ Set desc: " + desc);
+        #endif
         NVS.setString("desc", desc);
     }
 
     String getDescription() {
         String desc = NVS.getString("desc");
+        #ifdef DEBUG
+        Serial.println("$ Get desc: " + desc);
+        #endif
         return desc;
     }
 
@@ -464,6 +508,28 @@ struct Nvs {
         Serial.println("$ Get counters config: " + cc);
         #endif
         return count_conf;
+    }
+
+    /**
+     * \brief Метод выполняет запись номера кватриты.
+     * \param apmt  Номер квартиры.
+     */ 
+    void setApmt(uint32_t apmt) {
+        #ifdef DEBUG
+        Serial.println("$ Set apmt: " + String(apmt, DEC));
+        #endif
+        NVS.setInt("apmt", apmt);
+    }
+
+    /**
+     * \brief Метод возвращает номер квартиры.
+     */ 
+    uint32_t getApmt() {
+        uint32_t apmt = NVS.getInt("apmt");
+        #ifdef DEBUG
+        Serial.println("$ Get apmt: " + String(apmt, DEC));
+        #endif
+        return apmt;
     }
 
     /**

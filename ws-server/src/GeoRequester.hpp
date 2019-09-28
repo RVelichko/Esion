@@ -23,7 +23,9 @@ typedef std::shared_ptr<DbFacade> PDbFacade;
 
 
 class GeoRequester {
-    const std::string& _api_key;
+    std::string _api_key;
+
+    Json parseResult(const std::string& body_buf, Json& jgeo);
 
 public:
     GeoRequester(const std::string& api_key);

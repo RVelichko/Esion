@@ -1,17 +1,19 @@
 <template>
   <div class="users">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <UsersInformation msg="Welcome to Your Vue.js App"/>
+      <AddUser />
+      <UsersInformation />
   </div>
 </template>
 
 <script>
 // @ is an alias to /src
+import AddUser from '@/components/AddUser.vue'
 import UsersInformation from '@/components/UsersInformation.vue'
 
 export default {
     name: 'users',
     components: {
+        AddUser,
         UsersInformation
     }
 }

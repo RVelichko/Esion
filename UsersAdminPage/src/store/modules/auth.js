@@ -41,7 +41,6 @@ export default {
                     }
                 }
             };
-
             socket.send(JSON.stringify(sendData));
             commit('setStatus', { status: 'loading' });
             this._loginTimer = setTimeout(() => {
@@ -57,9 +56,7 @@ export default {
                     }
                 }
             };
-
             socket.send(JSON.stringify(sendData));
-
             commit('removeToken');
             commit('setStatus', '');
             commit('removeUser');
@@ -69,11 +66,9 @@ export default {
         },
         onLoginResponse ({ commit }, data) {
             clearTimeout(this._loginTimer);
-
             if (data.status === 'ok') {
                 commit('setToken', data.token);
                 commit('setStatus', { status: 'success' });
-
                 let userInfo = data.user_info || {};
                 commit('setUser', {
                     name: userInfo.person || '-',

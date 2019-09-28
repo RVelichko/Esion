@@ -14,7 +14,7 @@ namespace server {
 
 typedef server::DbFacade DbFacade;
 typedef std::shared_ptr<DbFacade> PDbFacade;
-typedef std::unique_ptr<GeoRequester> PGeoRequester;
+typedef std::shared_ptr<GeoRequester> PGeoRequester;
 
 
 /**
@@ -53,6 +53,42 @@ typedef std::unique_ptr<GeoRequester> PGeoRequester;
  *              <таких записей всего 4, первая запись для счётчика устройства №1, вторая для №2 и т.д.  >
  *            ]
  *          }
+ */
+
+/**
+ * {
+ *     "dev_id" : "1561650574",
+ *     "apmt" : 27,
+ *     "coll" : "Санкт-Петербург Вязовая д.10",
+ *     "coll_id" : "Debug Debug",
+ *     "power_type" : "LiOn 3.8V",
+ *     "user" : "Vishen Ruevit",
+ *     "voltage" : 3.52353328947142,
+ *     "desc" : "\"ГСК \"\"Автомобилист\"\" Договор N% 32/16 от 01/11/16\": N 20",
+ *     "counters" : [
+ *         {
+ *             "count" : 1653,
+ *             "cubic_meter" : [ // Заполняет сервер.
+ *                 {
+ *                     "cm" : 0.049,
+ *                     "t" : 1561619939
+ *                 }, ...
+ *             ],
+ *             "serial" : 303,
+ *             "type" : "Debug type",
+ *             "unit" : "Литр",
+ *             "unit_count" : 1,
+ *             "verify_date" : 1729294805, // Не реализовано.
+ *             "unit_type" : "Импульс", // Определяет сервер.
+ *             "desc" : "Отладочный канал N 2",
+ *         }, ...
+ *     ],
+ *     "voltage_perc" : 92,             // Определяте сервер.
+ *     "geo" : [ 59.96716, 30.273611 ], // Определяет сервер.
+ *     "start_time" : 1561619939,       // Определяет сервер.
+ *     "update_time" : 1564411326,      // Определяет сервер.
+ *     "status" : "active",             // Определяет сервер.
+ * }
  */
 class DevicePeerWorker : public BaseWorker {
     virtual bool parseMessage(const std::string &msg, const ConcreteFn &func);

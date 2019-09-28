@@ -36,7 +36,6 @@ static char DEFAULT_DB_LOGIN[]    = "esion";
 static char DEFAULT_DB_PSWD[]     = "esionpassword";
 
 static char DEFAULT_ADDRESSES_FILE[] = "addresses.csv";
-
 static char DEFAULT_YMAP_API_KEY[] = "ad12ff63-587b-42c7-b1e1-e8b8b0913cda";
 
 
@@ -259,15 +258,15 @@ public:
             if (bfs::exists(bfs::path(_addr_file))) {
                 LOG(DEBUG) << "_addr_file";
                 auto jdevs = createDevices();
-                for (auto jdev : jdevs) {
-                    //LOG(TRACE) << jdev.dump();
-                    _db->insertDevice(jdev);
-                }
-                auto jevs = createEvents(jdevs);
-                for (auto jev : jevs) {
-                    //LOG(TRACE) << jev.dump();
-                    _db->insertEvent(jev);
-                }
+                //for (auto jdev : jdevs) {
+                //    LOG(TRACE) << jdev.dump();
+                //    //_db->insertDevice(jdev);
+                //}
+                //auto jevs = createEvents(jdevs);
+                //for (auto jev : jevs) {
+                //    LOG(TRACE) << jev.dump();
+                //    //_db->insertEvent(jev);
+                //}
             } else {
                 LOG(ERROR) << "Can`t find file \"" << _addr_file << "\"";
             }

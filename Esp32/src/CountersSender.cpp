@@ -39,7 +39,9 @@ void CountersSender::recvState(const String &srecv) {
 
 
 CountersSender::CountersSender(const String& addr, uint16_t port, const String &path, const String& room_id, const String& json) 
-    : _addr(addr) 
+    //: _wsocket(new WebSocketClient(false))
+    : _wsocket(new WebSocketClient(true))
+    ,_addr(addr) 
     , _port(port)
     , _path(path)
     , _room_id(room_id)
@@ -51,7 +53,9 @@ CountersSender::CountersSender(const String& addr, uint16_t port, const String &
 
 CountersSender::~CountersSender() {
     /// Отключиться от сервера.
-    _wsocket.disconnect();
+    if (_wsocket) {
+        _wsocket->disconnect();
+    }
     #ifdef DEBUG
     Serial.println("Websock client is disconnected");
     #endif
@@ -62,21 +66,24 @@ void CountersSender::execute() {
     #ifdef DEBUG
     Serial.println("Try connecting to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
     #endif
-    if (_wsocket.connect(_addr, _path, _port)) {
-        #ifdef DEBUG
-        Serial.println("Connected to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
-        #endif
-        _wsocket.send(_json);
-        while (not _is_err and not _is_recv) {
-            String msg;
-            if (_wsocket.getMessage(msg)) {
-                recvState(msg);
+    if (_wsocket) {
+        //if (_wsocket->connect("192.168.1.142", "/device", 20000)) {
+        if (_wsocket->connect(_addr, _path, _port)) {
+            #ifdef DEBUG
+            Serial.println("Connected to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
+            #endif
+            _wsocket->send(_json);
+            while (not _is_err and not _is_recv) {
+                String msg;
+                if (_wsocket->getMessage(msg)) {
+                    recvState(msg);
+                }
             }
+        } else  {
+            #ifdef DEBUG
+            Serial.println("Can`t connect to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
+            #endif
+            _is_err = true;
         }
-    } else  {
-        #ifdef DEBUG
-        Serial.println("Can`t connect to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
-        #endif
-        _is_err = true;
     }
 }

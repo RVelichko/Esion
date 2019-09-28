@@ -113,6 +113,25 @@ public:
      */
     Json getUniqueAddresses(const std::string& coll_id, const std::string& filter);
 
+
+    /**
+     * \brief Метод возвращает N имеющихся пользователей сервиса.
+     * \param [OUT] total_num  Общее количество устройств.
+     * \param filter  Строка с фильтром.
+     * \param date_type  Тип времени для устройства [время запуска устройства / время последнего обновления].
+     * \param date_time_from  Врямя оn которого необходимо осуществить поиск.
+     * \param date_time_to  Врямя по которому необходимо осуществить поиск.
+     * \param field  Имя поля по которому необходимо отсортировать результат выдачи.
+     * \param direct  Направление сортировки при TRUE - в прямом порядке, при FALSE - в обратном.
+     * \param num  Количество запрашиваемых устройств.
+     * \param skip Количество пропускаемых в запросе устройств.
+     * \param is_all_fields  Возвращать все поля в запросе.
+     */
+    Json getUsersList(size_t& total_num,
+                      const std::string& filter,  const std::string& date_type, time_t date_time_old, time_t date_time,
+                      const std::string& field = "", bool direct = true,
+                      size_t num = DEFAULT_NUMBER_REQUESTED, size_t skip = 0);
+
     /**
      * \brief Метод возвращает N имеющихся устройств.
      * \param [OUT] total_num  Общее количество устройств.

@@ -60,7 +60,9 @@ bool OperatorPeerWorker::lastMessage(const ConnectionValuesIter &iter, const std
         if (not json.empty()) {
             auto ping = json.find("ping");
             if (ping not_eq json.end()) {
-                Json jsnd = {{"pong", "pong"}};
+                Json jsnd = {
+                    {"pong", "pong"}
+                };
                 _msg_fn(connection_id, jsnd.dump(), WS_STRING_MESSAGE);
                 LOG(DEBUG) << jsnd;
             } else {
