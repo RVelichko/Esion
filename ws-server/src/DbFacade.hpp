@@ -98,7 +98,7 @@ public:
      * \param token  Токен авторизации пользователя.
      * \param user_coll_name  Имя коллекции пользователей.
      */
-    Json findUser(const std::string& token, const std::string& user_coll_name);
+    Json findToken(const std::string& token, const std::string& user_coll_name);
 
     /**
      * \brief Метод возвращает первого найденного пользователя.

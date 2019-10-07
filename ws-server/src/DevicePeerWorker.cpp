@@ -160,7 +160,7 @@ PConnectionValue DevicePeerWorker::firstMessage(size_t connection_id, const std:
                             vperc = 0.0;
                         }
                     }
-                    jdev["voltage_perc"] = vperc;
+                    jdev["voltage_perc"] = vperc * 100.0;
                     double voltage = 0.0;
                     if (json.find("power_type") not_eq json.end() and json["power_type"].is_string()) {
                         if (json["power_type"] == "LiOn [3.8V]") {

@@ -52,9 +52,12 @@ static const char DEFAULT_SERVICE_URL[] = "localhost";
 static const uint16_t DEFAULT_SERVICE_PORT = 8080;
 static const char DEFAULT_SERVICE_POINT[] = "/device";
 
+static const uint32_t RESET_TIMEOUT = 10000;
+
 
 RTC_DATA_ATTR bool __is_run = false;
 RTC_DATA_ATTR bool __is_send_timeout = false;
+RTC_DATA_ATTR time_t __comtrol_send_timneout = 0;
 RTC_DATA_ATTR uint8_t __pin_states = 0;
 
 RTC_DATA_ATTR uint32_t __count1 = 0;
@@ -64,7 +67,8 @@ RTC_DATA_ATTR uint32_t __count4 = 0;
 RTC_DATA_ATTR uint32_t __last_max_count = 0;
 
 RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 10;
-RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10000;
+RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10; ///< секунд
+RTC_DATA_ATTR uint32_t CONTROL_SEND_SLEEP_TIME = 259200; ///< секунд
 
 RTC_DATA_ATTR time_t __device_id = 0;
 RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
@@ -288,6 +292,7 @@ public:
                             "\"unit\":\"" + count_cfg.unit + "\"," \
                             "\"unit_count\":" + count_cfg.unit_impl + "," \
                             "\"serial\":\"" + count_cfg.serial + "\"," \
+                            "\"start_mcubs\":" + String(count_cfg.start_mcubs, DEC) + "," \
                             "\"desc\":\"" + count_cfg.desc + "\"";
                     }
                     if (i < icounts.size() - 1) {
@@ -301,7 +306,7 @@ public:
                 Serial.println("Send: " + data_sjson);
                 #endif
                 /// Отправить данные на сервер.
-                InitTimerInterrupt(3000);
+                InitTimerInterrupt(RESET_TIMEOUT);
                 Url U(service_url);
                 String path = U.path;
                 if (not path.length()) {
@@ -403,6 +408,9 @@ void SendTimeout() {
     #endif
     SaveCounters();
     Esion::getPtr()->sendValues();
+    /// Запустить обязательную отправку через 3 дня.
+    esp_sleep_enable_timer_wakeup(CONTROL_SEND_SLEEP_TIME * 1000000);
+
 }
 
 
@@ -469,20 +477,20 @@ void WakeupReason() {
                 #ifdef DEBUG
                 Serial.println("C1---------> PIN 34: " + String(__count1, DEC));
                 #endif
-            } else if (wu_bit & GPIO_SEL_39) {
+            } else if (wu_bit & GPIO_SEL_35) {
                 ++__count2;
                 #ifdef DEBUG
-                Serial.println("C2---------> PIN 39: " + String(__count2, DEC));
+                Serial.println("C2---------> PIN 35: " + String(__count2, DEC));
                 #endif
             } else if (wu_bit & GPIO_SEL_36) {
                 ++__count3;
                 #ifdef DEBUG
                 Serial.println("C3---------> PIN 36: " + String(__count3, DEC));
                 #endif
-            } else if (wu_bit & GPIO_SEL_35) {
+            } else if (wu_bit & GPIO_SEL_39) {
                 ++__count4;
                 #ifdef DEBUG
-                Serial.println("C4---------> PIN 35: " + String(__count4, DEC));
+                Serial.println("C4---------> PIN 39: " + String(__count4, DEC));
                 #endif
             }
             /// Моргнуть светодиодом на очередной импульс.
@@ -550,7 +558,7 @@ void setup() {
     esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34, ESP_EXT1_WAKEUP_ANY_HIGH);
     /// Установить обработчик прерывания по таймеру.
     if (CheckMaxCounts(GetMaxCounter())) {
-        esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000);
+        esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000000);
     }
     #ifdef DEBUG
     Serial.println("To sleep. -----------------------------");

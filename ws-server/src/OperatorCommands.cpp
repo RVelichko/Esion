@@ -142,14 +142,14 @@ Json OperatorBaseCommand::fillResponceData(const Json& js) {
 
 bool OperatorBaseCommand::checkToken(const std::string& token) {
     LockQuard l(_mutex);
-    auto jusr = _db->findUser(token, AUTH_COLLECTION_NAME);
+    auto jusr = _db->findToken(token, AUTH_COLLECTION_NAME);
     return not jusr.empty();
 }
 
 
 std::string OperatorBaseCommand::getCollectionId(const std::string& token) {
     std::string coll_id;
-    auto jusr = _db->findUser(token, AUTH_COLLECTION_NAME);
+    auto jusr = _db->findToken(token, AUTH_COLLECTION_NAME);
     if (not jusr.empty() and jusr.is_object()) {
         auto jcoll_id = jusr.find("coll_id");
         if (jcoll_id not_eq jusr.end() and jcoll_id->is_string()) {
@@ -192,7 +192,7 @@ Json AuthorizeCommand::execute() {
             { /// LOCK
                 LockQuard l(_mutex);
                 _db->eraseOldTokens(OLD_TOKENS_TIMEOUT);
-                jusr = _db->findUser(*jlogin, *jpswd);
+                jusr = _db->findUser(*jlogin, *jpswd, AUTH_COLLECTION_NAME);
             }
             if (not jusr.empty()) {
                 eraseMongoId(jusr);
@@ -224,7 +224,7 @@ Json AuthorizeCommand::execute() {
             { /// LOCK
                 LockQuard l(_mutex);
                 _db->eraseOldTokens(OLD_TOKENS_TIMEOUT);
-                jusr = _db->findUser(*jtoken, AUTH_COLLECTION_NAME);
+                jusr = _db->findToken(*jtoken, AUTH_COLLECTION_NAME);
             }
             if (not jusr.empty()) {
                 eraseMongoId(jusr);
@@ -277,7 +277,7 @@ Json LogoutCommand::execute() {
             Json jusr;
             { /// LOCK
                 LockQuard l(_mutex);
-                jusr = _db->findUser(token, AUTH_COLLECTION_NAME);
+                jusr = _db->findToken(token, AUTH_COLLECTION_NAME);
             }
             if (not jusr.empty()) {
                 eraseMongoId(jusr);

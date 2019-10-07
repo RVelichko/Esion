@@ -6,7 +6,6 @@
 #include <Arduino.h>
 #include <ArduinoNvs.h>
 
-//static const char POWER_TYPE[] = "4AA [6V]";
 static const double BATTARY_FULL_VALUE = 100.0;
 
 static const int NUM_COUNTERS = 4; 
@@ -115,25 +114,6 @@ public:
         blinkTime<BLUE_PIN>(POINT_DT);
         blinkTime<RED_PIN>(POINT_DT);
         blinkTime<BLUE_PIN>(POINT_DT);
-
-        ///// E.
-        //blinkTime(POINT_DT);
-        ///// R
-        //blinkTime(POINT_DT);
-        //blinkTime(LINE_DT);
-        //blinkTime(POINT_DT);
-        ///// R
-        //blinkTime(POINT_DT);
-        //blinkTime(LINE_DT);
-        //blinkTime(POINT_DT);
-        ///// O
-        //blinkTime(LINE_DT);
-        //blinkTime(LINE_DT);
-        //blinkTime(LINE_DT);
-        ///// R
-        //blinkTime(POINT_DT);
-        //blinkTime(LINE_DT);
-        //blinkTime(POINT_DT);
     }
 
     void warning() {
@@ -142,31 +122,7 @@ public:
         blinkTime<RED_PIN>(LINE_DT);
         blinkTime<RED_PIN>(LINE_DT);
         blinkTime<RED_PIN>(LINE_DT);
-        ////// W
-        ///blinkTime(POINT_DT);
-        ///blinkTime(LINE_DT);
-        ///blinkTime(LINE_DT);
-        ////// A
-        ///blinkTime(POINT_DT);
-        ///blinkTime(LINE_DT);
-        ////// R
-        ///blinkTime(POINT_DT);
-        ///blinkTime(LINE_DT);
-        ///blinkTime(POINT_DT);
-        ////// N
-        ///blinkTime(LINE_DT);
-        ///blinkTime(POINT_DT);
-        ////// I
-        ///blinkTime(POINT_DT);
-        ///blinkTime(POINT_DT);
-        ////// N
-        ///blinkTime(LINE_DT);
-        ///blinkTime(POINT_DT);
-        ////// G
-        ///blinkTime(LINE_DT);
-        ///blinkTime(LINE_DT);
-        ///blinkTime(POINT_DT);
-    }
+     }
 
     ~ErrorLights() 
     {}
@@ -265,9 +221,12 @@ struct CounterConfig {
     int unit_impl;
     String serial;
     String desc;
+    double start_mcubs;
 
     CounterConfig() 
         : type("none")
+        , unit_impl(1)
+        , start_mcubs(0.0)
     {}
 };
 
@@ -471,7 +430,9 @@ struct Nvs {
     void setCounterConfig(uint8_t num, const CounterConfig& count_conf) {
         String cc = "none";
         if (count_conf.type not_eq "none") {
-            cc = count_conf.type + "|" + count_conf.serial + "|" + count_conf.unit + "|" + count_conf.unit_impl + "|" + count_conf.desc;
+            cc = count_conf.type + "|" + count_conf.serial + "|" + count_conf.unit + "|" + 
+                 String(count_conf.unit_impl, DEC) + "|" + count_conf.desc + "|" + 
+                 String(count_conf.start_mcubs, DEC);
             NVS.setString("ccfg" + String(num, DEC), cc);
         }
         #ifdef DEBUG
@@ -498,7 +459,12 @@ struct Nvs {
                         i = cc.indexOf("|");
                         if (i not_eq -1 and i < cc.length()) {
                             count_conf.unit_impl = cc.substring(0, i).toInt();
-                            count_conf.desc = cc.substring(i + 1);
+                            cc = cc.substring(i + 1);
+                            i = cc.indexOf("|");
+                            if (i not_eq -1 and i < cc.length()) {
+                                count_conf.desc = cc.substring(0, i);
+                                count_conf.start_mcubs = cc.substring(i + 1).toDouble();
+                            }
                         }
                     }
                 }

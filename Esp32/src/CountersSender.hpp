@@ -13,7 +13,7 @@
 #include <WebSocketClient.h> 
 
 
-typedef std::unique_ptr<WebSocketClient> PWsClient;
+typedef std::shared_ptr<WebSocketClient> PWsClient;
 
 
 /**

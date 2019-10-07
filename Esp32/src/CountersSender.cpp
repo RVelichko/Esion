@@ -5,10 +5,10 @@
 #include "utils.hpp"
 
 
-static const uint16_t DEFAULT_RECONNECT_TIMEOUT = 10000; /// mlsecs
+static const uint16_t DEFAULT_RECONNECT_TIMEOUT = 30000; /// mlsecs
 
 
-typedef StaticJsonDocument<500> JsonBufferType;
+typedef StaticJsonDocument<800> JsonBufferType;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -73,9 +73,18 @@ void CountersSender::execute() {
             Serial.println("Connected to \"" + _addr + ":" +  String(_port, DEC) + _path + "\"");
             #endif
             _wsocket->send(_json);
+            #ifdef DEBUG
+            Serial.println("Wait recv");
+            #endif
             while (not _is_err and not _is_recv) {
+                #ifdef DEBUG
+                Serial.print(".");
+                #endif
                 String msg;
                 if (_wsocket->getMessage(msg)) {
+                    #ifdef DEBUG
+                    Serial.println(".");
+                    #endif
                     recvState(msg);
                 }
             }

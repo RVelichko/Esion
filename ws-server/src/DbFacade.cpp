@@ -235,6 +235,7 @@ void DbFacade::eraseOldTokens(size_t timeout, const std::string& user_coll_name)
 
 
 Json DbFacade::findUser(const std::string& user, const std::string& pswd, const std::string& user_coll_name) try {
+    LOG(TRACE) << "Find [" << user << " | " << pswd << "] user in DB.collection: \"" << user_coll_name << "\"";
     Json jq = {
         {"name", user},
         {"pswd", pswd}
@@ -249,7 +250,8 @@ Json DbFacade::findUser(const std::string& user, const std::string& pswd, const 
 }
 
 
-Json DbFacade::findUser(const std::string& token, const std::string& user_coll_name) try {
+Json DbFacade::findToken(const std::string& token, const std::string& user_coll_name) try {
+    LOG(TRACE) << "Find [" << token << "] user in DB.collection: \"" << user_coll_name << "\"";
     Json jq = {
         {"token", token}
     };
