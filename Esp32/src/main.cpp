@@ -46,17 +46,20 @@ static const int MEASURE_PIN = 27; //ADC2_CHANNEL_7;  ///< Пин измерен
 
 static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
 
-static const uint16_t MAX_ATTEMPS_CONNECTIONS = 200;
+static const uint16_t MAX_ATTEMPS_CONNECTIONS = 100;
 static const uint32_t DEFAULT_LOCAL_PORT = 20000;
 static const char DEFAULT_SERVICE_URL[] = "localhost";
 static const uint16_t DEFAULT_SERVICE_PORT = 8080;
 static const char DEFAULT_SERVICE_POINT[] = "/device";
 
-static const uint32_t RESET_TIMEOUT = 10000;
+static const uint32_t RESET_TIMEOUT = 20;
+static const uint32_t SEND_SLEEP_TIME = 10; ///< секунд
+static const uint32_t CONTROL_SEND_SLEEP_TIME = 259200; ///< секунд
 
 
 RTC_DATA_ATTR bool __is_run = false;
 RTC_DATA_ATTR bool __is_send_timeout = false;
+RTC_DATA_ATTR bool __is_control_send_timeout = true;
 RTC_DATA_ATTR time_t __comtrol_send_timneout = 0;
 RTC_DATA_ATTR uint8_t __pin_states = 0;
 
@@ -66,9 +69,7 @@ RTC_DATA_ATTR uint32_t __count3 = 0;
 RTC_DATA_ATTR uint32_t __count4 = 0;
 RTC_DATA_ATTR uint32_t __last_max_count = 0;
 
-RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 10;
-RTC_DATA_ATTR uint32_t SEND_SLEEP_TIME = 10; ///< секунд
-RTC_DATA_ATTR uint32_t CONTROL_SEND_SLEEP_TIME = 259200; ///< секунд
+RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 100;
 
 RTC_DATA_ATTR time_t __device_id = 0;
 RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
@@ -179,7 +180,7 @@ public:
 
     Esion() {
         /// Проверить уровень заряда аккумулятора.
-        __adc_level = updateAdcLEvel();
+        //__adc_level = updateAdcLEvel();
         auto nvs = Nvs::get();
         /// Получить тип питания.
         //__power_id = nvs->getPwrId();
@@ -306,7 +307,7 @@ public:
                 Serial.println("Send: " + data_sjson);
                 #endif
                 /// Отправить данные на сервер.
-                InitTimerInterrupt(RESET_TIMEOUT);
+                InitTimerInterrupt(RESET_TIMEOUT * 1000);
                 Url U(service_url);
                 String path = U.path;
                 if (not path.length()) {
@@ -368,6 +369,7 @@ void SaveCounters() {
         }
         #ifdef DEBUG
         Serial.println("SAVE ----------------------------"); 
+        Serial.println("Power: " + String(__adc_level, DEC)); 
         Serial.println("Count 1: " + String(__count1, DEC)); 
         Serial.println("Count 2: " + String(__count2, DEC)); 
         Serial.println("Count 3: " + String(__count3, DEC)); 
@@ -388,8 +390,10 @@ void RestoreCounters() {
         __count3 = nvs->getCounter(2);
         __count4 = nvs->getCounter(3);
         __last_max_count = nvs->getCounter(4);
+        __adc_level = Esion::updateAdcLEvel();
         #ifdef DEBUG
         Serial.println("RESTORE -------------------------"); 
+        Serial.println("Power: " + String(__adc_level, DEC)); 
         Serial.println("Count 1: " + String(__count1, DEC)); 
         Serial.println("Count 2: " + String(__count2, DEC)); 
         Serial.println("Count 3: " + String(__count3, DEC)); 
@@ -402,15 +406,12 @@ void RestoreCounters() {
 
 
 void SendTimeout() {
-    __is_send_timeout = true;
+    __is_control_send_timeout = true;
     #ifdef DEBUG
     Serial.println("SEND Counters ==================="); 
     #endif
     SaveCounters();
     Esion::getPtr()->sendValues();
-    /// Запустить обязательную отправку через 3 дня.
-    esp_sleep_enable_timer_wakeup(CONTROL_SEND_SLEEP_TIME * 1000000);
-
 }
 
 
@@ -454,7 +455,7 @@ void WakeupReason() {
                 auto cs = ConfigureWebServer::getPtr();
                 if (cs) {
                     /// Проверить уровень заряда аккумулятора.
-                    __adc_level = Esion::updateAdcLEvel();
+                    //__adc_level = Esion::updateAdcLEvel();
                     __device_id = Nvs::get()->getId();
                     if (__device_id == 0) {
                         __device_id = DEVICE_ID;
@@ -556,9 +557,13 @@ void setup() {
     }
     /// Установить обработчики прерываний на обработку входных импульсов.
     esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34, ESP_EXT1_WAKEUP_ANY_HIGH);
-    /// Установить обработчик прерывания по таймеру.
     if (CheckMaxCounts(GetMaxCounter())) {
+        /// Установить обработчик прерывания по таймеру.
         esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000000);
+    } else if (__is_control_send_timeout) {
+        /// Запустить обязательную отправку через 3 дня.
+        __is_control_send_timeout = false;
+        esp_sleep_enable_timer_wakeup(CONTROL_SEND_SLEEP_TIME * 1000000);
     }
     #ifdef DEBUG
     Serial.println("To sleep. -----------------------------");

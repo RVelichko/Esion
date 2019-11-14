@@ -280,6 +280,15 @@ struct Nvs {
         return NVS.getInt(name);
     }
 
+    void setPowerValue(float pwr) {
+        NVS.setFloat("pwr", pwr);
+    }
+
+    float getPowerValue() {
+        return NVS.getFloat("pwr");
+    }
+
+
     /**
      * \brief Метод выполняет запись типа питания (должен выполняться 1 раз).
      */ 

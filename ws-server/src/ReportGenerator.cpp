@@ -150,16 +150,16 @@ DevicesReportGenerator::DevicesReportGenerator(const Json& jdevs, const std::str
                                     size_t count = Jcom::ToNumber(jcount_obj, "count");
                                     size_t unit_count = Jcom::ToNumber(jcount_obj, "unit_count");
                                     double cm = static_cast<double>(count * unit_count) / 1000;
-                                    ofs << jcount_obj["type"].get<std::string>() << ";"
+                                    ofs << jcount_obj.value("type", "") << ";"
                                         << old_cm << ";"
                                         << cm << ";"
                                         << count << ";"
-                                        << jcount_obj["unit"].get<std::string>() << ";"
-                                        << jcount_obj["unit_type"].get<std::string>() << ";"
+                                        << jcount_obj.value("unit", "") << ";"
+                                        << jcount_obj.value("unit_type", "") << ";"
                                         << unit_count << ";"
                                         << Jcom::ToString(jcount_obj, "serial") << ";"
                                         << Jcom::TimeToStr(Jcom::ToNumber(jcount_obj, "verify_date")) << ";"
-                                        << jcount_obj["desc"].get<std::string>() << ";"
+                                        << jcount_obj.value("desc", "") << ";"
                                         << "\n";
                                 }
                             };
