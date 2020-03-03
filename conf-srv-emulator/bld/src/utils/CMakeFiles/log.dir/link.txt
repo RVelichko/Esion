@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../Release/lib/liblog.a  CMakeFiles/log.dir/Log.cpp.o
+/usr/bin/ranlib ../../Release/lib/liblog.a

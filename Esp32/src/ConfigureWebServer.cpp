@@ -3,7 +3,6 @@
 
 #include "ConfigureWebServer.hpp"
 
-static const time_t CONFIGURE_TIMEOUT = 1800; ///< Количество секунд работы режима конфигурирования.
 
 extern const uint8_t index_html_start[] asm("_binary_src_dist_index_html_gz_start");
 extern const uint8_t index_html_end[]   asm("_binary_src_dist_index_html_gz_end");
@@ -11,38 +10,32 @@ extern const uint8_t favicon_ico_start[] asm("_binary_src_dist_favicon_ico_start
 extern const uint8_t favicon_ico_end[]   asm("_binary_src_dist_favicon_ico_end");
 extern const uint8_t FontRoboto_css_start[] asm("_binary_src_dist_FontRoboto_css_gz_start");
 extern const uint8_t FontRoboto_css_end[]   asm("_binary_src_dist_FontRoboto_css_gz_end");
-extern const uint8_t app_css_start[] asm("_binary_src_dist_css_app_8ee8d0e6_css_gz_start");
-extern const uint8_t app_css_end[]   asm("_binary_src_dist_css_app_8ee8d0e6_css_gz_end");
+extern const uint8_t app_css_start[] asm("_binary_src_dist_css_app_fab00335_css_gz_start");
+extern const uint8_t app_css_end[]   asm("_binary_src_dist_css_app_fab00335_css_gz_end");
 extern const uint8_t chunk_vendors_css_start[] asm("_binary_src_dist_css_chunk_vendors_e30ee463_css_gz_start");
 extern const uint8_t chunk_vendors_css_end[]   asm("_binary_src_dist_css_chunk_vendors_e30ee463_css_gz_end");
-extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start[] asm("_binary_src_dist_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_start");
-extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_end[]   asm("_binary_src_dist_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_end");
-extern const uint8_t KFOlCnqEu92Fr1MmEU9fBBc4_woff2_start[] asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmEU9fBBc4_020c97dc_woff2_start");
-extern const uint8_t KFOlCnqEu92Fr1MmEU9fBBc4_woff2_end[]   asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmEU9fBBc4_020c97dc_woff2_end");
-extern const uint8_t KFOlCnqEu92Fr1MmWUlfBBc4_woff2_start[] asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmWUlfBBc4_2735a3a6_woff2_start");
-extern const uint8_t KFOlCnqEu92Fr1MmWUlfBBc4_woff2_end[]   asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmWUlfBBc4_2735a3a6_woff2_end");
-extern const uint8_t KFOmCnqEu92Fr1Mu4mxK_woff2_start[] asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu4mxK_479970ff_woff2_start");
-extern const uint8_t KFOmCnqEu92Fr1Mu4mxK_woff2_end[]   asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu4mxK_479970ff_woff2_end");
-extern const uint8_t KFOmCnqEu92Fr1Mu5mxKOzY_woff2_start[] asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu5mxKOzY_8bb64952_woff2_start");
-extern const uint8_t KFOmCnqEu92Fr1Mu5mxKOzY_woff2_end[]   asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu5mxKOzY_8bb64952_woff2_end");
-extern const uint8_t app_js_start[] asm("_binary_src_dist_js_app_f92c347c_js_gz_start");
-extern const uint8_t app_js_end[]   asm("_binary_src_dist_js_app_f92c347c_js_gz_end");
+// extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start[] asm("_binary_src_dist_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_start");
+// extern const uint8_t flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_end[]   asm("_binary_src_dist_fonts_flUhRq6tzZclQEJ_Vdg_IuiaDsNc_d7e60f9d_woff2_end");
+// extern const uint8_t KFOlCnqEu92Fr1MmEU9fBBc4_woff2_start[] asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmEU9fBBc4_020c97dc_woff2_start");
+// extern const uint8_t KFOlCnqEu92Fr1MmEU9fBBc4_woff2_end[]   asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmEU9fBBc4_020c97dc_woff2_end");
+// extern const uint8_t KFOlCnqEu92Fr1MmWUlfBBc4_woff2_start[] asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmWUlfBBc4_2735a3a6_woff2_start");
+// extern const uint8_t KFOlCnqEu92Fr1MmWUlfBBc4_woff2_end[]   asm("_binary_src_dist_fonts_KFOlCnqEu92Fr1MmWUlfBBc4_2735a3a6_woff2_end");
+// extern const uint8_t KFOmCnqEu92Fr1Mu4mxK_woff2_start[] asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu4mxK_479970ff_woff2_start");
+// extern const uint8_t KFOmCnqEu92Fr1Mu4mxK_woff2_end[]   asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu4mxK_479970ff_woff2_end");
+// extern const uint8_t KFOmCnqEu92Fr1Mu5mxKOzY_woff2_start[] asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu5mxKOzY_8bb64952_woff2_start");
+// extern const uint8_t KFOmCnqEu92Fr1Mu5mxKOzY_woff2_end[]   asm("_binary_src_dist_fonts_KFOmCnqEu92Fr1Mu5mxKOzY_8bb64952_woff2_end");
+extern const uint8_t app_js_start[] asm("_binary_src_dist_js_app_b6ebb390_js_gz_start");
+extern const uint8_t app_js_end[]   asm("_binary_src_dist_js_app_b6ebb390_js_gz_end");
 extern const uint8_t chunk_vendors_js_start[] asm("_binary_src_dist_js_chunk_vendors_6077a4fd_js_gz_start");
 extern const uint8_t chunk_vendors_js_end[]   asm("_binary_src_dist_js_chunk_vendors_6077a4fd_js_gz_end");
 extern const uint8_t close_24px_svg_start[] asm("_binary_src_dist_icons_close_24px_svg_gz_start");
 extern const uint8_t close_24px_svg_end[]   asm("_binary_src_dist_icons_close_24px_svg_gz_end");
 
-
 static const char favicon_str[] = "/favicon.ico";
 static const char FontRoboto_str[] = "/FontRoboto.css";
-static const char flUhRq6tzZclQEJ_Vdg_IuiaDsNc_str[] = "/fonts/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.d7e60f9d.woff2";
-static const char KFOlCnqEu92Fr1MmEU9fBBc4_str[] = "/fonts/KFOlCnqEu92Fr1MmEU9fBBc4.020c97dc.woff2";
-static const char KFOlCnqEu92Fr1MmWUlfBBc4_str[] = "/fonts/KFOlCnqEu92Fr1MmWUlfBBc4.2735a3a6.woff2";
-static const char KFOmCnqEu92Fr1Mu4mxK_str[] = "/fonts/KFOmCnqEu92Fr1Mu4mxK.479970ff.woff2";
-static const char KFOmCnqEu92Fr1Mu5mxKOzY_str[] = "/fonts/KFOmCnqEu92Fr1Mu5mxKOzY.8bb64952.woff2";
-static const char app_css_str[] = "/css/app.8ee8d0e6.css";
+static const char app_css_str[] = "/css/app.fab00335.css";
 static const char chunk_vendors_css_str[] = "/css/chunk-vendors.e30ee463.css";
-static const char app_js_str[] = "/js/app.f92c347c.js";
+static const char app_js_str[] = "/js/app.b6ebb390.js";
 static const char chunk_vendors_js_str[] = "/js/chunk-vendors.6077a4fd.js";
 static const char close_24px_svg_str[] = "/icons/close-24px.svg";
 
@@ -134,6 +127,22 @@ void ConfigureWebServer::handleSettingsInfo(AsyncWebServerRequest *request) {
     auto coll_id = Nvs::get()->getCollectionName();
     auto apmt = Nvs::get()->getApmt();
     auto desc = Nvs::get()->getDescription();
+    auto ctrl_timeout = Nvs::get()->getCtrlTime();
+    if (not ctrl_timeout) {
+        ctrl_timeout = CONTROL_SEND_SLEEP_TIME / 3600;
+    }
+    auto max_impls = Nvs::get()->getMaxImpulses();
+    if (not max_impls) {
+        max_impls = MAX_COUNT_FOR_SEND;
+    }
+    auto snd_timeout = Nvs::get()->getSndTimeout();
+    if (not snd_timeout) {
+        snd_timeout = SEND_SLEEP_TIME;
+    }
+    auto cfg_time = Nvs::get()->getCfgTime();
+    if (not cfg_time) {
+        cfg_time = CONFIGURE_TIMEOUT / 60;
+    }
     String js = "{" \
         "\"cloud_url\":\"" + service_url + "\"," \
         "\"ssid\":\"" + ssid + "\"," \
@@ -143,7 +152,11 @@ void ConfigureWebServer::handleSettingsInfo(AsyncWebServerRequest *request) {
         "\"address\":\"" + addr + "\","\
         "\"coll_id\":\"" + coll_id + "\","\
         "\"desc\":\"" + desc + "\"," \
-        "\"power\":\"" + pwrt + "\"}";
+        "\"power\":\"" + pwrt + "\"," \
+        "\"ctrl_timeout\":" + String(ctrl_timeout, DEC) + "," \
+        "\"max_impls\":" + String(max_impls, DEC) + "," \
+        "\"snd_timeout\":" + String(snd_timeout, DEC) + "," \
+        "\"cfg_time\":" + String(cfg_time, DEC) + "}";
     #ifdef DEBUG    
     Serial.println("Handle settings_info: \"" + js + "\"");
     #endif
@@ -282,6 +295,34 @@ bool ConfigureWebServer::parseSettings(const String &jstr) {
                         Nvs::get()->setPwrId(0);
                     }
                 }
+                uint16_t ctrl_timeout = jsets["ctrl_timeout"].as<uint16_t>();
+                if (ctrl_timeout) {
+                    #ifdef DEBUG
+                    Serial.println("Read ctrl_timeout: \"" + String(ctrl_timeout, DEC) + "\"");
+                    #endif
+                    Nvs::get()->setCtrlTime(ctrl_timeout);
+                }
+                uint32_t max_impls = jsets["max_impls"].as<uint32_t>();
+                if (max_impls) {
+                    #ifdef DEBUG
+                    Serial.println("Read max_impls: \"" + String(max_impls, DEC) + "\"");
+                    #endif
+                    Nvs::get()->setMaxImpulses(max_impls);
+                }
+                uint32_t snd_timeout = jsets["snd_timeout"].as<uint32_t>();
+                if (snd_timeout) {
+                    #ifdef DEBUG
+                    Serial.println("Read snd_timeout: \"" + String(snd_timeout, DEC) + "\"");
+                    #endif
+                    Nvs::get()->setSndTimeout(snd_timeout);
+                }
+                int16_t cfg_time = jsets["cfg_time"].as<int16_t>();
+                if (cfg_time) {
+                    #ifdef DEBUG
+                    Serial.println("Read cfg_time: \"" + String(cfg_time, DEC) + "\"");
+                    #endif
+                    Nvs::get()->setCfgTime(cfg_time);
+                }
             }
             JsonArray jcounters = jbuf["counters"].as<JsonArray>();
             if (not jcounters.isNull()) {
@@ -382,36 +423,36 @@ ConfigureWebServer::ConfigureWebServer(const String& srv_ssid, const String& srv
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     });
-    _server->on(flUhRq6tzZclQEJ_Vdg_IuiaDsNc_str, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "application/font-woff2", 
-            flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start, 
-            flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_end - flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start - 1); 
-    });
-    _server->on(flUhRq6tzZclQEJ_Vdg_IuiaDsNc_str, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "application/font-woff2", 
-            flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start, 
-            flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_end - flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start - 1); 
-    });
-    _server->on(KFOlCnqEu92Fr1MmEU9fBBc4_str, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "application/font-woff2", 
-            KFOlCnqEu92Fr1MmEU9fBBc4_woff2_start,
-            KFOlCnqEu92Fr1MmEU9fBBc4_woff2_end - KFOlCnqEu92Fr1MmEU9fBBc4_woff2_start - 1); 
-    });
-    _server->on(KFOlCnqEu92Fr1MmWUlfBBc4_str, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "application/font-woff2", 
-            KFOlCnqEu92Fr1MmWUlfBBc4_woff2_start,
-            KFOlCnqEu92Fr1MmWUlfBBc4_woff2_end - KFOlCnqEu92Fr1MmWUlfBBc4_woff2_start - 1);
-    });
-    _server->on(KFOmCnqEu92Fr1Mu4mxK_str, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "application/font-woff2", 
-            KFOmCnqEu92Fr1Mu4mxK_woff2_start, 
-            KFOmCnqEu92Fr1Mu4mxK_woff2_end - KFOmCnqEu92Fr1Mu4mxK_woff2_start -1);
-    });
-    _server->on(KFOmCnqEu92Fr1Mu5mxKOzY_str, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "application/font-woff2", 
-            KFOmCnqEu92Fr1Mu5mxKOzY_woff2_start,
-            KFOmCnqEu92Fr1Mu5mxKOzY_woff2_end - KFOmCnqEu92Fr1Mu5mxKOzY_woff2_start - 1);
-    });
+    // _server->on(flUhRq6tzZclQEJ_Vdg_IuiaDsNc_str, HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     request->send_P(200, "application/font-woff2", 
+    //         flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start, 
+    //         flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_end - flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start - 1); 
+    // });
+    // _server->on(flUhRq6tzZclQEJ_Vdg_IuiaDsNc_str, HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     request->send_P(200, "application/font-woff2", 
+    //         flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start, 
+    //         flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_end - flUhRq6tzZclQEJ_Vdg_IuiaDsNc_woff2_start - 1); 
+    // });
+    // _server->on(KFOlCnqEu92Fr1MmEU9fBBc4_str, HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     request->send_P(200, "application/font-woff2", 
+    //         KFOlCnqEu92Fr1MmEU9fBBc4_woff2_start,
+    //         KFOlCnqEu92Fr1MmEU9fBBc4_woff2_end - KFOlCnqEu92Fr1MmEU9fBBc4_woff2_start - 1); 
+    // });
+    // _server->on(KFOlCnqEu92Fr1MmWUlfBBc4_str, HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     request->send_P(200, "application/font-woff2", 
+    //         KFOlCnqEu92Fr1MmWUlfBBc4_woff2_start,
+    //         KFOlCnqEu92Fr1MmWUlfBBc4_woff2_end - KFOlCnqEu92Fr1MmWUlfBBc4_woff2_start - 1);
+    // });
+    // _server->on(KFOmCnqEu92Fr1Mu4mxK_str, HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     request->send_P(200, "application/font-woff2", 
+    //         KFOmCnqEu92Fr1Mu4mxK_woff2_start, 
+    //         KFOmCnqEu92Fr1Mu4mxK_woff2_end - KFOmCnqEu92Fr1Mu4mxK_woff2_start -1);
+    // });
+    // _server->on(KFOmCnqEu92Fr1Mu5mxKOzY_str, HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     request->send_P(200, "application/font-woff2", 
+    //         KFOmCnqEu92Fr1Mu5mxKOzY_woff2_start,
+    //         KFOmCnqEu92Fr1Mu5mxKOzY_woff2_end - KFOmCnqEu92Fr1Mu5mxKOzY_woff2_start - 1);
+    // });
     //_server->on(close_24px_svg_str, HTTP_GET, [](AsyncWebServerRequest *request) {
     //    request->send_P(200, "image/svg+xml", close_24px_svg_start, close_24px_svg_end - close_24px_svg_start - 1);
     //});
@@ -483,7 +524,11 @@ void ConfigureWebServer::execute(const String& dev_id, double bat_level) {
         delay(1);
         //_server->handleClient();
         auto cur_time = time(nullptr); 
-        is_timeout = (CONFIGURE_TIMEOUT <= (cur_time - _start_time));
+        time_t cfg_timeout = Nvs::get()->getCfgTime() * 60;
+        if (not cfg_timeout) {
+            cfg_timeout = CONFIGURE_TIMEOUT;
+        } 
+        is_timeout = (cfg_timeout <= (cur_time - _start_time));
     }
     #ifdef DEBUG
     if (is_timeout and not _is_complete) {

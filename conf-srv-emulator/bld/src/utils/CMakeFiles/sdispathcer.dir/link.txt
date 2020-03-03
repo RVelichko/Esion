@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../Release/lib/libsdispathcer.a  CMakeFiles/sdispathcer.dir/SignalDispatcher.cpp.o
+/usr/bin/ranlib ../../Release/lib/libsdispathcer.a

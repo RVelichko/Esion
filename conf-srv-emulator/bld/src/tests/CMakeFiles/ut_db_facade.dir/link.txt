@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -DNDEBUG  -rdynamic CMakeFiles/ut_db_facade.dir/ut_db_facade.cpp.o  -o ../../Release/bin/ut_db_facade  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lesion_server ../../Release/lib/liblog.a -lpthread -lmongoclient -lboost_system -lboost_unit_test_framework 

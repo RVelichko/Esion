@@ -25,6 +25,9 @@ std::string ReportGenerator::_reports_path;
 static const char SEP = ';';
 
 
+/*!
+ * \brief Функция удаляет старые файлы отчётов.
+ */
 void EraseOldFiles(time_t timeout) {
     auto bpath = bfs::absolute(bfs::path(ReportGenerator::_reports_path));
     if (bfs::exists(bpath)) {
@@ -47,6 +50,9 @@ void EraseOldFiles(time_t timeout) {
 }
 
 
+/*!
+ * \brief Функция возвращает текущее состояние процесса генерации отчёта.
+ */
 std::string GetProgressResponce(const std::string &cmd_name, double progress) {
     Json resp = {
         {"resp", {

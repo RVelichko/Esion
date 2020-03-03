@@ -10,7 +10,9 @@
 #define PTIME 50
 #define PAGE_LEN 32
 
-static const uint32_t ATTINY84_ID = 0x1e930c;
+static const uint32_t ATTINY84_ID = 0x1e930c; ///< Идентификатор контроллера Attiny84 для системы программирования.
+
+/// Байткод прошивки для контроллера Attiny84
 static const uint8_t CODE[] = {
     0x2c,0xc0,0x46,0xc0,0x45,0xc0,0x44,0xc0,0x8f,0xc1,0x42,0xc0,0x41,0xc0,0x40,0xc0,0x3f,0xc0,0x3e,0xc0,0x3d,0xc0,0x3e,0xc1,0x3b,0xc0,0x3a,0xc0,0x39,0xc0,0x38,0xc0,0x37,0xc0,0x00,0x00,0x39,0x00,0x36,0x00,0x00,0x00,0x3a,0x00,0x37,0x00,0x00,0x00,0x3b,0x00,0x38,0x00,0x02,0x02,0x02,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x02,
     0x01,0x02,0x04,0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01,0x08,0x00,0x00,0x01,0x02,0x03,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,0x24,0x1f,0xbe,0xcf,0xe5,0xd2,0xe0,0xde,0xbf,0xcd,0xbf,0x10,0xe0,0xa0,0xe6,0xb0,0xe0,0xee,0xe6,0xf4,0xe0,0x02,0xc0,0x05,0x90,0x0d,0x92,0xa2,0x36,0xb1,0x07,0xd9,0xf7,0x20,0xe0,0xa2,0xe6,
@@ -32,6 +34,9 @@ static const uint8_t CODE[] = {
     0x4a,0xde,0x37,0x98,0x85,0xb7,0x87,0x7e,0x80,0x61,0x85,0xbf,0x85,0xb7,0x80,0x62,0x85,0xbf,0x85,0xb7,0x80,0x62,0x85,0xbf,0x88,0x95,0x85,0xb7,0x8f,0x7d,0x85,0xbf,0x85,0xb7,0x8f,0x7d,0x85,0xbf,0x37,0x9a,0xbc,0xcf,0xf8,0x94,0xff,0xcf,0x01,0x00,
     };
 
+/**
+ * \brief Структура команды микроконтроллера Attiny84.
+ */
 struct TransResult {
     uint8_t a;
     uint8_t b;
@@ -40,34 +45,97 @@ struct TransResult {
 };
 
 
+/**
+ * \brief Класс выполняющий процесс загрузки прошивки в микроконтроллер Attiny84.
+ */
 class Programmer {
-    uint32_t _need_chip_id;
-    static bool _rst_active_high;
+    uint32_t _need_chip_id;       ///< Возвращаемый контроллером идентификатор контроллера Attiny.
+    static bool _rst_active_high; ///< Флаг сброса контроллера Attiny.
 
+    /**
+     * \brief Получить 3 байта из контроллера в ответ на 2 байта команды.
+     */
     uint32_t get3Bytes(uint8_t a, uint8_t b, uint8_t d0, uint8_t d1, uint8_t d2);
+
+    /**
+     * \brief Отправить данные в микроконтроллер.
+     */
     TransResult transaction(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+
+    /**
+     * \brief Установить режим программирования.
+     */
     bool setPmode();
+
+    /**
+     * \brief Сбросить режим программирования.
+     */
     void endPmode();
+
+    /**
+     * \brief Получить идентификатор микроконтроллера Attiny.
+     */
     uint32_t getChipId();
+
+    /**
+     * \brief Получить настройки ключей микроконтроллера.
+     */
     uint32_t getLowFuses();
     uint32_t getHighFuses();
     uint32_t getExtFuses();
+
+    /**
+     * \brief Очистить микроконтроллер.
+     */
     void sendClear();
+
+    /**
+     * \brief Выполнить процесс прошивки страницы в микроконтроллер.
+     */
     void flash(uint8_t hilo, unsigned int addr, uint8_t data);
+
+    /**
+     * \brief Подтвертить прошивку страницы в микроконтроллер.
+     */
     void commit(unsigned int addr);
+
+    /**
+     * \brief Прочитать байты из микроконтроллера в соответствии с состоянием программирования.
+     */
     uint8_t getByte(const uint8_t * buf, int i, int len);
+
+    /**
+     * \brief Отправить страницу в микроконтроллер.
+     */
     void sendImage(const uint8_t *buf, int len);
+
+    /**
+     * \brief Прочитать данные по адресу из микроконтроллера.
+     */
     uint8_t read(uint8_t hilo, unsigned int addr);
+
+    /**
+     * \brief Проверить загруженные данные.
+     */
     bool werify(const uint8_t *buf, int len);
 
 public:
+    /**
+     * \brief Выполнить RESET микроконтроллера.
+     */
     static void sendReset(bool reset);
 
     Programmer(uint32_t need_chip_id = ATTINY84_ID);
     ~Programmer();
 
+    /**
+     * \brief Установить функции отклика для световой идентификации состояний процесса программирования.
+     */
     void setFlashFunc(const std::function<void(bool)> &prog_light_switch);
     void setErrorFunc(const std::function<void(bool)> &error_light_switch);
 
+    /**
+     * \brief Загрузка прошивки в микроконтроллер Attiny84.
+     */
     void load(const uint8_t *buf, int len);
 };

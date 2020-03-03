@@ -111,7 +111,7 @@
             <md-list-item>
                 <md-field md-clearable>
                     <label>Таймаут контрольной отправки [час.]</label>
-                    <md-input v-model="ctrl_timeout" type="number" min=10 max=200 v-on:input="$emit('settings-data-event', {k:'ctrl_timeout', v:$event})"></md-input>
+                    <md-input v-model="ctrl_timeout" type="number" min=10 max=500 v-on:input="$emit('settings-data-event', {k:'ctrl_timeout', v:$event})"></md-input>
                     <span class='md-helper-text'>Укажите количество часов м/у контрольными отправками</span>
                 </md-field>
             </md-list-item>
@@ -120,9 +120,9 @@
         <md-list class="md-double-line md-dense">
             <md-list-item>
                 <md-field md-clearable>
-                    <label>Минимальное количество кубометров для фиксации</label>
-                    <md-input v-model="min_mcubs" type="number" min=1 max=100 v-on:input="$emit('settings-data-event', {k:'min_mcubs', v:$event})"></md-input>
-                    <span class='md-helper-text'>Укажите минимальное количество кубометров для фиксации на сервере</span>
+                    <label>Максимальное количество импульсов для отправки</label>
+                    <md-input v-model="max_impls" type="number" min=10 max=1000000 v-on:input="$emit('settings-data-event', {k:'max_impls', v:$event})"></md-input>
+                    <span class='md-helper-text'>Укажите максимальное количество импульсов для фиксации на сервере</span>
                 </md-field>
             </md-list-item>
         </md-list>
@@ -166,7 +166,7 @@
             //start_date: 0,
             description: '',
             ctrl_timeout: 72,
-            min_mcubs: 1,
+            max_impls: 250,
             snd_timeout: 10,
             cfg_time: 20
         }),
@@ -204,8 +204,8 @@
                     if (typeof js['ctrl_timeout'] !== 'undefined') {
                         this.ctrl_timeout = js.ctrl_timeout;
                     }
-                    if (typeof js['min_mcubs'] !== 'undefined') {
-                        this.min_mcubs = js.min_mcubs;
+                    if (typeof js['max_impls'] !== 'undefined') {
+                        this.max_impls = js.max_impls;
                     }
                     if (typeof js['snd_timeout'] !== 'undefined') {
                         this.snd_timeout = js.snd_timeout;

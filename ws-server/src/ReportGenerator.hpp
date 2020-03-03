@@ -14,6 +14,10 @@ typedef std::function<void(const std::string&)> SendFn;
 
 static const char REPORT_FILE_EXTENTION[] = ".csv";
 
+
+/*!
+ * \brief Класс генерации отчёта.
+ */
 class ReportGenerator {
 protected:
     std::string _encoding;
@@ -37,12 +41,18 @@ public:
 };
 
 
+/*!
+ * \brief Класс генерации отчёта по устройствам учёта.
+ */
 class DevicesReportGenerator : public ReportGenerator {
 public:
     DevicesReportGenerator(const Json& jdevs, const std::string& enc, const SendFn& snd_fn);
 };
 
 
+/*!
+ * \brief Класс генерации отчёта по событиям на устройствах учёта.
+ */
 class EventsReportGenerator : public ReportGenerator {
 public:
     EventsReportGenerator(const Json& jdevs, const std::string& enc, const SendFn& snd_fn);

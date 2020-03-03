@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../Release/lib/libpatterns.a  CMakeFiles/patterns.dir/JsonCommand.cpp.o
+/usr/bin/ranlib ../../Release/lib/libpatterns.a

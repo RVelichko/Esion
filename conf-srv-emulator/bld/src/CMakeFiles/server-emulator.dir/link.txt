@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3 -DNDEBUG  -rdynamic CMakeFiles/server-emulator.dir/http_server.cpp.o CMakeFiles/server-emulator.dir/main.cpp.o  -o ../Release/bin/server-emulator  -L/usr/local/lib -Wl,-rpath,/usr/local/lib ../Release/lib/liblog.a ../Release/lib/libsdispathcer.a -levent -lpthread 

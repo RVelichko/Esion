@@ -9,11 +9,13 @@
  * \brief В методе connect библиотеки отсутствует проверка на удачное подключение и 
  *        в далььнейшем чтение пустых данных из стримового объекта, что приводит 
  *        к гарантированному падению прошивки.
+ *        Необходимо самомтосятельно корректировать стороннюю библиотеку, или ждать обновления.
  */ 
 #include <WebSocketClient.h> 
 
 
 typedef std::shared_ptr<WebSocketClient> PWsClient;
+typedef StaticJsonDocument<800> JsonBufferType;
 
 
 /**
@@ -28,6 +30,8 @@ class CountersSender {
     String _json;       ///< Отправляемые на сервер обслуживания данные
     bool _is_recv;
     bool _is_err;
+
+    void parseConfig(const JsonObject& jobj);
 
 public:
     explicit CountersSender(const String& addr, uint16_t port, const String &path, const String& room_id, const String& json);

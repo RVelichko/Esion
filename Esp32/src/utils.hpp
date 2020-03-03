@@ -10,21 +10,27 @@ static const double BATTARY_FULL_VALUE = 100.0;
 
 static const int NUM_COUNTERS = 4; 
 
-static const int BLUE_PIN = 2; 
-static const int RED_PIN = 4; 
+static const int BLUE_PIN = 2; ///< GPIO голубого светодиода.
+static const int RED_PIN = 4;  ///< GPIO красного светодиода.
 
 
+/**
+ * \brief Структура для параметров подключения к внешнему wifi роутеру.
+ */
 struct WifiConfig {
     String ssid;
     String pswd;
     
     WifiConfig() 
-        : ssid({""}) //"wifi"})
-        , pswd({""}) //"wifipassword"})
+        : ssid({""})
+        , pswd({""})
     {}
 };
 
 
+/**
+ * \brief Объединение полей структуры бит в байт для значения уровня напряжения питания.
+ */
 union BatteryValue {
     struct Bits {
         uint8_t _0:1;
@@ -34,6 +40,9 @@ union BatteryValue {
 };
 
 
+/**
+ * \brief Класс управления состоянием светодиода.
+ */
 template <int LED_PIN>
 class Blink {
     bool _is_on;
@@ -61,16 +70,20 @@ public:
         off();
     }
 
+    /**
+     * \brief Зажечь светодиод.
+     */
     void on() {
-        /// Зажечь светодиод.
         if (not _is_on) {
             _is_on = true;
             digitalWrite(LED_PIN, HIGH);
         }  
     }
 
+    /**
+     * \brief Погасить светодиод.
+     */
     void off() {
-        /// Погасить светодиод.  
         if (_is_on) {
             delay(10);
             digitalWrite(LED_PIN, LOW);
@@ -80,6 +93,9 @@ public:
 };
 
 
+/**
+ * \brief Класс выполняющий светодиодную индикацию предупреждения или ошибки.
+ */
 class ErrorLights {
     static constexpr int POINT_DT = 60;     
     static constexpr int LINE_DT = 400;     
@@ -133,7 +149,11 @@ public:
  * \brief Структура реализует разбор URL на составляющие.
  */ 
 struct Url {
-    Url(const String& url) 
+    /**
+     * \brief Конструктор.
+     * \param url  Полная строка url.
+     */
+    Url(const String& url)
         : port(0) {
         #ifdef DEBUG
         Serial.println("Input URL: \"" + url + "\"");
@@ -175,11 +195,11 @@ struct Url {
         #endif
     }
 
-    String protocol;
-    String host;
-    uint16_t port;
-    String path;
-    String query;
+    String protocol; ///< Строка протокола.
+    String host;     ///< Строка имени хоста.
+    uint16_t port;   ///< Строка номера порта.
+    String path;     ///< Строка имени страницы на сервере.
+    String query;    ///< Параметры запроса URL.
 };
 
 
@@ -216,12 +236,12 @@ public:
  * \brief Структура описывает подключённый прибор учёта.
  */ 
 struct CounterConfig {
-    String type;
-    String unit;
-    int unit_impl;
-    String serial;
-    String desc;
-    double start_mcubs;
+    String type;        ///< Тип счётчика воды [ холодна | горячая ].
+    String unit;        ///< Юниты для учёта (литр).
+    int unit_impl;      ///< Количество импульсов на юнит [ 1 | 10 ].
+    String serial;      ///< Серийный номер счётчика.
+    String desc;        ///< Описание.
+    double start_mcubs; ///< Стартовое количество кубометров.
 
     CounterConfig() 
         : type("none")
@@ -280,14 +300,19 @@ struct Nvs {
         return NVS.getInt(name);
     }
 
+    /**
+     * \brief Метод записывает текущий уровень напряжения питания контроллера.
+     */
     void setPowerValue(float pwr) {
         NVS.setFloat("pwr", pwr);
     }
 
+    /**
+     * \brief Метод возвращает уровень напряжения питания контроллера.
+     */
     float getPowerValue() {
         return NVS.getFloat("pwr");
     }
-
 
     /**
      * \brief Метод выполняет запись типа питания (должен выполняться 1 раз).
@@ -331,6 +356,9 @@ struct Nvs {
         return uui64;
     }
 
+    /**
+     * \brief Метод записывает идентификатор wifi сети.
+     */
     void setSsid(const String& ssid) {
         NVS.setString("ssid", ssid);
         #ifdef DEBUG
@@ -338,6 +366,9 @@ struct Nvs {
         #endif
     }
 
+    /**
+     * \brief Метод возвращает идентификатор wifi сети.
+     */
     String getSsid() {
         String ssid = NVS.getString("ssid");
         #ifdef DEBUG
@@ -346,6 +377,9 @@ struct Nvs {
         return ssid;
     }
 
+    /**
+     * \brief Метод сохраняет пароль wifi сети.
+     */
     void setPswd(const String& pswd) {
         NVS.setString("pswd", pswd);
         #ifdef DEBUG
@@ -353,6 +387,9 @@ struct Nvs {
         #endif
     }
 
+    /**
+     * \brief Метод возвращает пароль wifi сети.
+     */
     String getPswd() {
         String pswd = NVS.getString("pswd");
         #ifdef DEBUG
@@ -361,6 +398,9 @@ struct Nvs {
         return pswd;
     }
 
+    /**
+     * \brief Метод сохраняет почтовый адрес где находится контроллер.
+     */
     void setAddress(const String& addr) {
         NVS.setString("addr", addr);
         #ifdef DEBUG
@@ -368,6 +408,9 @@ struct Nvs {
         #endif
     }
 
+    /**
+     * \brief Метод возвращает почтовый адрес где находится контроллер.
+     */
     String getAddress() {
         String addr = NVS.getString("addr");
         #ifdef DEBUG
@@ -376,6 +419,9 @@ struct Nvs {
         return addr;
     }
 
+    /**
+     * \brief Метод сохраняет идентификатор группы устройств.
+     */
     void setCollectionName(const String& coln) {
         NVS.setString("coln", coln);
         #ifdef DEBUG
@@ -383,6 +429,9 @@ struct Nvs {
         #endif
     }
 
+    /**
+     * \brief Метод возвращает идентификатор группы устройств.
+     */
     String getCollectionName() {
         String coln = NVS.getString("coln");
         #ifdef DEBUG
@@ -391,6 +440,9 @@ struct Nvs {
         return coln;
     }
 
+    /**
+     * \brief Метод сохраняет имя владельца контроллера.
+     */
     void setUser(const String& user) {
         #ifdef DEBUG
         Serial.println("$ Set user: " + user);
@@ -398,6 +450,9 @@ struct Nvs {
         NVS.setString("usr", user);
     }
 
+    /**
+     * \brief Метод возвращает имя владельца контроллера.
+     */
     String getUser() {
         String user = NVS.getString("usr");
         #ifdef DEBUG
@@ -406,6 +461,9 @@ struct Nvs {
         return user;
     }
 
+    /**
+     * \brief Метод сохраняет описание.
+     */
     void setDescription(const String& desc) {
         #ifdef DEBUG
         Serial.println("$ Set desc: " + desc);
@@ -413,6 +471,9 @@ struct Nvs {
         NVS.setString("desc", desc);
     }
 
+    /**
+     * \brief Метод возвращает описани.
+     */
     String getDescription() {
         String desc = NVS.getString("desc");
         #ifdef DEBUG
@@ -421,6 +482,9 @@ struct Nvs {
         return desc;
     }
 
+    /**
+     * \brief Метод сохраняет адрес сервиса обслуживания.
+     */
     void setUrl(const String& url) {
         NVS.setString("url", url);
         #ifdef DEBUG
@@ -428,6 +492,9 @@ struct Nvs {
         #endif
     }
 
+    /**
+     * \brief Метод возвращает адрес сервиса обслуживания.
+     */
     String getUrl() {
         String url = NVS.getString("url");
         #ifdef DEBUG
@@ -436,6 +503,9 @@ struct Nvs {
         return url;
     }
 
+    /**
+     * \brief Метод сохраняет значения счётчиков.
+     */
     void setCounterConfig(uint8_t num, const CounterConfig& count_conf) {
         String cc = "none";
         if (count_conf.type not_eq "none") {
@@ -449,6 +519,9 @@ struct Nvs {
         #endif
     }
 
+    /**
+     * \brief Метод возвращает значения счётчиков.
+     */
     CounterConfig getCounterConfig(uint8_t num) {
         String cc = NVS.getString("ccfg" + String(num, DEC));
         CounterConfig count_conf;
@@ -522,5 +595,61 @@ struct Nvs {
      */ 
     uint32_t getCounter(uint8_t count_num) {
         return NVS.getInt(("ctr" + String(count_num, DEC)).c_str());
+    }
+
+    /**
+     * \brief Метод сохраняет период времени контрольного выхода в эфир.
+     */
+    void setCtrlTime(uint16_t ctrl_timeout) {
+        NVS.setInt("ctrltm", ctrl_timeout);
+    }
+
+    /**
+     * \brief Метод возвращает период времени контрольного выхода в эфир.
+     */
+    uint16_t getCtrlTime() {
+        return NVS.getInt("ctrltm");
+    }
+
+    /**
+     * \brief Метод сохраняет максимально число импульсов для выхода в эфир.
+     */
+    void setMaxImpulses(uint32_t max_impls) {
+        NVS.setInt("minmcubs", max_impls);
+    }
+
+    /**
+     * \brief Метод возвращает максимально число импульсов для выхода в эфир.
+     */
+    uint32_t getMaxImpulses() {
+        return NVS.getInt("minmcubs");
+    }
+
+    /**
+     * \brief Метод сохраняет таймаут после перехода в состояние выхода в эфир.
+     */
+    void setSndTimeout(uint32_t snd_timeout) {
+        NVS.setInt("sndtm", snd_timeout);
+    }
+
+    /**
+     * \brief Метод возвращает таймаут после перехода в состояние выхода в эфир.
+     */
+    uint32_t getSndTimeout() {
+        return NVS.getInt("sndtm");
+    }
+
+    /**
+     * \brief Метод сохраняет время работы сервера конфигурирования.
+     */
+    void setCfgTime(uint16_t cfg_time) {
+        NVS.setInt("cfgtm", cfg_time);
+    }
+
+    /**
+     * \brief Метод возвращает время работы сервера конфигурирования.
+     */
+    uint16_t getCfgTime() {
+        return NVS.getInt("cfgtm");
     }
 };

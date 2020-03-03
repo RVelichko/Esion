@@ -33,11 +33,13 @@ import threading
 import contextlib
 
 
+# Получить время в милисекундах.
 def GetTimeMs():
     	d = datetime.now()
     	return d.minute * 60000 + d.second * 1000 + d.microsecond / 1000.0
 
 
+# Запустить внешний процесс.
 def RunProcess(exe):
     p = subprocess.Popen(exe, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
     while(True):
@@ -50,6 +52,7 @@ def RunProcess(exe):
 
 newlines = ['\n', '\r\n', '\r']
 
+# Считывать отображение текста от внешних процессов исключаю буферизацию.
 def Unbuffered(proc, stream='stdout'):
     stream = getattr(proc, stream)
     with contextlib.closing(stream):
@@ -67,6 +70,7 @@ def Unbuffered(proc, stream='stdout'):
             yield out
 
 
+# Класс описывающий управление засветкой светодиодо индикационной ленты.
 class LightsLine(object):
 	def __init__(self):
 		print('Init LightsLine.')
@@ -104,6 +108,7 @@ class LightsLine(object):
 		self.setAllTo(GPIO.LOW)
 
 
+# Класс описывающий процесс индикации прогресса программирования.
 class ProgressViewer(object):
 	def __init__(self, lights_line, max_val = 100):
 		self.old_val = 0
@@ -148,6 +153,8 @@ class ProgressViewer(object):
 			self.time_mls = GetTimeMs()
 			self.stepTo()
 
+
+# Класс описывающий процесс индикации ожидания новой работы.
 class Waiting(object):
 	def __init__(self, lights_line, timeout = 100):
 		print('Init Waiting.')
@@ -186,6 +193,7 @@ class Waiting(object):
 		self.lights_line.clear()
 
 
+# Класс описывающий процесс индикации ошибок.
 class Error(object):
 	def __init__(self, lights_line, timeout = 5):
 		print('Init Error')
@@ -215,6 +223,8 @@ class Error(object):
 def PushCallback():
 	print('PUSH BT')
 
+
+# Класс описывающий процесс программирования.
 class Flasher(object):
 	def __init__(self, lights_line, path_to_bootloader, path_to_parts, path_to_boot_app, path_to_bin):
 		self.lights_line = lights_line
@@ -321,6 +331,8 @@ class Flasher(object):
                         self.mutex.release()
 		self.tty_usb = 'ttyUSB0'
 
+
+    # Стейтовый процесс работы процесса программирования.
 	def update(self):
 		mls = GetTimeMs()
 		sub_mls = 0
@@ -379,7 +391,7 @@ class Flasher(object):
 
 is_loop = True
 
-
+# Класс описывающий основные функции программы.
 class Application(object):
 	def __init__(self):
 	        GPIO.setwarnings(False)
@@ -416,6 +428,7 @@ class Application(object):
 #########################################################################################################
 
 
+# Создание переменная программы.
 app = Application()
 
 
@@ -425,8 +438,9 @@ def SigHandler(signum, frame):
 	app.clear()
 
 
+# Главная фукнция программы.
 def main(argv = sys.argv):
-        signal.signal(signal.SIGTERM, SigHandler)
+    signal.signal(signal.SIGTERM, SigHandler)
 	signal.signal(signal.SIGINT, SigHandler)
 	global app
 	app.execute()

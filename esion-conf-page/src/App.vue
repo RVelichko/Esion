@@ -61,7 +61,6 @@
     import CountersTab from './components/CountersTab.vue';
     import SettingsTab from './components/SettingsTab.vue';
     // import SysSettingsTab from './components/SysSettingsTab.vue';
-
     export default {
         name: 'Esion',
         data() {
@@ -184,7 +183,6 @@
         font-weight: 400;
         src: url(../public/fonts/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2) format('woff2');
     }
-
     .material-icons {
         font-family: 'Material Icons';
         font-weight: normal;
@@ -200,17 +198,14 @@
         -webkit-font-feature-settings: 'liga';
         -webkit-font-smoothing: antialiased;
     }
-
   .md-app {
     min-height: 350px;
     border: 1px solid rgba(#000, .12);
   }
-
   .md-drawer {
     width: 230px;
     max-width: calc(100vw - 125px);
   }
-
   .md-list {
     width: 320px;
     max-width: 100%;

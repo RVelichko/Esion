@@ -6,10 +6,30 @@
 
 
 static const uint16_t DEFAULT_RECONNECT_TIMEOUT = 30000; /// mlsecs
-
-
-typedef StaticJsonDocument<800> JsonBufferType;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void CountersSender::parseConfig(const JsonObject& jobj) {
+    auto nvs = Nvs::get();
+    if (nvs) {
+        uint64_t ctrl_timeout = jobj["ctrl_timeout"].as<uint64_t>();
+        if (ctrl_timeout) {
+            nvs->setCtrlTime(ctrl_timeout);
+        }
+        uint32_t max_impls = jobj["max_impls"].as<uint32_t>();
+        if (max_impls) {
+            nvs->setMaxImpulses(max_impls);
+        }
+        uint32_t snd_timeout = jobj["snd_timeout"].as<uint32_t>();
+        if (snd_timeout) {
+            nvs->setSndTimeout(snd_timeout);
+        }
+        uint16_t cfg_time = jobj["cfg_time"].as<uint16_t>();
+        if (cfg_time) {
+            nvs->setCfgTime(cfg_time);
+        }
+    }
+}
 
 
 void CountersSender::recvState(const String &srecv) {
@@ -26,6 +46,15 @@ void CountersSender::recvState(const String &srecv) {
             Serial.println("Recv OK");              
             #endif
             _is_recv = true;
+        } else if (status == "cfg") {
+            // "cfg": {
+            //    "ctrl_timeout": <uint64_t>,
+            //    "max_impls": <uint32_t>,
+            //    "snd_timeout": <uint32_t>,
+            //    "cfg_time": <uint16_t>
+            // }
+            JsonObject jcfg = jbuf["cfg"];
+            parseConfig(jcfg);
         } else {
             _is_err = true;
         }

@@ -5,9 +5,10 @@
  */
 
 /**
- * Для успешной прошивки предварительно необходимо добавить пользователя в группу USB порта.
- * Выяснить имя группы: ls -l /dev/ttyUSB0
- * Добавить в группу: sudo usermod -a -G dialout $USER
+ * \breaf
+ *       Для успешной прошивки предварительно необходимо добавить пользователя в группу USB порта.
+ *       Выяснить имя группы: ls -l /dev/ttyUSB0
+ *       Добавить в группу: sudo usermod -a -G dialout $USER
  */ 
 
 #include <time.h>
@@ -37,12 +38,11 @@
 
 #include "utils.hpp"
 #include "ConfigureWebServer.hpp"
-#include "SdController.hpp"
 #include "CountersSender.hpp"
 #include "Programmer.hpp"
 
-static const int ENABLE_MEASURE_PIN = 25;       ///< Пин включения измерения напряжения.
-static const int MEASURE_PIN = 27; //ADC2_CHANNEL_7;  ///< Пин измерения напряжения.
+static const int ENABLE_MEASURE_PIN = 25;  ///< Пин включения измерения напряжения.
+static const int MEASURE_PIN = 27;         ///< Пин измерения напряжения.
 
 static const uint32_t DEFAULT_SERIAL_SPEED = 115200;
 
@@ -53,8 +53,6 @@ static const uint16_t DEFAULT_SERVICE_PORT = 8080;
 static const char DEFAULT_SERVICE_POINT[] = "/device";
 
 static const uint32_t RESET_TIMEOUT = 20;
-static const uint32_t SEND_SLEEP_TIME = 10; ///< секунд
-static const uint32_t CONTROL_SEND_SLEEP_TIME = 259200; ///< секунд
 
 
 RTC_DATA_ATTR bool __is_run = false;
@@ -69,7 +67,7 @@ RTC_DATA_ATTR uint32_t __count3 = 0;
 RTC_DATA_ATTR uint32_t __count4 = 0;
 RTC_DATA_ATTR uint32_t __last_max_count = 0;
 
-RTC_DATA_ATTR uint8_t MAX_COUNT_FOR_SEND = 100;
+RTC_DATA_ATTR double MAX_MCUBS_FOR_SEND = 1.0;
 
 RTC_DATA_ATTR time_t __device_id = 0;
 RTC_DATA_ATTR double __adc_level = 0; ///< Уровень зарядки аккумуляторов.
@@ -125,10 +123,10 @@ class Esion {
     typedef std::unique_ptr<CountersSender> PCountersSender;
 
 private:
-    int _service_timeout; ///< Время перезапуска отправки данных в минутах.
-    time_t _now;
-    PCountersSender _cs;
-    DeviceConfig _dev_conf;
+    int _service_timeout;   ///< Время перезапуска отправки данных в минутах.
+    time_t _now;            ///< Текущее время.
+    PCountersSender _cs;    ///< Объект, выполняющий отправку накопленных данных.
+    DeviceConfig _dev_conf; ///< Объект выполняющий функц ии конфигурирования устройства.
     
 public:
     /**
@@ -179,12 +177,8 @@ public:
     }
 
     Esion() {
-        /// Проверить уровень заряда аккумулятора.
-        //__adc_level = updateAdcLEvel();
         auto nvs = Nvs::get();
-        /// Получить тип питания.
-        //__power_id = nvs->getPwrId();
-        /// Выполнить проверку уникального идентификатора.
+        // Выполнить проверку уникального идентификатора.
         __device_id = nvs->getId();
         #ifdef DEBUG
         Serial.println("Start ESION [" + String(__device_id, DEC) + "]");
@@ -205,28 +199,33 @@ public:
         _dev_conf.wc.pswd = nvs->getPswd();
         if (_dev_conf.wc.ssid.length()) {
             Blink<BLUE_PIN>::get()->on();
-            /// Подключение к сети wifi.
+            // Подключение к сети wifi.
             #ifdef DEBUG
             Serial.println("Connecting to WIFI: \"" + _dev_conf.wc.ssid + "\"|\"" + _dev_conf.wc.pswd + "\"");
             #endif
             Blink<BLUE_PIN>::get()->off();
-            WiFi.begin(_dev_conf.wc.ssid.c_str(), _dev_conf.wc.pswd.c_str());
-            for (uint16_t i = 0; ((i < MAX_ATTEMPS_CONNECTIONS) and (WiFi.status() not_eq WL_CONNECTED)); ++i) {
-                Blink<BLUE_PIN>::get()->on();
-                delay(50);
-                #ifdef DEBUG
-                Serial.print(".");
-                #endif
-                Blink<BLUE_PIN>::get()->off();
-                delay(50);
-            } 
+            int ssid_count = WiFi.scanNetworks(true, true);
+            for (int si = 0; si < ssid_count; ++si) {
+                if (WiFi.SSID() == _dev_conf.wc.ssid.c_str()) {
+                    WiFi.begin(_dev_conf.wc.ssid.c_str(), _dev_conf.wc.pswd.c_str());
+                    for (uint16_t i = 0; ((i < MAX_ATTEMPS_CONNECTIONS) and (WiFi.status() not_eq WL_CONNECTED)); ++i) {
+                        Blink<BLUE_PIN>::get()->on();
+                        delay(50);
+                        #ifdef DEBUG
+                        Serial.print(".");
+                        #endif
+                        Blink<BLUE_PIN>::get()->off();
+                        delay(50);
+                    } 
+                }
+            }
             Blink<BLUE_PIN>::get()->on();
             delay(50);
             if (WiFi.status() == WL_CONNECTED) {
                 #ifdef DEBUG
                 Serial.println("WIFI is connected");
                 #endif
-                /// Получить текущее интернет время.
+                // Получить текущее интернет время.
                 _now = getInternetTime();
                 #ifdef DEBUG
                 Serial.println("Time is: " + String(ctime(&_now)));
@@ -253,6 +252,9 @@ public:
         WiFi.mode(WIFI_OFF); // отключаем WIFI
     }
     
+    /**
+     * \brief Метод выполняет отправку текущих состояний и накопленных данных потребления.
+     */
     void sendValues() {
         auto nvs = Nvs::get();
         if (__device_id and nvs) {
@@ -337,6 +339,9 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+/**
+ * \brief Функция выполняет сброс счётчиков в EEPROM.
+ */
 void ResetCounters() {
     auto nvs = Nvs::get();
     if (nvs) {
@@ -349,6 +354,9 @@ void ResetCounters() {
 }
 
 
+/**
+ * \brief Функция выполняет сохранение счётчиков в EEPROM.
+ */
 void SaveCounters() {
     auto nvs = Nvs::get();
     if (nvs) {
@@ -382,6 +390,9 @@ void SaveCounters() {
 }
 
 
+/**
+ * \brief Функция выполняет восстановление счётчиков из EEPROM.
+ */
 void RestoreCounters() {
     auto nvs = Nvs::get();
     if (nvs) {
@@ -405,6 +416,9 @@ void RestoreCounters() {
 }
 
 
+/**
+ * \brief Функция выполняет отправку данных после заданной задержки.
+ */
 void SendTimeout() {
     __is_control_send_timeout = true;
     #ifdef DEBUG
@@ -415,14 +429,25 @@ void SendTimeout() {
 }
 
 
+/**
+ * \brief Функция выполняет вычисление максимального значения счётчиков.
+ */
 uint32_t GetMaxCounter() {
     uint32_t max = __count1 + __count2 + __count3 + __count4;
     return max;
 }
 
 
+/**
+ * \brief Функция проверяет, достигнуто ли максимальное значение счётчиков для перехода в состояние отправки данных.
+ */
 bool CheckMaxCounts(uint32_t max) {
-    if (MAX_COUNT_FOR_SEND <= max - __last_max_count) {
+    Nvs *nvs = Nvs::get();
+    uint32_t mcfs = nvs->getMaxImpulses();
+    if (not mcfs) {
+        mcfs = MAX_COUNT_FOR_SEND;
+    }
+    if (mcfs <= max - __last_max_count) {
         #ifdef DEBUG
         Serial.println("Check for send is TRUE."); 
         #endif
@@ -439,6 +464,9 @@ bool CheckMaxCounts(uint32_t max) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+/**
+ * \brief Функция выполняется при срабатывании прерываний по таймауту и по новому импульсу.
+ */
 void WakeupReason() {
     uint32_t wakeup_reason = static_cast<uint32_t>(esp_sleep_get_wakeup_cause());
     switch (wakeup_reason) {
@@ -448,13 +476,13 @@ void WakeupReason() {
             Serial.println("Ext1 status: " + String(reinterpret_cast<uint32_t*>(&wu_bit)[1], DEC));
             #endif
             if (wu_bit & GPIO_SEL_26) {
-                /// Запустить веб сервер установки параметров контроллера.
+                // Запустить веб сервер установки параметров контроллера.
                 #ifdef DEBUG
                 Serial.println("Press configure button.");
                 #endif
                 auto cs = ConfigureWebServer::getPtr();
                 if (cs) {
-                    /// Проверить уровень заряда аккумулятора.
+                    // Проверить уровень заряда аккумулятора.
                     //__adc_level = Esion::updateAdcLEvel();
                     __device_id = Nvs::get()->getId();
                     if (__device_id == 0) {
@@ -494,7 +522,7 @@ void WakeupReason() {
                 Serial.println("C4---------> PIN 39: " + String(__count4, DEC));
                 #endif
             }
-            /// Моргнуть светодиодом на очередной импульс.
+            // Моргнуть светодиодом на очередной импульс.
             if ((wu_bit & GPIO_SEL_34) or 
                 (wu_bit & GPIO_SEL_35) or 
                 (wu_bit & GPIO_SEL_36) or 
@@ -505,8 +533,8 @@ void WakeupReason() {
             }
         } break;
         case ESP_SLEEP_WAKEUP_TIMER: 
-            __last_max_count = GetMaxCounter(); ///< Запомнить последнее максимальное значение счётчиков.
-            SendTimeout(); ///< Отправить данные на сервер.
+            __last_max_count = GetMaxCounter(); //< Запомнить последнее максимальное значение счётчиков.
+            SendTimeout(); //< Отправить данные на сервер.
             break;
         case ESP_SLEEP_WAKEUP_EXT0:
         case ESP_SLEEP_WAKEUP_TOUCHPAD:
@@ -518,6 +546,9 @@ void WakeupReason() {
 }
 
 
+/**
+ * \brief Основная функция инициализации работы всей системы.
+ */
 void setup() {
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
@@ -526,11 +557,11 @@ void setup() {
     Serial.begin(DEFAULT_SERIAL_SPEED);
     #endif
 
+    Nvs *nvs = Nvs::get();
     if (__is_run) {
         WakeupReason();
     } else {
-        /// Выполнить прошивку входного контроллера при первом запуске прошивки.
-        Nvs *nvs = Nvs::get();
+        // Выполнить прошивку входного контроллера при первом запуске прошивки.
         uint32_t is_tiny_flashed = nvs->getFlag("flashed");
         if (not is_tiny_flashed) {
             #ifdef DEBUG
@@ -551,17 +582,24 @@ void setup() {
         #endif
         __is_run = true;
         Blink<BLUE_PIN>::get()->off();
-        //ResetCounters();
-        /// Прочитать счётчики после перезапуски контроллера.
+        // Прочитать счётчики после перезапуски контроллера.
         RestoreCounters();
     }
-    /// Установить обработчики прерываний на обработку входных импульсов.
+    // Установить обработчики прерываний на обработку входных импульсов.
     esp_sleep_enable_ext1_wakeup(GPIO_SEL_26 | GPIO_SEL_39 | GPIO_SEL_36 | GPIO_SEL_35 | GPIO_SEL_34, ESP_EXT1_WAKEUP_ANY_HIGH);
     if (CheckMaxCounts(GetMaxCounter())) {
-        /// Установить обработчик прерывания по таймеру.
-        esp_sleep_enable_timer_wakeup(SEND_SLEEP_TIME * 1000000);
+        // Установить обработчик прерывания по таймеру.
+        uint32_t snd_timeout = nvs->getSndTimeout();
+        if (not snd_timeout) {
+            snd_timeout = SEND_SLEEP_TIME;
+        }
+        esp_sleep_enable_timer_wakeup(snd_timeout * 1000000);
     } else if (__is_control_send_timeout) {
-        /// Запустить обязательную отправку через 3 дня.
+        // Запустить обязательную отправку через 3 дня.
+        uint64_t ctrl_time = nvs->getCtrlTime() * 3600; // Преобразовать час в секунды.
+        if (not ctrl_time) {
+            ctrl_time = CONTROL_SEND_SLEEP_TIME;
+        }
         __is_control_send_timeout = false;
         esp_sleep_enable_timer_wakeup(CONTROL_SEND_SLEEP_TIME * 1000000);
     }
